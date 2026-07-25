@@ -2,6 +2,11 @@
 	{
 		"id": "gemini-3.1-flash-image",
 		"display_name": "Gemini 3.1 Flash Image",
+		"description": "A fast Google model for high-quality image generation and editing with multimodal reasoning.",
+		"i18n": {
+			"en": "A fast Google model for high-quality image generation and editing with multimodal reasoning.",
+			"zh": "结合多模态推理能力的高速 Google 图片生成与编辑模型。"
+		},
 		"vendor": "google",
 		"context_window": null,
 		"max_tokens": null,
@@ -54,6 +59,11 @@
 	{
 		"id": "gemini-3-pro-image-preview",
 		"display_name": "Gemini 3 Pro Image Preview",
+		"description": "Google's advanced image generation preview for grounded creation and detailed visual editing.",
+		"i18n": {
+			"en": "Google's advanced image generation preview for grounded creation and detailed visual editing.",
+			"zh": "Google 高级图片生成预览模型，擅长有依据的创作与精细视觉编辑。"
+		},
 		"vendor": "google",
 		"context_window": null,
 		"max_tokens": null,

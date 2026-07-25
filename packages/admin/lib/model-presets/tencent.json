@@ -2,6 +2,11 @@
 	{
 		"id": "hy3",
 		"display_name": "Hy3",
+		"description": "A Tencent mixture-of-experts model for configurable reasoning and production agents.",
+		"i18n": {
+			"en": "A Tencent mixture-of-experts model for configurable reasoning and production agents.",
+			"zh": "面向可调节推理与生产级 Agent 的腾讯混合专家模型。"
+		},
 		"vendor": "tencent",
 		"context_window": 256000,
 		"max_tokens": 128000,
@@ -42,6 +47,11 @@
 	{
 		"id": "hy3-preview",
 		"display_name": "Hy3 preview",
+		"description": "A high-efficiency Tencent preview model for agent workflows and production evaluation.",
+		"i18n": {
+			"en": "A high-efficiency Tencent preview model for agent workflows and production evaluation.",
+			"zh": "面向 Agent 工作流与生产评估的高效率腾讯预览模型。"
+		},
 		"vendor": "tencent",
 		"context_window": 256000,
 		"max_tokens": 128000,

@@ -2,6 +2,11 @@
 	{
 		"id": "deepseek-v3.2",
 		"display_name": "DeepSeek-V3.2",
+		"description": "An efficient DeepSeek model combining strong reasoning with agentic tool use.",
+		"i18n": {
+			"en": "An efficient DeepSeek model combining strong reasoning with agentic tool use.",
+			"zh": "兼顾推理效率、复杂推理与 Agent 工具调用能力的 DeepSeek 模型。"
+		},
 		"vendor": "deepseek",
 		"context_window": 128000,
 		"max_tokens": 8000,
@@ -42,6 +47,11 @@
 	{
 		"id": "deepseek-v4-flash",
 		"display_name": "DeepSeek V4 Flash",
+		"description": "A fast DeepSeek mixture-of-experts model for long-context reasoning and coding.",
+		"i18n": {
+			"en": "A fast DeepSeek mixture-of-experts model for long-context reasoning and coding.",
+			"zh": "面向长上下文推理与编程任务的高速 DeepSeek 混合专家模型。"
+		},
 		"vendor": "deepseek",
 		"context_window": 1000000,
 		"max_tokens": 384000,
@@ -82,6 +92,11 @@
 	{
 		"id": "deepseek-v4-pro",
 		"display_name": "DeepSeek V4 Pro",
+		"description": "A large DeepSeek mixture-of-experts model for advanced reasoning, coding, and agents.",
+		"i18n": {
+			"en": "A large DeepSeek mixture-of-experts model for advanced reasoning, coding, and agents.",
+			"zh": "面向高级推理、编程与 Agent 的大型 DeepSeek 混合专家模型。"
+		},
 		"vendor": "deepseek",
 		"context_window": 1000000,
 		"max_tokens": 384000,

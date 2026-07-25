@@ -2,6 +2,11 @@
 	{
 		"id": "claude-fable-5",
 		"display_name": "Claude Fable 5",
+		"description": "An Anthropic model built for autonomous knowledge work, coding, and multimodal agents.",
+		"i18n": {
+			"en": "An Anthropic model built for autonomous knowledge work, coding, and multimodal agents.",
+			"zh": "面向自主知识工作、编程和多模态 Agent 的 Anthropic 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -44,6 +49,11 @@
 	{
 		"id": "claude-sonnet-5",
 		"display_name": "Claude Sonnet 5",
+		"description": "A frontier Sonnet model for coding, professional work, and adaptive agentic reasoning.",
+		"i18n": {
+			"en": "A frontier Sonnet model for coding, professional work, and adaptive agentic reasoning.",
+			"zh": "适合编程、专业工作与自适应 Agent 推理的前沿 Sonnet 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -86,6 +96,11 @@
 	{
 		"id": "claude-opus-5",
 		"display_name": "Claude Opus 5",
+		"description": "Anthropic's flagship for demanding reasoning, coding, visual analysis, and long-running agents.",
+		"i18n": {
+			"en": "Anthropic's flagship for demanding reasoning, coding, visual analysis, and long-running agents.",
+			"zh": "Anthropic 旗舰模型，面向复杂推理、编程、视觉分析与长时间 Agent 任务。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -128,6 +143,11 @@
 	{
 		"id": "claude-opus-4.8",
 		"display_name": "Claude Opus 4.8",
+		"description": "A high-capability Opus model for long-context reasoning, coding, and multimodal analysis.",
+		"i18n": {
+			"en": "A high-capability Opus model for long-context reasoning, coding, and multimodal analysis.",
+			"zh": "适合长上下文推理、编程与多模态分析的高性能 Opus 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -170,6 +190,11 @@
 	{
 		"id": "claude-opus-4.7",
 		"display_name": "Claude Opus 4.7",
+		"description": "An Opus model designed for long-running asynchronous agents and complex software workflows.",
+		"i18n": {
+			"en": "An Opus model designed for long-running asynchronous agents and complex software workflows.",
+			"zh": "面向长时间异步 Agent 与复杂软件工作流的 Opus 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -212,6 +237,11 @@
 	{
 		"id": "claude-opus-4.6",
 		"display_name": "Claude Opus 4.6",
+		"description": "A powerful Claude model for end-to-end coding and long-running professional workflows.",
+		"i18n": {
+			"en": "A powerful Claude model for end-to-end coding and long-running professional workflows.",
+			"zh": "面向端到端编程与长时间专业工作流的高性能 Claude 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 128000,
@@ -254,6 +284,11 @@
 	{
 		"id": "claude-sonnet-4.6",
 		"display_name": "Claude Sonnet 4.6",
+		"description": "A balanced frontier model for iterative development, agents, and professional knowledge work.",
+		"i18n": {
+			"en": "A balanced frontier model for iterative development, agents, and professional knowledge work.",
+			"zh": "适合迭代开发、Agent 与专业知识工作的均衡型前沿模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 1000000,
 		"max_tokens": 64000,
@@ -296,6 +331,11 @@
 	{
 		"id": "claude-haiku-4.5",
 		"display_name": "Claude Haiku 4.5",
+		"description": "A fast, efficient Claude model for latency-sensitive chat, coding, and agent tasks.",
+		"i18n": {
+			"en": "A fast, efficient Claude model for latency-sensitive chat, coding, and agent tasks.",
+			"zh": "适合低延迟对话、编程和 Agent 任务的高速高效 Claude 模型。"
+		},
 		"vendor": "anthropic",
 		"context_window": 200000,
 		"max_tokens": 64000,

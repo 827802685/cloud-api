@@ -198,6 +198,13 @@ export type AdminStaticModelPresetCatalogItem = {
 	kind: 'llm' | 'image';
 	context_window: number | null;
 	max_tokens: number | null;
+	/** English fallback used by non-localized Admin clients and on import. */
+	description: string | null;
+	/** Localized catalog summaries; currently aligned with Website locales. */
+	i18n: {
+		en: string;
+		zh: string;
+	} | null;
 	/** 当前计费币种对应目录价分支的档位数 */
 	tier_count: number;
 	/** 表格短文案（如 `¥12 / ¥36 /M` 或 `$2 / $8 /M`）。 */
