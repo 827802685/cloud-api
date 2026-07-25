@@ -20,11 +20,18 @@ import {
 	serializeProviderEndpoints,
 	type ProviderEndpointCapability,
 	type ProviderEndpointsMap,
+	type ProviderEndpointsSource,
 } from '@octafuse/core/provider-endpoints';
 
 export type StaticProviderImportPresetRow = {
 	name: string;
 	vendor_key: string;
+	/**
+	 * Provider 产品级图标。省略时回退 `vendor_key`。
+	 * 例如 Xiaomi MiMo 使用 `xiaomimimo`，而不是 Xiaomi 企业 Logo。
+	 * 仅用于静态目录与动态展示，不写入 providers 表。
+	 */
+	icon_key?: string;
 	endpoints: ProviderEndpointsMap;
 	/** 可选；JSON 中可省略，导入后写入 providers.description 时为 null */
 	description?: string | null;
@@ -61,6 +68,75 @@ export type ProviderImportOpenAiSummary = {
 };
 
 const STATIC_ROWS = rawPresets as StaticProviderImportPresetRow[];
+
+function providerEndpointSignature(endpoints: ProviderEndpointsSource['endpoints']): string {
+	try {
+		return serializeProviderEndpoints(parseProviderEndpoints({ endpoints })) ?? '';
+	} catch {
+		return '';
+	}
+}
+
+const STATIC_VENDOR_BY_NAME = new Map(
+	STATIC_ROWS.map((row) => [row.name.trim().toLowerCase(), normalizeModelVendorInput(row.vendor_key)])
+);
+const STATIC_VENDOR_BY_ENDPOINTS = new Map(
+	STATIC_ROWS.map((row) => [providerEndpointSignature(row.endpoints), normalizeModelVendorInput(row.vendor_key)]).filter(
+		(entry): entry is [string, string] => Boolean(entry[0])
+	)
+);
+const STATIC_ICON_BY_NAME = new Map(
+	STATIC_ROWS.map((row) => [row.name.trim().toLowerCase(), row.icon_key?.trim() || normalizeModelVendorInput(row.vendor_key)])
+);
+const STATIC_ICON_BY_ENDPOINTS = new Map(
+	STATIC_ROWS.map((row) => [
+		providerEndpointSignature(row.endpoints),
+		row.icon_key?.trim() || normalizeModelVendorInput(row.vendor_key),
+	]).filter((entry): entry is [string, string] => Boolean(entry[0]))
+);
+
+function normalizedImportedProviderName(name: string | null | undefined): string {
+	return String(name ?? '')
+		.trim()
+		.replace(/\s+\(\d+\)$/, '')
+		.toLowerCase();
+}
+
+/**
+ * 不落库推导 Provider Vendor：优先匹配 Import 模板名（兼容重复导入的 `(2)` 后缀），
+ * 名称被修改时再按规范化 Endpoint 签名匹配；自定义且无法识别时回退 `other`。
+ */
+export function inferStaticProviderVendorKey(provider: {
+	name?: string | null;
+	endpoints?: ProviderEndpointsSource['endpoints'];
+}): string {
+	const normalizedName = normalizedImportedProviderName(provider.name);
+	const byName = STATIC_VENDOR_BY_NAME.get(normalizedName);
+	if (byName) return byName;
+
+	const signature = providerEndpointSignature(provider.endpoints);
+	return (signature && STATIC_VENDOR_BY_ENDPOINTS.get(signature)) || 'other';
+}
+
+/**
+ * 不落库推导 Provider 产品图标：匹配规则与 Vendor 相同，但允许模板声明产品级
+ * `icon_key`。无法识别的自定义 Provider 回退其 Vendor，再回退 `other`。
+ */
+export function inferStaticProviderIconKey(provider: {
+	name?: string | null;
+	endpoints?: ProviderEndpointsSource['endpoints'];
+	vendor_key?: string | null;
+}): string {
+	const normalizedName = normalizedImportedProviderName(provider.name);
+	const byName = STATIC_ICON_BY_NAME.get(normalizedName);
+	if (byName) return byName;
+
+	const signature = providerEndpointSignature(provider.endpoints);
+	const byEndpoints = signature && STATIC_ICON_BY_ENDPOINTS.get(signature);
+	if (byEndpoints) return byEndpoints;
+
+	return normalizeModelVendorInput(provider.vendor_key);
+}
 
 function protocolsForPreset(p: StaticProviderImportPresetRow): AdminProviderImportCatalogItem['protocols'] {
 	const map = parseProviderEndpoints({ endpoints: p.endpoints });
@@ -107,6 +183,7 @@ export function listStaticProviderImportCatalogForAdmin(): AdminProviderImportCa
 			id: p.catalog_key,
 			name: String(p.name ?? '').trim(),
 			vendor_key: vendorCanon,
+			icon_key: p.icon_key?.trim() || vendorCanon,
 			vendor_label: getModelVendorLabel(vendorCanon),
 			protocols: protocolsForPreset(p),
 			endpoints: serializeProviderEndpoints(map),

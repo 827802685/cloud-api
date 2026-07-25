@@ -120,6 +120,8 @@ export type AdminProviderImportCatalogItem = {
 	id: string;
 	name: string;
 	vendor_key: string;
+	/** Provider 产品级静态图标 key；不写入数据库。 */
+	icon_key: string;
 	vendor_label: string;
 	protocols: Array<'openai' | 'anthropic' | 'gemini'>;
 	/** 序列化后的 endpoints JSON（可 null） */
@@ -225,6 +227,10 @@ export type AdminModelsImportOutput = {
 export type AdminProviderRow = {
 	id: string;
 	name: string;
+	/** 由内置 Provider 预设名称 / Endpoint 动态推导，不持久化。 */
+	vendor_key?: string;
+	/** 由内置 Provider 预设动态推导的产品级图标，不持久化。 */
+	icon_key?: string;
 	endpoints: string | null;
 	description: string | null;
 	created_at: string;

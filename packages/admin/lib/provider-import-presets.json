@@ -120,6 +120,7 @@
 	{
 		"name": "Alibaba Cloud Bailian",
 		"vendor_key": "aliyun",
+		"icon_key": "bailian",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -147,6 +148,7 @@
 	{
 		"name": "Alibaba Cloud Bailian (Coding Plan)",
 		"vendor_key": "aliyun",
+		"icon_key": "bailian",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -178,6 +180,7 @@
 	{
 		"name": "Qwen AI Platform (Token Plan)",
 		"vendor_key": "aliyun",
+		"icon_key": "qwen",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -208,6 +211,7 @@
 	{
 		"name": "Tencent Hunyuan",
 		"vendor_key": "tencent",
+		"icon_key": "hunyuan",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -234,6 +238,7 @@
 	{
 		"name": "Tencent TokenHub (Hy Token Plan)",
 		"vendor_key": "tencent",
+		"icon_key": "hunyuan",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -347,6 +352,7 @@
 	{
 		"name": "Z.AI GLM (International)",
 		"vendor_key": "zhipu",
+		"icon_key": "zai",
 		"endpoints": {
 			"openai": {
 				"base": "https://api.z.ai/api/paas/v4"
@@ -372,6 +378,7 @@
 	{
 		"name": "Z.AI GLM (Coding Plan)",
 		"vendor_key": "zhipu",
+		"icon_key": "zai",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -402,6 +409,7 @@
 	{
 		"name": "Meituan LongCat",
 		"vendor_key": "meituan",
+		"icon_key": "longcat",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -459,6 +467,7 @@
 	{
 		"name": "Kimi Code (Coding API)",
 		"vendor_key": "moonshot",
+		"icon_key": "kimi",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -595,6 +604,7 @@
 	{
 		"name": "Google Vertex AI (Express Mode · API Key)",
 		"vendor_key": "google",
+		"icon_key": "vertexai",
 		"endpoints": {
 			"gemini": {
 				"base": "https://aiplatform.googleapis.com/v1/publishers/google/models"
@@ -909,6 +919,7 @@
 	{
 		"name": "Xiaomi MiMo",
 		"vendor_key": "xiaomi",
+		"icon_key": "xiaomimimo",
 		"endpoints": {
 			"openai": {
 				"endpoints": {
@@ -936,6 +947,7 @@
 	{
 		"name": "Xiaomi MiMo (Token Plan)",
 		"vendor_key": "xiaomi",
+		"icon_key": "xiaomimimo",
 		"endpoints": {
 			"openai": {
 				"endpoints": {

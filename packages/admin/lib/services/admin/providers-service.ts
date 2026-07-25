@@ -6,6 +6,8 @@ import {
 	type ProviderEndpointsMap,
 } from '@octafuse/core/provider-endpoints';
 import {
+	inferStaticProviderIconKey,
+	inferStaticProviderVendorKey,
 	listStaticProviderImportPresets,
 } from '@/lib/provider-import-preset';
 import { badRequest, conflict, notFound } from './errors';
@@ -35,8 +37,11 @@ export async function listProvidersService(repos: GatewayRepositories): Promise<
 	const enriched: AdminProviderRow[] = [];
 	for (const provider of providers) {
 		const keys = await repos.providerKeys.listProviderKeys(provider.id);
+		const vendorKey = inferStaticProviderVendorKey(provider);
 		enriched.push({
 			...provider,
+			vendor_key: vendorKey,
+			icon_key: inferStaticProviderIconKey({ ...provider, vendor_key: vendorKey }),
 			active_key_count: keys.filter((k) => k.status === 'active').length,
 			has_pending_key: keys.some((k) => k.is_pending_import),
 		});
