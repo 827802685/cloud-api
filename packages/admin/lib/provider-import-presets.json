@@ -976,6 +976,37 @@
 		}
 	},
 	{
+		"name": "Qiniu AI",
+		"vendor_key": "qiniu",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://api.qnaigc.com/v1/chat/completions"
+				}
+			},
+			"anthropic": {
+				"base": "https://api.qnaigc.com"
+			}
+		},
+		"description": "Qiniu AI Token API (api.qnaigc.com): OpenAI chat/completions + Anthropic Messages root. Image generation uses chat modalities, not /images/generations—keep openai as chat-only. Overseas host api.modelink.ai is a separate template if needed. See developer.qiniu.com/aitokenapi.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "七牛云 AI",
+					"description": "七牛云 AI 大模型推理（Token API），支持 OpenAI 与 Anthropic 兼容协议。"
+				},
+				"en": {
+					"name": "Qiniu AI",
+					"description": "Qiniu AI Token API with OpenAI- and Anthropic-compatible access."
+				}
+			},
+			"links": {
+				"platform": "https://www.qiniu.com/products/ai-token-api",
+				"api_keys": "https://portal.qiniu.com/ai-inference"
+			}
+		}
+	},
+	{
 		"name": "OpenRouter",
 		"vendor_key": "openrouter",
 		"endpoints": {
@@ -1001,6 +1032,100 @@
 			"links": {
 				"platform": "https://openrouter.ai/",
 				"api_keys": "https://openrouter.ai/settings/keys"
+			}
+		}
+	},
+	{
+		"name": "OpenCode Zen",
+		"vendor_key": "opencode",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://opencode.ai/zen/v1/chat/completions"
+				}
+			},
+			"anthropic": {
+				"base": "https://opencode.ai/zen"
+			},
+			"gemini": {
+				"base": "https://opencode.ai/zen/v1/models"
+			}
+		},
+		"description": "OpenCode Zen pay-as-you-go gateway (/zen/v1…): OpenAI chat/completions, Anthropic Messages (root appends /v1/messages), and Gemini models base. Do not mix with OpenCode Go (/zen/go/v1…). Some GPT models on Zen use /v1/responses instead of chat/completions—route those separately if needed. See opencode.ai/docs/zen.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "OpenCode Zen",
+					"description": "OpenCode Zen 按量网关（/zen/v1），支持 OpenAI、Anthropic 与 Gemini；勿与 Go 套餐端点混用。"
+				},
+				"en": {
+					"name": "OpenCode Zen",
+					"description": "OpenCode Zen pay-as-you-go gateway (/zen/v1) with OpenAI, Anthropic, and Gemini; do not mix with Go endpoints."
+				}
+			},
+			"links": {
+				"platform": "https://opencode.ai/zen",
+				"api_keys": "https://opencode.ai/auth"
+			}
+		}
+	},
+	{
+		"name": "OpenCode Go",
+		"vendor_key": "opencode",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://opencode.ai/zen/go/v1/chat/completions"
+				}
+			},
+			"anthropic": {
+				"base": "https://opencode.ai/zen/go"
+			}
+		},
+		"description": "OpenCode Go subscription-only endpoints (/zen/go/v1…): OpenAI chat/completions + Anthropic Messages. Do not mix with OpenCode Zen (/zen/v1…) or plan quota will not apply. Model list is open-coding focused (no Gemini on this template). See opencode.ai/docs/go.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "OpenCode Go",
+					"description": "OpenCode Go 订阅套餐专用端点（/zen/go/v1），支持 OpenAI 与 Anthropic；勿与 Zen 按量端点混用。"
+				},
+				"en": {
+					"name": "OpenCode Go",
+					"description": "OpenCode Go subscription endpoints (/zen/go/v1) for OpenAI and Anthropic; do not mix with Zen pay-as-you-go."
+				}
+			},
+			"links": {
+				"platform": "https://opencode.ai/go",
+				"api_keys": "https://opencode.ai/auth"
+			}
+		}
+	},
+	{
+		"name": "ZenMux",
+		"vendor_key": "zenmux",
+		"endpoints": {
+			"openai": {
+				"base": "https://zenmux.ai/api/v1"
+			},
+			"anthropic": {
+				"base": "https://zenmux.ai/api/anthropic"
+			}
+		},
+		"description": "ZenMux aggregation API: OpenAI-compatible root (/api/v1) + Anthropic Messages base (/api/anthropic). Pay As You Go and Builder Plan (subscription, sk-ss-v1-* keys) share the same endpoints—billing differs by API key only, so one import template covers both. Vertex/Gemini native base is https://zenmux.ai/api/vertex-ai if you need a separate Gemini template. See docs.zenmux.ai.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "ZenMux",
+					"description": "ZenMux 聚合平台（Pay As You Go 与 Builder 订阅共用同一端点，按 API Key 区分计费）。"
+				},
+				"en": {
+					"name": "ZenMux",
+					"description": "ZenMux aggregation API; Pay As You Go and Builder Plan share endpoints and differ by API key only."
+				}
+			},
+			"links": {
+				"platform": "https://zenmux.ai/",
+				"api_keys": "https://zenmux.ai/platform"
 			}
 		}
 	},

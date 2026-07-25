@@ -40,9 +40,11 @@ const VENDOR_VISUALS: Record<string, IconVisual> = {
 	nvidia: { url: vendorIconAssets.nvidia, accent: '#76b900' },
 	ollama: { url: vendorIconAssets.ollama, accent: '#7c8ca1' },
 	openai: { url: vendorIconAssets.openai, accent: '#10a37f' },
+	opencode: { url: vendorIconAssets.opencode, accent: '#f97316' },
 	openrouter: { url: vendorIconAssets.openrouter, accent: '#6366f1' },
 	other: { accent: '#64748b' },
 	perplexity: { url: vendorIconAssets.perplexity, accent: '#20b8cd' },
+	qiniu: { url: vendorIconAssets.qiniu, accent: '#00a0e9' },
 	siliconflow: { url: vendorIconAssets.siliconflow, accent: '#6d5dfc' },
 	stability: { url: vendorIconAssets.stability, accent: '#7c3aed' },
 	stepfun: { url: vendorIconAssets.stepfun, accent: '#2f6bff' },
@@ -51,6 +53,7 @@ const VENDOR_VISUALS: Record<string, IconVisual> = {
 	volcengine: { url: vendorIconAssets.volcengine, accent: '#00c8d7' },
 	xai: { url: vendorIconAssets.xai, accent: '#6b7280' },
 	xiaomi: { url: vendorIconAssets.xiaomi, accent: '#ff6900' },
+	zenmux: { url: vendorIconAssets.zenmux, accent: '#7c5cff' },
 	zhipu: { url: vendorIconAssets.zhipu, accent: '#1f5eff' },
 };
 

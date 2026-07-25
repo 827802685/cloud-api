@@ -29,8 +29,10 @@ import moonshotIcon from '@lobehub/icons-static-svg/icons/moonshot.svg';
 import nvidiaIcon from '@lobehub/icons-static-svg/icons/nvidia.svg';
 import ollamaIcon from '@lobehub/icons-static-svg/icons/ollama.svg';
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg';
+import opencodeIcon from '@lobehub/icons-static-svg/icons/opencode.svg';
 import openrouterIcon from '@lobehub/icons-static-svg/icons/openrouter.svg';
 import perplexityIcon from '@lobehub/icons-static-svg/icons/perplexity.svg';
+import qiniuIcon from '@lobehub/icons-static-svg/icons/qiniu.svg';
 import qwenIcon from '@lobehub/icons-static-svg/icons/qwen.svg';
 import siliconCloudIcon from '@lobehub/icons-static-svg/icons/siliconcloud.svg';
 import stabilityIcon from '@lobehub/icons-static-svg/icons/stability.svg';
@@ -42,6 +44,7 @@ import volcengineIcon from '@lobehub/icons-static-svg/icons/volcengine.svg';
 import xaiIcon from '@lobehub/icons-static-svg/icons/xai.svg';
 import xiaomiMimoIcon from '@lobehub/icons-static-svg/icons/xiaomimimo.svg';
 import zaiIcon from '@lobehub/icons-static-svg/icons/zai.svg';
+import zenmuxIcon from '@lobehub/icons-static-svg/icons/zenmux.svg';
 import zhipuIcon from '@lobehub/icons-static-svg/icons/zhipu.svg';
 
 type StaticSvgAsset = string | { src: string };
@@ -73,8 +76,10 @@ export const vendorIconAssets: Readonly<Record<string, string>> = {
 	nvidia: assetUrl(nvidiaIcon),
 	ollama: assetUrl(ollamaIcon),
 	openai: assetUrl(openaiIcon),
+	opencode: assetUrl(opencodeIcon),
 	openrouter: assetUrl(openrouterIcon),
 	perplexity: assetUrl(perplexityIcon),
+	qiniu: assetUrl(qiniuIcon),
 	siliconflow: assetUrl(siliconCloudIcon),
 	stability: assetUrl(stabilityIcon),
 	stepfun: assetUrl(stepfunIcon),
@@ -83,6 +88,7 @@ export const vendorIconAssets: Readonly<Record<string, string>> = {
 	volcengine: assetUrl(volcengineIcon),
 	xai: assetUrl(xaiIcon),
 	xiaomi: assetUrl(xiaomiMimoIcon),
+	zenmux: assetUrl(zenmuxIcon),
 	zhipu: assetUrl(zhipuIcon),
 };
 
