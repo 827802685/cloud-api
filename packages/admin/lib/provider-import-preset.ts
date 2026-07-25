@@ -28,6 +28,22 @@ export type StaticProviderImportPresetRow = {
 	endpoints: ProviderEndpointsMap;
 	/** 可选；JSON 中可省略，导入后写入 providers.description 时为 null */
 	description?: string | null;
+	/**
+	 * 仅用于公开 Catalog / 文档展示，不写入 providers 表。
+	 * `description` 继续承载导入后的运维说明；此处提供本地化的用户侧摘要与官方入口。
+	 */
+	catalog?: {
+		i18n: {
+			zh: { name: string; description: string };
+			en: { name: string; description: string };
+		};
+		links?: {
+			/** Provider 官方平台、控制台或本地产品下载页。 */
+			platform?: string;
+			/** 可确认稳定时填写的 API Key 管理直达页。 */
+			api_keys?: string;
+		};
+	};
 };
 
 /** 运行时 catalog 行键（JSON 数组下标字符串）；与入库 provider id 无关。 */
