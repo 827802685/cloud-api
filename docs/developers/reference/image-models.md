@@ -185,15 +185,15 @@ charged ≈
 
 ### 预设单价（摘要）
 
-**`gpt-image-2`**（`token`；USD / 1M；CNY ≈ ×7.25）：
+**`gpt-image-2`**（`token`；USD / 1M；CNY = ×7）：
 
 | 分项 | USD | CNY |
 |------|-----|-----|
-| text `input_price` | 5 | 36.25 |
-| cached text `cache_read_price` | 1.25 | 9.0625 |
-| `image_input_price` | 8 | 58 |
-| `image_input_cache_price` | 2 | 14.5 |
-| `image_output_price` | 30 | 217.5 |
+| text `input_price` | 5 | 35 |
+| cached text `cache_read_price` | 1.25 | 8.75 |
+| `image_input_price` | 8 | 56 |
+| `image_input_cache_price` | 2 | 14 |
+| `image_output_price` | 30 | 210 |
 
 **按张类**（`per_image`；`image.default` 为权威单价 / 张；官方来源见备注）：
 
@@ -201,15 +201,15 @@ charged ≈
 |------------|----------|----------|------|
 | `doubao-seedream-5-0` | **0.22** | **0.035** | 火山方舟一口价；BytePlus $0.035；**不按 4K 翻倍** |
 | `doubao-seedream-5-0-pro` | **0.30**（≤2.36MP）/ **0.60**（>2.36MP） | **0.045** / **0.09** | `by_size`：`2k`→低档，`3k`/`4k`→高档；`image.input` CNY **0.02** / USD **0.003**（官方首张免费网关暂按全量计） |
-| `glm-image` | **0.1** | **0.014** | 智谱官方 ¥0.1/次；USD ≈ ×7.25 |
-| `grok-imagine-image-quality` | **0.36**（1K）/ **0.51**（2K） | **0.05** / **0.07** | xAI 官方；`image.input.default` USD **0.01**（CNY ≈0.07） |
+| `glm-image` | **0.1** | **0.014** | 智谱官方 ¥0.1/次；USD ≈ ×7.14（国内权威 CNY） |
+| `grok-imagine-image-quality` | **0.35**（1K）/ **0.49**（2K） | **0.05** / **0.07** | xAI 官方；CNY = USD ×7；`image.input.default` USD **0.01**（CNY **0.07**） |
 
-**Google Nano Banana**（`token`；官方 $/1M；CNY ≈ ×7.25）：
+**Google Nano Banana**（`token`；官方 $/1M；CNY = ×7）：
 
 | Catalog id | text/image `input_price` | text `output_price` | `image_output_price` | input CNY | text-out CNY | img-out CNY |
 |------------|--------------------------|---------------------|----------------------|-----------|--------------|-------------|
-| `gemini-3.1-flash-image` | 0.5 | **3** | **60** | 3.625 | **21.75** | **435** |
-| `gemini-3-pro-image-preview` | 2 | **12** | **120** | 14.5 | **87** | **870** |
+| `gemini-3.1-flash-image` | 0.5 | **3** | **60** | 3.5 | **21** | **420** |
+| `gemini-3-pro-image-preview` | 2 | **12** | **120** | 14 | **84** | **840** |
 
 ## 预检与估算
 

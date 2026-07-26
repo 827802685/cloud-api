@@ -34,13 +34,13 @@
 				"tiers": [
 					{
 						"upto": null,
-						"input_price": 3.625,
-						"output_price": 21.75,
+						"input_price": 3.5,
+						"output_price": 21,
 						"cache_read_price": null,
 						"cache_write_price": null,
-						"image_input_price": 3.625,
+						"image_input_price": 3.5,
 						"image_input_cache_price": null,
-						"image_output_price": 435
+						"image_output_price": 420
 					}
 				]
 			}
@@ -91,13 +91,13 @@
 				"tiers": [
 					{
 						"upto": null,
-						"input_price": 14.5,
-						"output_price": 87,
+						"input_price": 14,
+						"output_price": 84,
 						"cache_read_price": null,
 						"cache_write_price": null,
-						"image_input_price": 14.5,
+						"image_input_price": 14,
 						"image_input_cache_price": null,
-						"image_output_price": 870
+						"image_output_price": 840
 					}
 				]
 			}

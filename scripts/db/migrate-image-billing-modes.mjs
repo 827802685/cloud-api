@@ -70,8 +70,8 @@ const TARGETS = {
 	'grok-imagine-image-quality': {
 		aliases: [],
 		cny: {
-			default: 0.36,
-			by_size: { '1k': 0.36, '2k': 0.51 },
+			default: 0.35,
+			by_size: { '1k': 0.35, '2k': 0.49 },
 			input: { default: 0.07 },
 		},
 		usd: {
@@ -92,12 +92,12 @@ const TARGETS = {
 			image_output_price: 30,
 		},
 		cny: {
-			input_price: 36.25,
+			input_price: 35,
 			output_price: 0,
-			cache_read_price: 9.0625,
-			image_input_price: 58,
-			image_input_cache_price: 14.5,
-			image_output_price: 217.5,
+			cache_read_price: 8.75,
+			image_input_price: 56,
+			image_input_cache_price: 14,
+			image_output_price: 210,
 		},
 	},
 	'gemini-3.1-flash-image': {
@@ -112,12 +112,12 @@ const TARGETS = {
 			image_output_price: 60,
 		},
 		cny: {
-			input_price: 3.625,
-			output_price: 21.75,
+			input_price: 3.5,
+			output_price: 21,
 			cache_read_price: null,
-			image_input_price: 3.625,
+			image_input_price: 3.5,
 			image_input_cache_price: null,
-			image_output_price: 435,
+			image_output_price: 420,
 		},
 	},
 	'gemini-3-pro-image-preview': {
@@ -132,12 +132,12 @@ const TARGETS = {
 			image_output_price: 120,
 		},
 		cny: {
-			input_price: 14.5,
-			output_price: 87,
+			input_price: 14,
+			output_price: 84,
 			cache_read_price: null,
-			image_input_price: 14.5,
+			image_input_price: 14,
 			image_input_cache_price: null,
-			image_output_price: 870,
+			image_output_price: 840,
 		},
 	},
 };

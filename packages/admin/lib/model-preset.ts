@@ -10,7 +10,7 @@
  * - `<vendor>-image.json` — 纯文生图（`modalities.output` 含 `image`）
  *
  * 各预设内 **`pricing.usd`** 与 D1 导出 `data/remote/.../data-remote-table-models-*.sql` 中 `pricing_profile` 一致（美元口径）；
- * **`pricing.cny`** 以中国区 Postgres 导出为准（无 CN 价的模型仍为 USD 换算占位）。
+ * **`pricing.cny`**：国内厂商以中国区官方/Postgres 价为准；海外厂商（openai / anthropic / google / xai 等）按 **USD × 7** 换算占位。
  * 导入时按当前 `BILLING_CURRENCY` 选用 `usd` / `cny` 之一写入 `pricing_profile`。
  * 面向 Catalog 的英文摘要与中英文展示文案均与模型预设共同维护：
  * `description` 写入现有 `models.description`，`i18n` 仅供静态 Catalog 展示，不增加数据库字段。

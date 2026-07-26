@@ -31,10 +31,10 @@
 			"cny": {
 				"image_billing_mode": "per_image",
 				"image": {
-					"default": 0.36,
+					"default": 0.35,
 					"by_size": {
-						"1k": 0.36,
-						"2k": 0.51
+						"1k": 0.35,
+						"2k": 0.49
 					},
 					"input": {
 						"default": 0.07

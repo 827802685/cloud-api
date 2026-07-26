@@ -31,13 +31,13 @@
 				"tiers": [
 					{
 						"upto": null,
-						"input_price": 36.25,
+						"input_price": 35,
 						"output_price": 0,
-						"cache_read_price": 9.0625,
+						"cache_read_price": 8.75,
 						"cache_write_price": null,
-						"image_input_price": 58,
-						"image_input_cache_price": 14.5,
-						"image_output_price": 217.5
+						"image_input_price": 56,
+						"image_input_cache_price": 14,
+						"image_output_price": 210
 					}
 				]
 			}
