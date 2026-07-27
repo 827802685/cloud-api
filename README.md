@@ -9,7 +9,7 @@
 
 **Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、Agent Tools，以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
 
-**语言：** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **官网：** [octafuse.dev/zh](https://octafuse.dev/zh/)
+**语言：** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **官网：** [octafuse.dev](https://octafuse.dev/)
 
 ## 核心能力
 
@@ -35,7 +35,7 @@
 
 | 维度 | Octafuse Gateway | New API | LiteLLM | Bifrost |
 |------|------------------|---------|---------|---------|
-| 统一能力入口 | 模型、图像、Agent Tools | 模型、图像、音视频、文档重排 | 模型、图像、音频、向量嵌入、文档重排 | 模型、多模态、MCP |
+| 统一能力入口 | LLM、图像、Agent Tools | LLM、图像、音视频、文档重排 | LLM、图像、音频、向量嵌入、文档重排 | LLM、多模态、MCP |
 | 路由与故障转移 | 路由组、优先级、粘性路由、熔断 | 加权路由、失败重试 | 负载均衡、重试、故障转移 | 负载均衡、自动故障转移 |
 | 密钥与预算 | 上游密钥池、用户密钥、周期预算 | 令牌、额度、用户 | 虚拟密钥、项目 / 用户预算 | 虚拟密钥、分层预算 |
 | 供应商 / 模型预设 | **官方厂 + 聚合平台 + Coding / Token Plan；一键导入 Base URL 与模型目录价** | 多渠道手动配置 | 适配覆盖最广 | 常规手动配置 |
