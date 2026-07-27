@@ -456,7 +456,7 @@ curl -sS "$GATEWAY_URL/v1/chat/completions" \
 
 如果返回上游响应，部署与配置已经从零到一完成。随后可在 Admin 的 **Request Logs**、**Analytics** 和用户预算页面查看这次调用。
 
-其它协议、Images 和 Tools 示例见：
+其它协议、Images、Audio 和 Tools 示例见：
 
 - [用户快速开始](../../users/quickstart.md)
 - [集成说明](../../developers/integration.md)

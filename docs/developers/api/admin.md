@@ -553,7 +553,7 @@ curl "http://localhost:8787/admin/keys/uuid-here/logs?page=1&page_size=10" \
 
 面向用户的「有活跃路由的模型」列表：**Agent / SDK** 用 **`GET /v1/models`**（用户 Key）；**门户 / 公开 discovery** 用 Proxy **`GET /catalog/models`**（无需 Key，含协议能力，见 [用户接口](./user.md#公开模型目录catalog-discovery)）。
 
-**管理端基础数据**（`Authorization: Bearer <MASTER_KEY>`，响应多为 `{ success, data, count? }`）：**`/admin/keys`**（上文）与 **`/admin/providers`**（`POST`/`PATCH` body 以 **`endpoints`** JSON 为权威：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。列表/详情含 `endpoints`（已无 `base_url_*` 列）。`POST` 创建时 body 仍可含 **`api_key`**，服务端写入 **`provider_api_keys`** 的 `label=default` 行；`providers` 表不再存密钥。列表响应含 **`active_key_count`** / **`has_pending_key`**。含 **`GET/POST /admin/providers/:id/keys`**、**`PATCH/DELETE /admin/providers/:id/keys/:keyId`** 多 key 管理；key 列表脱敏 `fingerprint` + **`is_pending_import`**，不回显明文）、**`/admin/models`**（含 **`GET /admin/models/import/catalog`** 与 **`POST /admin/models/import`**；models 不引用 provider base URL，image 的 openai-only 锁在 **route `upstream_protocol`**）、**`/admin/routes`**（REST：`GET/POST` 集合，`GET/PATCH/DELETE /:id`；路由列表支持 `GET /admin/routes?model_id=&provider_id=`；创建时校验 provider 对该协议是否配置了 `endpoints` base 或任一 capability）。**`POST /admin/routes`** 省略或空白 **`route_group`** 时写入 **`default`**；**`PATCH`** 若包含 **`route_group`** 则不得为仅空白字符串（否则 **400** `route_group cannot be empty`）。
+**管理端基础数据**（`Authorization: Bearer <MASTER_KEY>`，响应多为 `{ success, data, count? }`）：**`/admin/keys`**（上文）与 **`/admin/providers`**（`POST`/`PATCH` body 以 **`endpoints`** JSON 为权威：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。列表/详情含 `endpoints`（已无 `base_url_*` 列）。`POST` 创建时 body 仍可含 **`api_key`**，服务端写入 **`provider_api_keys`** 的 `label=default` 行；`providers` 表不再存密钥。列表响应含 **`active_key_count`** / **`has_pending_key`**。含 **`GET/POST /admin/providers/:id/keys`**、**`PATCH/DELETE /admin/providers/:id/keys/:keyId`** 多 key 管理；key 列表脱敏 `fingerprint` + **`is_pending_import`**，不回显明文）、**`/admin/models`**（含 **`GET /admin/models/import/catalog`** 与 **`POST /admin/models/import`**；models 不引用 provider base URL，image / audio 的 openai-only 锁在 **route `upstream_protocol`**）、**`/admin/routes`**（REST：`GET/POST` 集合，`GET/PATCH/DELETE /:id`；路由列表支持 `GET /admin/routes?model_id=&provider_id=`；创建时校验 provider 对该协议是否配置了 `endpoints` base 或任一 capability）。**`POST /admin/routes`** 省略或空白 **`route_group`** 时写入 **`default`**；**`PATCH`** 若包含 **`route_group`** 则不得为仅空白字符串（否则 **400** `route_group cannot be empty`）。
 
 ### `GET /admin/models/import/catalog`
 
@@ -588,6 +588,29 @@ curl -sS "$GATEWAY_URL/v1/images/generations" \
 ```
 
 成功响应含图片；请求日志按上游 `usage` token 分项扣费。用户 API 说明见 [user.md「Images」](user.md#images图片生成--编辑)。
+
+### 运维验收：语音转写 `whisper-1` / `gpt-4o-*-transcribe`
+
+不新增独立「Audio」管理页；与 LLM / Image 共用 Models + Routes。Admin 内闭环：**Routes → Playground → Simulator → Request Logs**。用户 API 见 [user.md「语音转写」](user.md#语音转写audio-transcriptions)。
+
+1. **Provider**：配置可用的 OpenAI（或兼容）Provider Key；`endpoints.openai.base`（如 `https://api.openai.com/v1`）即可派生 `/audio/transcriptions`，或在 `endpoints.openai.endpoints["audio.transcriptions"]` 写完整 URL。
+2. **Import**：Admin → Models → Import → Kind=Audio → 勾选例如 **`whisper-1`**（`per_second`）或 **`gpt-4o-mini-transcribe`**（`token`）。**已存在同 id 不会覆盖**——改价需删除后 re-import，或打开编辑后保存。
+3. **列表**：筛选 Kind=Audio；卡片按模式展示按秒单价或 token in/out（$/1M）。
+4. **Routes**：为模型建路由；`upstream_protocol` **锁定 openai**（保存 anthropic/gemini 应 400）；Billing「Standard (catalog)」应显示对应 Audio 目录价。
+5. **Playground**（不计费、不写 logs）：选该 openai 路由 → 上传音频 → Send → 上游由 `resolveUpstreamEndpoint(…, audio.transcriptions)` 解析；非 openai 路由禁用 Send。
+6. **Simulator**（真实 Proxy）：选同一模型 → 协议锁定 openai → 请求打到 `{proxy}/v1/audio/transcriptions` → 出转写文本；**Open Request Logs** 核对：
+   - `whisper-1`：`billing_kind=audio_per_second`、`audio_duration_seconds`、`pricing_audit.kind=audio_per_second`
+   - `gpt-4o-*-transcribe`：`billing_kind=audio_tokens`、`pricing_audit.kind=audio_tokens`（含 `tokens.*`）
+7. **curl**（可选，用户 API Key）：
+
+```bash
+curl -sS "$GATEWAY_URL/v1/audio/transcriptions" \
+  -H "Authorization: Bearer $USER_API_KEY" \
+  -F model=whisper-1 \
+  -F file=@recording.webm \
+  -F language=zh \
+  -F response_format=json
+```
 
 ### 运维验收：国内文生图 `seedream-*`（火山方舟）
 
@@ -654,12 +677,17 @@ Opt-in **粘性 key 路由**：同一用户尽量连续命中同一把 provider 
     - **`per_image`**：`{ "image_billing_mode": "per_image", "image": { "default", "input"?, "uncertain_result_policy"? } }`（**无 `tiers`**；写入时会剥离历史占位零档）。扣费权威 = 确认输出张数 × `image.default`（+ 可选参考图 `image.input`）；`pricing_audit.kind=image_per_image`。日志列 `billing_kind` / `input_image_count` / `output_image_count`。
     - 无 mode 且仅有 legacy `image` 块：**不计费**（避免旧数据突然扣款）；须显式设 `per_image` 或跑迁移脚本。
     - `gpt-image-2` / Gemini：token 预设；Seedream / GLM / Grok：per_image 预设（见 [image-models.md](../reference/image-models.md)）。
-  - Request log 迁移 **`0013_request_log_image_billing`** 增加 `billing_kind`、`input_image_count`、`output_image_count`。
+  - **Audio 双模式**（显式 `audio_billing_mode`；Admin 保存禁止与 Image 计费字段混配）：
+    - **`per_second`**：`{ "audio_billing_mode": "per_second", "audio": { "price_per_second", "minimum_seconds"? } }`（**无 `tiers`**）。扣费权威 = 计费秒数 × `price_per_second`；`pricing_audit.kind=audio_per_second`。日志列 `billing_kind=audio_per_second`、`audio_duration_seconds`。
+    - **`token`**：`{ "audio_billing_mode": "token", "tiers": [ { "input_price", "output_price", "upto": null } ] }`（$/1M）。扣费权威 = 上游 transcription `usage`（`type=tokens`）；`pricing_audit.kind=audio_tokens`。日志列 `billing_kind=audio_tokens`，并写入 input/output token。
+    - 预设：`whisper-1` → `per_second`；`gpt-4o-mini-transcribe` / `gpt-4o-transcribe` / `gpt-4o-transcribe-diarize` → `token`（见 [user.md「语音转写」](user.md#语音转写audio-transcriptions)）。
+  - Request log：迁移 **`0013_request_log_image_billing`** 增加 `billing_kind`、`input_image_count`、`output_image_count`；**`0014_request_log_audio_billing`** 增加 `audio_duration_seconds`。
 - **模型 Kind（Admin UI，无独立 DB 列）**：
-  - **Image（文生图）**：`output_modalities` 含 `image`（**不要**用 `input` 含 `image` 判断——多模态 LLM 也会有）。
+  - **Audio（语音转写）**：`pricing_profile` 含有效 `audio_billing_mode`（`per_second` + `audio`，或 `token` + `tiers`）；见 `isAudioTranscriptionModel`（`packages/core`）。
+  - **Image（文生图）**：非 Audio，且 `output_modalities` 含 `image`（**不要**用 `input` 含 `image` 判断——多模态 LLM 也会有）。
   - **LLM**：其余；仅当 `output_modalities` 缺失时，才用历史 `pricing_profile.image` 兜底判定。
-  - Models / Routes UI 侧栏 Kind 为 **`llm` | `image`（无 All）**，URL `?kind=` 与 `?vendor=` 组合；默认 `llm`。Image 卡片按 mode 展示 `/M` 或 `/image`。
-  - 文生图**不使用**聊天字段 `context_window` / `max_tokens`（预设与保存均为 `null`；Admin 卡片/表单隐藏这两项）。LLM 的 `max_tokens` 缺省仍为 8192。迁移 **`0010_models_max_tokens_nullable`** 允许 `max_tokens` 为 NULL。
+  - Models / Routes UI 侧栏 Kind 为 **`llm` | `image` | `audio`（无 All）**，URL `?kind=` 与 `?vendor=` 组合；默认 `llm`。Image 卡片按 mode 展示 `/M` 或 `/image`；Audio 卡片按 mode 展示 `/s` 或 token in/out。
+  - 文生图与语音转写**不使用**聊天字段 `context_window` / `max_tokens`（多数预设与保存为 `null`；Admin 卡片/表单隐藏这两项；部分 ASR token 预设可带 context/max 供上游约束）。LLM 的 `max_tokens` 缺省仍为 8192。迁移 **`0010_models_max_tokens_nullable`** 允许 `max_tokens` 为 NULL。
 - **路由计价（canonical）**：`model_routes.price_override` 只维护倍率（不复制计费模式或基础单价），**不再**要求 nested `metered` / `charged` tiers：
 
 ```json
@@ -684,7 +712,7 @@ Opt-in **粘性 key 路由**：同一用户尽量连续命中同一把 provider 
 
 | 区块 | 含义 | 数据来源 |
 |------|------|----------|
-| **Standard price** | 目录标准价（只读） | `models.pricing_profile` 全部 tiers |
+| **Standard price** | 目录标准价（只读） | `models.pricing_profile`（LLM/Image token/Audio token 的 tiers，或 Image per_image / Audio per_second 的单价块） |
 | **Charged factor** | 用户侧基础倍率 | `price_override.charged_factor`（运行时参与 `charged_cost`） |
 | **Metered factor** | 供应侧基础倍率 | `price_override.metered_factor`（运行时参与 `metered_cost`） |
 | **Daily schedule** | 每日时段倍率（两侧独立） | `price_override.schedule.charged` / `.metered` |

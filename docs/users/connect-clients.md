@@ -19,12 +19,12 @@ curl -sS http://localhost:8787/v1/chat/completions \
   -d '{"model":"your-route-model","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-模型列表（需用户 Key；默认仅 LLM，不含纯图片生成模型）：
+模型列表（需用户 Key；默认仅 LLM，不含纯文生图与 ASR）：
 
 ```bash
 curl -sS http://localhost:8787/v1/models \
   -H "Authorization: Bearer sk-your-api-key"
-# 含图片生成模型：?kind=image 或 ?kind=all
+# 文生图：?kind=image ；语音转写：?kind=audio ；全部：?kind=all
 ```
 
 公开 Catalog（**无需**用户 Key，适合门户 discovery）：
@@ -40,6 +40,17 @@ curl -sS http://localhost:8787/v1/images/generations \
   -H "Authorization: Bearer sk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-image-2","prompt":"a watercolor fox","size":"1024x1024"}'
+```
+
+语音转写（Audio；需用户 Key + 已配置 OpenAI 协议 ASR 路由）：
+
+```bash
+curl -sS http://localhost:8787/v1/audio/transcriptions \
+  -H "Authorization: Bearer sk-your-api-key" \
+  -F model=whisper-1 \
+  -F file=@recording.webm \
+  -F language=zh \
+  -F response_format=json
 ```
 
 Agent Tools（需用户 Key；Admin → Tools 已为对应工具配置 Active 引擎与第三方 API Key）。示例如下（当前联网类工具之一）：

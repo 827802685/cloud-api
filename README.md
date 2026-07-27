@@ -7,23 +7,24 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1-F38020?logo=cloudflare&logoColor=white)](./docs/operators/deployment/cloudflare-quickstart.md)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](./docs/operators/deployment/docker.md)
 
-**Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、Agent Tools，以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
+**Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、语音转写、Agent Tools，以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
 
 **语言：** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **官网：** [octafuse.dev](https://octafuse.dev/)
 
 ## 核心能力
 
-- 统一 AI 资源入口：用一个 Gateway 地址和用户 API Key 接入多上游模型、自建或私有部署的模型服务、图像能力与 Agent Tools。
-- 多协议兼容：提供兼容 OpenAI Chat Completions、Anthropic Messages、Gemini 和 OpenAI Images API 的接入点。
+- 统一 AI 资源入口：用一个 Gateway 地址和用户 API Key 接入多上游模型、自建或私有部署的模型服务、图像能力、语音转写与 Agent Tools。
+- 多协议兼容：提供兼容 OpenAI Chat Completions、Anthropic Messages、Gemini、OpenAI Images 与 OpenAI Audio Transcriptions API 的接入点。
 - 路由与故障转移：按路由组、优先级和可用性选择上游；通过**粘性路由**提高提示词缓存命中率，并在遇到限流或故障时自动切换。
 - 上游密钥池：集中管理多把 Provider API Key 的优先级、权重、RPM / TPM 限额、并发和熔断状态，并根据实时剩余容量进行调度。
 - **预置 Provider 与 Models**：内置大量导入模板，除官方模型厂外，还覆盖聚合平台与各类 Coding / Token Plan；预填 Base URL 与模型目录信息，减少四处查文档、手工维护端点与模型清单的成本。
 - 用户 API Key 与预算：为个人、团队、客户或项目签发独立 Key，设置周期预算、状态和元数据，并允许用户查询自身额度。
 - 图像生成与编辑：通过兼容 OpenAI Images API 的接口调用图像模型，支持按 Token 用量分项计价与按张计价。
+- 语音转写：通过兼容 OpenAI `/v1/audio/transcriptions` 的接口调用 ASR 模型，支持按秒（时长）与按 Token（上游 usage）两种目录计价。
 - **Agent Tools 能力接口**：通过 `/v1/tools/*` 统一接入 Agent 工具，并提供调用日志与按次计费；当前支持联网搜索（`web-search`）、网页抓取（`web-fetch`）和深度搜索（`web-deep-search`）。
 - **公开能力目录**：无需用户 API Key 即可通过 `/catalog/models` 发现当前可用模型、协议与能力，方便门户和客户端发现并接入。
 - **三账本与分时计价**：分别记录供应成本、模型目录价和用户计费，并可按业务时区设置高峰 / 闲时倍率。
-- 可观测性与联调：集中查看请求、延迟、Token 用量、成本和审计记录，并用 Playground / Simulator 验证路由和客户端调用。
+- 可观测性与联调：集中查看请求、延迟、Token 用量、成本和审计记录，并用 Playground / Simulator 验证路由和客户端调用（含 Images / Audio）。
 - 管理控制面与 API：通过 Admin 管理界面和 `/api/admin/*` 管理 Provider、模型、路由、用户与配置，或接入自有门户和自动化系统。
 - 灵活部署方式：支持 **Cloudflare Workers + D1 免费部署**，也可通过 Docker + Postgres / MySQL 自托管。
 
@@ -35,7 +36,7 @@
 
 | 维度 | Octafuse Gateway | New API | LiteLLM | Bifrost |
 |------|------------------|---------|---------|---------|
-| 统一能力入口 | LLM、图像、Agent Tools | LLM、图像、音视频、文档重排 | LLM、图像、音频、向量嵌入、文档重排 | LLM、多模态、MCP |
+| 统一能力入口 | LLM、图像、语音转写、Agent Tools | LLM、图像、音视频、文档重排 | LLM、图像、音频、向量嵌入、文档重排 | LLM、多模态、MCP |
 | 路由与故障转移 | 路由组、优先级、粘性路由、熔断 | 加权路由、失败重试 | 负载均衡、重试、故障转移 | 负载均衡、自动故障转移 |
 | 密钥与预算 | 上游密钥池、用户密钥、周期预算 | 令牌、额度、用户 | 虚拟密钥、项目 / 用户预算 | 虚拟密钥、分层预算 |
 | 供应商 / 模型预设 | **官方厂 + 聚合平台 + Coding / Token Plan；一键导入 Base URL 与模型目录价** | 多渠道手动配置 | 适配覆盖最广 | 常规手动配置 |
@@ -44,7 +45,7 @@
 | Cloudflare 边缘部署 | ✓ | — | — | — |
 | 数据库支持 | D1/SQLite、Postgres、MySQL | SQLite、Postgres、MySQL | Postgres | SQLite、Postgres |
 | Agent 支持 | 内置常用工具，如：联网搜索、网页抓取、深度搜索等 | — | MCP、A2A | MCP |
-| 计费能力 | **三账本、分时倍率、工具按次计费** | 额度与用量计费 | 用量追踪与预算 | 分层预算与用量治理 |
+| 计费能力 | **三账本、分时倍率、图像 / 语音双模式计价、工具按次计费** | 额度与用量计费 | 用量追踪与预算 | 分层预算与用量治理 |
 
 “—”表示对应项目的官方公开文档未将其列为同类内建能力，不代表无法通过插件、外部服务或二次开发实现。各项目都在持续演进，具体能力和授权范围请以各自仓库与官方文档为准。
 

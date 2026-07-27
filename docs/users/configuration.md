@@ -44,6 +44,7 @@ Route 决定客户端请求的模型 ID 如何转到上游。
 - 对客户端暴露稳定的模型名，例如 `gpt-4.1`、`claude-sonnet` 或团队内部命名。
 - 同一模型下配置多个 Provider 路由，用 **route priority**（数字越小越先试）或 **route group** 做切换 / 灰度；**Route 没有 weight 字段**。
 - 图片生成模型：导入或手建后确认 `output_modalities` 含 `image`、`pricing_profile` 的 `image_billing_mode`（`token` / `per_image`），并挂 **OpenAI 协议** active 路由；细节见 [developers/reference/image-models.md](../developers/reference/image-models.md)。
+- 语音转写模型：导入或手建后确认 `pricing_profile.audio_billing_mode`（`per_second` / `token`）与对应单价块，并挂 **OpenAI 协议** active 路由；细节见 [developers/api/user.md「语音转写」](../developers/api/user.md#语音转写audio-transcriptions)。
 - 需要提高上游 prompt cache 命中时：在模型上按「协议 × route group」开启 **粘性（sticky）**，让同一用户尽量复用同一把 Provider Key。
 - 在 Route 上配置默认参数，例如思考参数、输出长度或供应商扩展字段。
 - 设置价格口径：先维护模型**目录标准价**，再在路由上设用户计费 / 供应成本的基础倍率；如需对齐供应商高峰 / 闲时价，再配置 **Daily schedule**（每日时段倍率，时区见系统配置的业务时区）。
@@ -83,7 +84,7 @@ curl -sS http://localhost:8787/health
 curl -sS http://localhost:8787/catalog/models
 ```
 
-用户推理、Images、Tools 与各协议客户端示例见 [connect-clients.md](./connect-clients.md)；完整 API 字段见 [developers/api/user.md](../developers/api/user.md)。
+用户推理、Images、Audio、Tools 与各协议客户端示例见 [connect-clients.md](./connect-clients.md)；完整 API 字段见 [developers/api/user.md](../developers/api/user.md)。
 
 预算状态验证：
 
@@ -98,7 +99,7 @@ curl -sS http://localhost:8787/v1/me \
 
 - 请求日志：是否命中正确模型、Provider、Route 和上游 Key；Tools 行为 `model_id` 形如 `tool:web-search`。
 - 错误状态：401 多半是认证问题；403 常见于预算或配额；502 多与路由或上游有关；Tools 未配置 Active Key 时为 **503**。
-- 成本字段：区分 **供应成本**、**目录标准价**、**用户计费**（日志 / API 字段分别为 `metered_cost`、`standard_cost`、`charged_cost`）；Images 另见 `billing_kind` / image count 列。
+- 成本字段：区分 **供应成本**、**目录标准价**、**用户计费**（日志 / API 字段分别为 `metered_cost`、`standard_cost`、`charged_cost`）；Images / Audio 另见 `billing_kind`（及 image count / `audio_duration_seconds` 等列）。
 - 审计日志：确认预算扣减、周期重置、Key 生命周期等事件。
 
-更细的日志和计费语义见 [developers/reference/streaming-billing.md](../developers/reference/streaming-billing.md)、[developers/reference/image-models.md](../developers/reference/image-models.md) 与 [developers/reference/user-audit-logs.md](../developers/reference/user-audit-logs.md)。
+更细的日志和计费语义见 [developers/reference/streaming-billing.md](../developers/reference/streaming-billing.md)、[developers/reference/image-models.md](../developers/reference/image-models.md)、[developers/api/user.md「语音转写」](../developers/api/user.md#语音转写audio-transcriptions) 与 [developers/reference/user-audit-logs.md](../developers/reference/user-audit-logs.md)。

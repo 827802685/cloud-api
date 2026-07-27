@@ -775,7 +775,7 @@ Admin 中为图片模型配置 `output_modalities: ["image"]` 及对应 mode 价
 
 ## 语音转写（Audio Transcriptions）
 
-OpenAI 兼容 Audio Transcriptions API，供桌面 Agent 语音输入等场景调用。鉴权与 Chat 相同（用户 API Key）；模型须配置 **OpenAI 协议**路由，且 `pricing_profile` 含按秒音频价（见 Admin 预设 `whisper-1`）。
+OpenAI 兼容 Audio Transcriptions API，供桌面 Agent 语音输入等场景调用。鉴权与 Chat 相同（用户 API Key）；模型须配置 **OpenAI 协议**路由，且 `pricing_profile` 含有效的 Audio 计费配置（见下方双模式）。
 
 ```
 POST /v1/audio/transcriptions
@@ -790,30 +790,32 @@ Content-Type: multipart/form-data
 | `model` | 必填；支持 `id:route_group` 后缀 |
 | `file` | 必填；音频文件（如 `webm` / `mp3` / `wav` / `ogg` / `m4a`）；Gateway 硬上限约 **25MB** |
 | `language` | 可选；ISO-639-1（如 `zh`、`en`） |
-| `response_format` | 可选；`json`（默认）/ `text` / `srt` / `verbose_json` / `vtt` |
+| `response_format` | 可选；`json`（默认）/ `text` / `srt` / `verbose_json` / `vtt` / `diarized_json`（说话人分离模型） |
 | `prompt` / `temperature` | 可选；透传上游 |
 
-### 计费与审计
+### 计费与审计（双模式）
 
-| 项 | 说明 |
-|----|------|
-| 模式 | `pricing_profile.audio_billing_mode = "per_second"` |
-| 费用 | `billable_seconds × price_per_second × charged_factor`（`minimum_seconds` 可选下限） |
-| 时长来源 | 上游强制 `verbose_json` 取 `duration`；缺失时按文件字节估算，并在 `pricing_audit.duration_source` 标注 |
-| 日志 | `billing_kind=audio_per_second`，列 `audio_duration_seconds`；**不**落音频二进制 |
+由 `pricing_profile.audio_billing_mode` 决定；Admin 保存时禁止与 Image 计费字段混配。请求日志**不**落音频二进制。
 
-Admin 静态预设（`openai-audio.json`，与 [Speech to text](https://developers.openai.com/api/docs/guides/speech-to-text) 当前别名一致）：
+| 模式 | `audio_billing_mode` | 扣费权威 | 费用口径 | 日志 |
+|------|----------------------|----------|----------|------|
+| **按秒** | `"per_second"` | 音频时长 | `billable_seconds × price_per_second × charged_factor`（`minimum_seconds` 可选下限） | `billing_kind=audio_per_second`；列 `audio_duration_seconds`；`pricing_audit.kind=audio_per_second` |
+| **按 token** | `"token"` | 上游 `usage`（`type=tokens`） | `(input_tokens × input_price + output_tokens × output_price) / 1M × charged_factor`；单价取 `tiers`（$/1M） | `billing_kind=audio_tokens`；token 数列写入日志；`pricing_audit.kind=audio_tokens`（含 `tokens.input/output/audio/text`） |
 
-| model id | 上游官方价（参考） | Gateway 目录按秒价（USD） |
-|----------|-------------------|---------------------------|
-| `whisper-1` | **$0.006 / minute** | `0.0001` |
-| `gpt-4o-mini-transcribe` | audio tokens **$1.25 / $5 /1M**（目录按约 $0.003/min） | `0.00005` |
-| `gpt-4o-transcribe` | audio tokens **$2.50 / $10 /1M**（目录按约 $0.006/min） | `0.0001` |
-| `gpt-4o-transcribe-diarize` | 同 `gpt-4o-transcribe` | `0.0001` |
+**时长**：两种模式都会解析时长（上游 `verbose_json` 的 `duration`，缺失时按文件字节估算），并在 `pricing_audit.duration_source` 标注来源；按秒模式用其计费，token 模式主要用于预检与审计。
+
+Admin 静态预设（`packages/admin/lib/model-presets/openai-audio.json`，与 [Speech to text](https://developers.openai.com/api/docs/guides/speech-to-text) 当前别名一致）：
+
+| model id | 计费模式 | 上游官方价（参考） | Gateway 目录价（USD） |
+|----------|----------|-------------------|----------------------|
+| `whisper-1` | `per_second` | **$0.006 / minute** | `audio.price_per_second = 0.0001`（即 $0.006/min） |
+| `gpt-4o-mini-transcribe` | `token` | **$1.25 / $5** per 1M audio tokens（in/out） | `tiers`: `input_price=1.25`, `output_price=5` |
+| `gpt-4o-transcribe` | `token` | **$2.50 / $10** per 1M | `tiers`: `2.5` / `10` |
+| `gpt-4o-transcribe-diarize` | `token` | 同 `gpt-4o-transcribe` | 同左；支持 `diarized_json` |
 
 不收录日期快照（如 `gpt-4o-mini-transcribe-2025-12-15`）与 Realtime-only 模型（如 `gpt-realtime-whisper`）。
 
-`pricing_profile` 示例（`whisper-1`）：
+`pricing_profile` 示例——按秒（`whisper-1`）：
 
 ```json
 {
@@ -822,6 +824,21 @@ Admin 静态预设（`openai-audio.json`，与 [Speech to text](https://develope
     "price_per_second": 0.0001,
     "minimum_seconds": 1
   }
+}
+```
+
+`pricing_profile` 示例——按 token（`gpt-4o-mini-transcribe`）：
+
+```json
+{
+  "audio_billing_mode": "token",
+  "tiers": [
+    {
+      "upto": null,
+      "input_price": 1.25,
+      "output_price": 5
+    }
+  ]
 }
 ```
 
@@ -836,8 +853,7 @@ curl -sS "$GATEWAY_URL/v1/audio/transcriptions" \
   -F response_format=json
 ```
 
-默认 `GET /v1/models` **不含** ASR 模型；列表可用 `kind=audio` / `kind=all`。
-
+默认 `GET /v1/models` **不含** ASR 模型；列表可用 `kind=audio` / `kind=all`。Admin 侧 Kind 判定依据为有效的 `audio_billing_mode`（`per_second` + `audio` 块，或 `token` + `tiers`），见 [admin.md「pricing_profile」](./admin.md#pricing_profile--price_override-契约adminmodelsadminroutes)。
 ---
 
 ## 获取当前用户预算状态

@@ -7,23 +7,24 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1-F38020?logo=cloudflare&logoColor=white)](./docs/operators/deployment/cloudflare-quickstart.md)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](./docs/operators/deployment/docker.md)
 
-**Octafuse Gateway**는 Agent를 위한 셀프 호스팅이 가능한 오픈 소스 AI Gateway입니다. 여러 Provider의 모델과 이미지 생성·편집 기능, Agent Tools, 자체 구축 또는 비공개 배포한 AI 서비스를 하나의 진입점으로 통합합니다. 또한 Route, Key, 예산, 사용량, 감사 기능을 통해 분산된 AI 리소스를 중앙에서 관리하고 스케줄링하며 제어할 수 있습니다. 단순히 모델 요청을 전달하는 데 그치지 않고, Agent가 필요한 리소스와 기능을 탐색하고 호출하며 관리할 수 있도록 지속적으로 확장 가능한 기반을 제공합니다.
+**Octafuse Gateway**는 Agent를 위한 셀프 호스팅이 가능한 오픈 소스 AI Gateway입니다. 여러 Provider의 모델과 이미지 생성·편집 기능, 음성 전사, Agent Tools, 자체 구축 또는 비공개 배포한 AI 서비스를 하나의 진입점으로 통합합니다. 또한 Route, Key, 예산, 사용량, 감사 기능을 통해 분산된 AI 리소스를 중앙에서 관리하고 스케줄링하며 제어할 수 있습니다. 단순히 모델 요청을 전달하는 데 그치지 않고, Agent가 필요한 리소스와 기능을 탐색하고 호출하며 관리할 수 있도록 지속적으로 확장 가능한 기반을 제공합니다.
 
 **언어:** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **공식 웹사이트:** [octafuse.dev](https://octafuse.dev/en/)
 
 ## 핵심 기능
 
-- 통합 AI 리소스 진입점: 하나의 Gateway 주소와 사용자 API Key로 여러 업스트림 모델, 자체 구축 또는 비공개 배포한 모델 서비스, 이미지 기능, Agent Tools에 연결합니다.
-- 다중 프로토콜 호환: OpenAI Chat Completions, Anthropic Messages, Gemini, OpenAI Images API와 호환되는 엔드포인트를 제공합니다.
+- 통합 AI 리소스 진입점: 하나의 Gateway 주소와 사용자 API Key로 여러 업스트림 모델, 자체 구축 또는 비공개 배포한 모델 서비스, 이미지 기능, 음성 전사, Agent Tools에 연결합니다.
+- 다중 프로토콜 호환: OpenAI Chat Completions, Anthropic Messages, Gemini, OpenAI Images, OpenAI Audio Transcriptions API와 호환되는 엔드포인트를 제공합니다.
 - Route 및 장애 조치: Route 그룹, 우선순위, 가용성을 기준으로 업스트림을 선택합니다. **스티키 라우팅**으로 프롬프트 캐시 적중률을 높이고, 속도 제한이나 장애가 발생하면 자동으로 전환합니다.
 - 업스트림 Key 풀: 여러 Provider API Key의 우선순위, 가중치, RPM / TPM 제한, 동시 실행 수, 서킷 브레이커 상태를 중앙에서 관리하고 실시간 잔여 용량에 따라 스케줄링합니다.
 - **Provider / 모델 프리셋**: 공식 모델 벤더뿐 아니라 집계 플랫폼과 각종 Coding / Token Plan을 포함한 대량의 가져오기 템플릿을 제공합니다. Base URL과 모델 카탈로그 정보가 미리 채워져, 문서를 찾아다니며 엔드포인트와 모델 목록을 수작업으로 관리하는 비용을 줄입니다.
 - 사용자 API Key 및 예산: 개인, 팀, 고객 또는 프로젝트별로 독립적인 Key를 발급하고 주기별 예산, 상태, 메타데이터를 설정할 수 있으며, 사용자는 자신의 잔여 한도를 조회할 수 있습니다.
 - 이미지 생성 및 편집: OpenAI Images API 호환 인터페이스로 이미지 모델을 호출하며, 토큰 사용량을 항목별로 산정하는 요금제와 이미지 수 기준 과금을 지원합니다.
+- 음성 전사: OpenAI 호환 `/v1/audio/transcriptions`로 ASR 모델을 호출하며, 초 단위(재생 시간)와 토큰 단위(업스트림 usage) 두 가지 카탈로그 과금 모드를 지원합니다.
 - **Agent Tools API**: `/v1/tools/*`를 통해 Agent 도구를 통합 제공하고 호출 로그와 건별 과금을 지원합니다. 현재 웹 검색(`web-search`), 웹페이지 가져오기(`web-fetch`), 심층 검색(`web-deep-search`)을 사용할 수 있습니다.
 - **공개 기능 카탈로그**: 사용자 API Key 없이도 `/catalog/models`에서 현재 사용 가능한 모델, 프로토콜, 기능을 확인할 수 있어 포털과 클라이언트가 손쉽게 기능을 탐색하고 연동할 수 있습니다.
 - **세 종류의 원장 및 시간대별 가격 정책**: 공급 비용, 모델 카탈로그 가격, 사용자 청구액을 각각 기록하며, 비즈니스 시간대를 기준으로 피크 / 비피크 배율을 설정할 수 있습니다.
-- 관측성 및 연동 테스트: 요청, 지연 시간, Token 사용량, 비용, 감사 기록을 한곳에서 확인하고 Playground / Simulator로 Route와 클라이언트 호출을 검증할 수 있습니다.
+- 관측성 및 연동 테스트: 요청, 지연 시간, Token 사용량, 비용, 감사 기록을 한곳에서 확인하고 Playground / Simulator로 Route와 클라이언트 호출을 검증할 수 있습니다(Images / Audio 포함).
 - 관리 제어 플레인 및 API: Admin 관리 화면과 `/api/admin/*`를 통해 Provider, 모델, Route, 사용자, 설정을 관리하거나 자체 포털 및 자동화 시스템과 연동할 수 있습니다.
 - 유연한 배포 방식: **Cloudflare Workers + D1 무료 배포**를 지원하며, Docker + Postgres / MySQL 환경에 셀프 호스팅할 수도 있습니다.
 
@@ -35,7 +36,7 @@
 
 | 항목 | Octafuse Gateway | New API | LiteLLM | Bifrost |
 |------|------------------|---------|---------|---------|
-| 통합 제공 기능 | 모델, 이미지, Agent Tools | 모델, 이미지, 오디오·비디오, 문서 리랭킹 | 모델, 이미지, 오디오, 벡터 임베딩, 문서 리랭킹 | 모델, 멀티모달, MCP |
+| 통합 제공 기능 | 모델, 이미지, 음성 전사, Agent Tools | 모델, 이미지, 오디오·비디오, 문서 리랭킹 | 모델, 이미지, 오디오, 벡터 임베딩, 문서 리랭킹 | 모델, 멀티모달, MCP |
 | Route 및 장애 조치 | Route 그룹, 우선순위, 스티키 라우팅, 서킷 브레이커 | 가중치 기반 라우팅, 실패 재시도 | 부하 분산, 재시도, 장애 조치 | 부하 분산, 자동 장애 조치 |
 | Key 및 예산 | 업스트림 Key 풀, 사용자 Key, 주기별 예산 | 토큰, 한도, 사용자 | 가상 Key, 프로젝트 / 사용자 예산 | 가상 Key, 계층형 예산 |
 | Provider / 모델 프리셋 | **공식 벤더 + 집계 플랫폼 + Coding / Token Plan; Base URL·카탈로그 가격 원클릭 가져오기** | 채널 수동 설정 | 지원 범위 가장 넓음 | 기본 수동 설정 |
@@ -44,7 +45,7 @@
 | Cloudflare 엣지 배포 | ✓ | — | — | — |
 | 데이터베이스 지원 | D1/SQLite, Postgres, MySQL | SQLite, Postgres, MySQL | Postgres | SQLite, Postgres |
 | Agent 지원 | 웹 검색, 웹페이지 가져오기, 심층 검색 등 자주 쓰이는 도구를 내장 | — | MCP, A2A | MCP |
-| 과금 기능 | **세 종류의 원장, 시간대별 배율, 도구 건별 과금** | 한도 및 사용량 기반 과금 | 사용량 추적 및 예산 | 계층형 예산 및 사용량 거버넌스 |
+| 과금 기능 | **세 종류의 원장, 시간대별 배율, 이미지 / 음성 이중 모드 과금, 도구 건별 과금** | 한도 및 사용량 기반 과금 | 사용량 추적 및 예산 | 계층형 예산 및 사용량 거버넌스 |
 
 “—”는 해당 프로젝트의 공식 공개 문서에 동일한 유형의 기능이 기본 제공된다고 명시되어 있지 않다는 뜻이며, 플러그인, 외부 서비스 또는 별도 개발을 통해 구현할 수 없다는 의미는 아닙니다. 각 프로젝트는 지속적으로 발전하고 있으므로, 구체적인 기능과 라이선스 범위는 각 저장소와 공식 문서를 기준으로 확인하세요.
 
