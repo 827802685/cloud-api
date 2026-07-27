@@ -12,8 +12,8 @@ export type PresetCatalogRow = {
 	id: string;
 	display_name: string | null;
 	vendor: string;
-	/** `llm` | `image` — same Kind as Models list filter */
-	kind: 'llm' | 'image';
+	/** `llm` | `image` | `audio` — same Kind as Models list filter */
+	kind: 'llm' | 'image' | 'audio';
 	context_window: number | null;
 	max_tokens: number | null;
 	description: string | null;
@@ -63,16 +63,16 @@ export type ModelImportResult = {
 export const ALL_VENDORS_KEY = 'all';
 
 /**
- * Models / Routes Kind 视图（`?kind=llm|image`）。
+ * Models / Routes Kind 视图（`?kind=llm|image|audio`）。
  * 无 All：始终只看一种；缺省 / 非法值回退 LLM。
  */
 export const DEFAULT_KIND_FILTER = 'llm' as const;
-export type ModelKindFilter = 'llm' | 'image';
+export type ModelKindFilter = 'llm' | 'image' | 'audio';
 
 export function parseKindFilterParam(value: string | null): ModelKindFilter {
 	if (value == null || value.trim() === '') return DEFAULT_KIND_FILTER;
 	const v = value.trim().toLowerCase();
-	if (v === 'llm' || v === 'image') return v;
+	if (v === 'llm' || v === 'image' || v === 'audio') return v;
 	return DEFAULT_KIND_FILTER;
 }
 
@@ -98,4 +98,13 @@ export const EMPTY_IMAGE_MODEL_FORM: ModelFormData = {
 	output_modalities: ['image'],
 };
 
-export type ModelFormKind = 'llm' | 'image';
+/** 手工新建 Audio 转写模型时的模态默认值（对齐 whisper-1：audio → text）。 */
+export const EMPTY_AUDIO_MODEL_FORM: ModelFormData = {
+	...EMPTY_MODEL_FORM,
+	max_tokens: '',
+	context_window: '',
+	input_modalities: ['audio'],
+	output_modalities: ['text'],
+};
+
+export type ModelFormKind = 'llm' | 'image' | 'audio';

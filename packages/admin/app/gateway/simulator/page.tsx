@@ -51,7 +51,7 @@ export default function SimulatorPage() {
 								onProxyBaseUrlChange={s.setProxyBaseUrl}
 								protocol={s.protocol}
 								onProtocolChange={s.requestProtocolChange}
-								lockOpenaiForImage={s.selectedModelIsImage}
+								lockOpenaiForImage={s.selectedModelIsImage || s.selectedModelIsAudio}
 								geminiAction={s.geminiAction}
 								onGeminiActionChange={s.setGeminiAction}
 								filterKeyEmail={s.filterKeyEmail}
@@ -68,10 +68,13 @@ export default function SimulatorPage() {
 								revealError={s.revealError}
 							/>
 							<SimulatorRoutingPanel
+								filterKind={s.filterKind}
+								onFilterKindChange={s.setFilterKind}
+								kindCounts={s.kindCounts}
 								filterModel={s.filterModel}
 								onFilterModelChange={s.setFilterModel}
 								filteredModels={s.filteredModels}
-								modelsTotal={s.models.length}
+								modelsInKindTotal={s.modelsInKind.length}
 								modelIdsWithActiveRouter={s.modelIdsWithActiveRouter}
 								selectedModelId={s.selectedModelId}
 								onSelectModel={s.selectModel}
@@ -80,6 +83,7 @@ export default function SimulatorPage() {
 								routeGroupsForModel={s.routeGroupsForModel}
 								selectedModel={s.selectedModel}
 								selectedModelIsImage={s.selectedModelIsImage}
+								selectedModelIsAudio={s.selectedModelIsAudio}
 								modelRoutingString={s.modelRoutingString}
 								matchingRoutes={s.matchingRoutes}
 							/>
@@ -102,11 +106,16 @@ export default function SimulatorPage() {
 							sendBlockedHint={s.sendBlockedHint}
 							onSend={() => void s.send()}
 							onStop={() => s.stop()}
-							showImageOperation={s.selectedModelIsImage && s.protocol === 'openai'}
+							showImageOperation={
+								s.selectedModelIsImage && !s.selectedModelIsAudio && s.protocol === 'openai'
+							}
 							imageOperation={s.imageOperation}
 							onImageOperationChange={s.setImageOperation}
 							editFiles={s.editFiles}
 							onEditFilesChange={s.setEditFiles}
+							showAudioTranscriptions={s.selectedModelIsAudio && s.protocol === 'openai'}
+							audioFile={s.audioFile}
+							onAudioFileChange={s.setAudioFile}
 						/>
 						<SimulatorResponsePanel
 							responseMeta={s.responseMeta}

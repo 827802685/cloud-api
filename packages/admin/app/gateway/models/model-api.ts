@@ -1,7 +1,17 @@
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+} from '@octafuse/core/db/model-modalities';
 import { readApiJson } from '@/lib/api-json';
 import { normalizeModelVendorInput } from '@/lib/model-vendor';
-import { serializeDraftRowsToProfileJson, serializeImagePricingDraft, type ImagePricingDraftState, type PricingTierDraftRow } from '@/lib/pricing-tiers-draft';
+import {
+	serializeAudioPricingDraft,
+	serializeDraftRowsToProfileJson,
+	serializeImagePricingDraft,
+	type AudioPricingDraftState,
+	type ImagePricingDraftState,
+	type PricingTierDraftRow,
+} from '@/lib/pricing-tiers-draft';
 import { parseMetadataForSave } from './model-utils';
 import type { ModelFormData, ModelImportResult, ModelListItem, PresetCatalogRow } from './types';
 
@@ -23,13 +33,16 @@ export async function saveModel(
 	formData: ModelFormData,
 	pricingTierRows: PricingTierDraftRow[],
 	editingModelId: string | null,
-	imagePricingDraft?: ImagePricingDraftState | null
+	imagePricingDraft?: ImagePricingDraftState | null,
+	audioPricingDraft?: AudioPricingDraftState | null
 ): Promise<{ success: true } | { success: false; message: string }> {
 	const isImage = isImageGenerationModel({
 		output_modalities: formData.output_modalities,
 	});
-	const tierJson =
-		isImage && imagePricingDraft
+	const isAudio = !!audioPricingDraft;
+	const tierJson = isAudio
+		? serializeAudioPricingDraft(audioPricingDraft)
+		: isImage && imagePricingDraft
 			? serializeImagePricingDraft(imagePricingDraft)
 			: serializeDraftRowsToProfileJson(pricingTierRows);
 	if (!tierJson.ok) {
@@ -44,18 +57,24 @@ export async function saveModel(
 		output_modalities: formData.output_modalities,
 		pricing_profile: tierJson.json,
 	});
+	const isAudioResolved =
+		isAudio ||
+		isAudioTranscriptionModel({
+			pricing_profile: tierJson.json,
+		});
+	const skipTokenLimits = isImageResolved || isAudioResolved;
 	const parsedMax = formData.max_tokens.trim() ? parseInt(formData.max_tokens, 10) : NaN;
 	const payload = {
 		...formData,
 		tags: formData.tags,
 		vendor: normalizeModelVendorInput(formData.vendor),
-		// Image models: chat context / max_tokens are N/A — always clear on save
-		context_window: isImageResolved
+		// Image / Audio：chat context / max_tokens 不适用 — 保存时始终清空
+		context_window: skipTokenLimits
 			? null
 			: formData.context_window
 				? parseInt(formData.context_window, 10)
 				: null,
-		max_tokens: isImageResolved ? null : Number.isFinite(parsedMax) ? parsedMax : 4096,
+		max_tokens: skipTokenLimits ? null : Number.isFinite(parsedMax) ? parsedMax : 4096,
 		input_modalities: formData.input_modalities,
 		output_modalities: formData.output_modalities,
 		released_at: formData.released_at.trim() || null,

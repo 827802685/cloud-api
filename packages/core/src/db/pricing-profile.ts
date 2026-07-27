@@ -12,6 +12,9 @@
  * - **`token`**（缺省推断：无 mode 且 tier 含正 `image_*`）：tier `image_*` × 上游 usage 分项（OpenAI GPT Image）；须有非空 `tiers`。
  * - **`per_image`**（须显式 mode + `image` 块）：`image.default` / maps 按 quality×size 选 output 单价；可选 `image.input` 计参考图；`uncertain_result_policy` 控制未确认结果（默认 `requested`）。**不计价 `tiers`**（可省略；历史占位零档仍可解析）。
  * - **无 mode + 仅 legacy `image` 块**：解析可读入 `image`，但 **`resolveImageBillingMode` 返回 `null`（不计费）**；勿因 legacy 块自动恢复 per_image。
+ *
+ * **Audio 转写**（`audio_billing_mode`）：
+ * - **`per_second`**（须显式 mode + `audio` 块）：`audio.price_per_second` × 时长秒数；可选 `minimum_seconds`（默认 1）。**不计价 `tiers`**（可省略）。
  */
 
 /** 每百万 token 单价快照（与 `usage-tracker.computeMeteredCost` / image token 计费对齐）。 */
@@ -47,6 +50,9 @@ export interface PricingTierPrices {
 /** Image 按张计价：`image_billing_mode === 'per_image'` 时使用。 */
 export type ImageBillingMode = 'token' | 'per_image';
 
+/** Audio 按时长计价：`audio_billing_mode === 'per_second'` 时使用。 */
+export type AudioBillingMode = 'per_second';
+
 /** 按张单价一侧（output 或 `image.input` 参考图）。 */
 export type ImagePerSidePricing = {
 	default: number;
@@ -66,15 +72,27 @@ export type ImagePricingConfig = {
 	uncertain_result_policy?: 'requested' | 'zero';
 };
 
+/** 音频按时长 `audio` 块。 */
+export type AudioPricingConfig = {
+	/** $/秒 */
+	price_per_second: number;
+	/** 计费下限秒数；缺省 1 */
+	minimum_seconds?: number;
+};
+
 export interface ParsedPricingProfile {
 	/**
-	 * Token / LLM 阶梯价。`image_billing_mode === 'per_image'` 时可为空数组（按张不计价 tiers）。
+	 * Token / LLM 阶梯价。`image_billing_mode === 'per_image'` 或 `audio_billing_mode === 'per_second'` 时可为空数组。
 	 */
 	tiers: PricingTierPrices[];
 	/** 显式 Image 计费模式；缺省时由 `resolveImageBillingMode` 推断（legacy 仅 image 块 → null）。 */
 	image_billing_mode?: ImageBillingMode;
 	/** 按张目录价；`per_image` 模式计费时使用。 */
 	image?: ImagePricingConfig | null;
+	/** 显式 Audio 计费模式；须配合 `audio` 块。 */
+	audio_billing_mode?: AudioBillingMode;
+	/** 音频按时长目录价；`per_second` 模式计费时使用。 */
+	audio?: AudioPricingConfig | null;
 }
 
 /** 单次计费侧解析结果，写入 `api_key_request_logs.pricing_audit.snapshot` 子树。 */
@@ -299,6 +317,58 @@ export function profileHasImagePerImagePricing(
 	return d != null && d >= 0;
 }
 
+/** 是否配置了显式 audio per_second 目录价。 */
+export function profileHasAudioPerSecondPricing(
+	profile: ParsedPricingProfile | null | undefined
+): boolean {
+	if (!profile || profile.audio_billing_mode !== 'per_second') {
+		return false;
+	}
+	const p = profile.audio?.price_per_second;
+	return p != null && p >= 0;
+}
+
+/**
+ * 解析 Audio 计费模式：仅显式 `audio_billing_mode: per_second` + 合法 `audio` 块时返回 `per_second`。
+ */
+export function resolveAudioBillingMode(
+	profile: ParsedPricingProfile | null | undefined
+): AudioBillingMode | null {
+	if (!profile) {
+		return null;
+	}
+	if (profile.audio_billing_mode === 'per_second' && profileHasAudioPerSecondPricing(profile)) {
+		return 'per_second';
+	}
+	return null;
+}
+
+/** 音频计费秒数：`max(duration, minimum_seconds)`，缺省 minimum=1。 */
+export function resolveBillableAudioSeconds(
+	durationSeconds: number,
+	audioCfg: AudioPricingConfig | null | undefined
+): number {
+	const min =
+		audioCfg?.minimum_seconds != null && Number.isFinite(audioCfg.minimum_seconds) && audioCfg.minimum_seconds >= 0
+			? audioCfg.minimum_seconds
+			: 1;
+	const duration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 0;
+	return Math.max(duration, min);
+}
+
+/** 原始音频成本（未乘路由倍率）：billableSeconds × price_per_second。 */
+export function computeAudioPerSecondMeteredCost(options: {
+	durationSeconds: number;
+	pricePerSecond: number;
+	minimumSeconds?: number;
+}): number {
+	const billable = resolveBillableAudioSeconds(options.durationSeconds, {
+		price_per_second: options.pricePerSecond,
+		minimum_seconds: options.minimumSeconds,
+	});
+	return options.pricePerSecond * billable;
+}
+
 /**
  * 解析 Image 计费模式：显式 `image_billing_mode` 优先；
  * 缺省时仅当 tier 含正 `image_*` 返回 `token`；否则 `null`（不计费）。
@@ -457,11 +527,49 @@ function parseImageBillingMode(raw: unknown): ImageBillingMode | null | 'invalid
 	return 'invalid';
 }
 
+function parseAudioBillingMode(raw: unknown): AudioBillingMode | null | 'invalid' {
+	if (raw === undefined || raw === null) {
+		return null;
+	}
+	if (raw === 'per_second') {
+		return raw;
+	}
+	return 'invalid';
+}
+
+/** `audio` 块：须有非负 `price_per_second`；`minimum_seconds` 可选。 */
+function parseAudioPricingConfig(raw: unknown): AudioPricingConfig | null | undefined {
+	if (raw === undefined) {
+		return undefined;
+	}
+	if (raw === null) {
+		return null;
+	}
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+		return null;
+	}
+	const o = raw as Record<string, unknown>;
+	const price = asFiniteNumber(o.price_per_second);
+	if (price == null || price < 0) {
+		return null;
+	}
+	const cfg: AudioPricingConfig = { price_per_second: price };
+	if (o.minimum_seconds !== undefined && o.minimum_seconds !== null) {
+		const min = asFiniteNumber(o.minimum_seconds);
+		if (min == null || min < 0) {
+			return null;
+		}
+		cfg.minimum_seconds = min;
+	}
+	return cfg;
+}
+
 /**
  * 解析并校验 `pricing_profile` JSON 文本；不合法时返回 `null`（调用方按无 profile 处理，单价按 0）。
  * - Token / LLM：`{ "tiers": [ ... ], "image_billing_mode"?: "token", ... }`（`tiers` 必填非空）
  * - 按张：`{ "image_billing_mode": "per_image", "image": { ... } }`（`tiers` 可省略；若给出须合法）
- * 非法 `image_billing_mode` → 整段 `null`；`image` 非法时忽略该键（仍返回 tiers）。
+ * - 音频：`{ "audio_billing_mode": "per_second", "audio": { "price_per_second": ... } }`（`tiers` 可省略）
+ * 非法 `image_billing_mode` / `audio_billing_mode` → 整段 `null`；`image` / `audio` 非法时忽略该键（仍返回 tiers）。
  */
 export function parsePricingProfile(jsonText: string | null | undefined): ParsedPricingProfile | null {
 	if (jsonText == null || String(jsonText).trim() === '') {
@@ -481,9 +589,15 @@ export function parsePricingProfile(jsonText: string | null | undefined): Parsed
 	if (modeParsed === 'invalid') {
 		return null;
 	}
+	const audioModeParsed = parseAudioBillingMode(o.audio_billing_mode);
+	if (audioModeParsed === 'invalid') {
+		return null;
+	}
+
+	const allowsEmptyTiers = modeParsed === 'per_image' || audioModeParsed === 'per_second';
 
 	let tiers: PricingTierPrices[];
-	if (modeParsed === 'per_image') {
+	if (allowsEmptyTiers) {
 		if (o.tiers === undefined || o.tiers === null) {
 			tiers = [];
 		} else if (Array.isArray(o.tiers) && o.tiers.length === 0) {
@@ -507,15 +621,22 @@ export function parsePricingProfile(jsonText: string | null | undefined): Parsed
 	if (modeParsed === 'token' || modeParsed === 'per_image') {
 		result.image_billing_mode = modeParsed;
 	}
-	if (o.image === undefined) {
-		return result;
+	if (audioModeParsed === 'per_second') {
+		result.audio_billing_mode = audioModeParsed;
 	}
-	const image = parseImagePricingConfig(o.image);
-	// 非法 / null image：忽略，避免历史脏数据拖垮整个 profile
-	if (image == null) {
-		return result;
+	if (o.image !== undefined) {
+		const image = parseImagePricingConfig(o.image);
+		// 非法 / null image：忽略，避免历史脏数据拖垮整个 profile
+		if (image != null) {
+			result.image = image;
+		}
 	}
-	result.image = image;
+	if (o.audio !== undefined) {
+		const audio = parseAudioPricingConfig(o.audio);
+		if (audio != null) {
+			result.audio = audio;
+		}
+	}
 	return result;
 }
 

@@ -100,7 +100,8 @@
 		"failedToLoadUsers": "Failed to load users",
 		"failedToLoadApiKeys": "Failed to load API keys",
 		"failedToLoadModels": "Failed to load models",
-		"infinity": "∞"
+		"infinity": "∞",
+		"kindAudio": "Audio"
 	},
 	"auth": {
 		"username": "Username",
@@ -279,7 +280,8 @@
 		"routeGroup": "Route Group",
 		"routeGroupAria": "Route group filter",
 		"modelsAndRoutes": "{models} models · {routes} routes",
-		"narrowModelsRoutes": "Narrow models and routes"
+		"narrowModelsRoutes": "Narrow models and routes",
+		"kindAudio": "Audio"
 	},
 	"modalities": {
 		"text": "Text",
@@ -327,6 +329,7 @@
 			"cap": {
 				"chat": "chat",
 				"images": "images",
+				"audio": "audio",
 				"messages": "messages",
 				"generateContent": "generate",
 				"streamGenerateContent": "stream"
@@ -376,6 +379,7 @@
 			"capChat": "chat (/v1/chat/completions)",
 			"capImagesGenerations": "images.generations (/v1/images/generations)",
 			"capImagesEdits": "images.edits (/v1/images/edits)",
+			"capAudioTranscriptions": "audio.transcriptions (/v1/audio/transcriptions)",
 			"capMessages": "messages (/v1/messages)",
 			"capGenerateContent": "generateContent (/v1beta/models/{model}:generateContent)",
 			"capStreamGenerateContent": "streamGenerateContent (/v1beta/models/{model}:streamGenerateContent)",
@@ -428,7 +432,8 @@
 			"kind": "Kind",
 			"kindAria": "Model kind filter",
 			"kindLlm": "LLM",
-			"kindImage": "Image"
+			"kindImage": "Image",
+			"kindAudio": "Audio"
 		},
 		"imagePricing": {
 			"enabled": "Legacy (removed)",
@@ -471,7 +476,8 @@
 			"importPresetRow": "Import preset {id}",
 			"catalogTiers": "{count} tier(s)",
 			"pricingPerImageFallback": "image token rates",
-			"importSelected": "Import selected ({count})"
+			"importSelected": "Import selected ({count})",
+			"pricingPerSecondFallback": "Per-second audio"
 		},
 		"modal": {
 			"editTitle": "Edit Model",
@@ -479,8 +485,10 @@
 			"kind": "Kind",
 			"kindLlm": "LLM",
 			"kindImage": "Image",
+			"kindAudio": "Audio",
 			"kindHintLlm": "Chat / completion models with token pricing (input / output / cache).",
 			"kindHintImage": "Image-generation models: output includes image, Image token rates, no context/max tokens.",
+			"kindHintAudio": "Audio transcription (ASR) models: input audio → output text, per-second pricing, no context/max tokens.",
 			"modelIdRequired": "Model ID *",
 			"modelIdPlaceholder": "gpt-4o",
 			"displayName": "Display Name",
@@ -496,7 +504,11 @@
 			"preview": "Preview",
 			"pricingProfile": "Pricing Profile",
 			"imageTokenPricing": "Image token rates",
+			"audioPricing": "Audio per-second rates",
+			"audioPricePerSecond": "Price per second",
+			"audioMinimumSeconds": "Minimum billable seconds",
 			"imageNoTokenLimits": "Image models do not use chat context window or max output tokens — those fields are cleared on save.",
+			"audioNoTokenLimits": "Audio transcription models do not use chat context window or max output tokens — those fields are cleared on save.",
 			"tags": "Tags",
 			"tagsPlaceholder": "e.g. free, lite, pro, max — press Enter to add",
 			"removeTag": "Remove {tag}",
@@ -528,7 +540,8 @@
 			"imagePerImagePricing": "Per-image catalog pricing",
 			"description": "Description",
 			"metadata": "Metadata",
-			"viewMetadataJson": "View metadata JSON"
+			"viewMetadataJson": "View metadata JSON",
+			"kindAudio": "Audio"
 		}
 	},
 	"routes": {
@@ -557,6 +570,7 @@
 			"contextMaxOutput": "Context: {context} · Max output: {max}",
 			"contextLine": "Context {context} · Max output {max}",
 			"imageModelHint": "Image model · token pricing",
+			"audioModelHint": "Audio ASR · per-second pricing",
 			"modelTagTitle": "Model tag: {tag}",
 			"copied": "Copied",
 			"newRouteFor": "New route for {title}",
@@ -652,8 +666,14 @@
 			"summaryUserBillingDetail": "catalog × charged_factor × schedule.charged → charged_cost",
 			"summaryMeteredCost": "Metered cost:",
 			"summaryMeteredCostDetail": "catalog × metered_factor × schedule.metered → metered_cost",
-			"deleteRoute": "Delete route"
-		}
+			"deleteRoute": "Delete route",
+			"protocolHintAudioOpenaiOnly": "Audio transcription models require upstream_protocol=openai.",
+			"standardCatalogHintAudio": "Catalog per-second rates for this ASR model (read-only).",
+			"noCatalogAudioPricing": "No per-second audio pricing on this model.",
+			"audioPricePerSecond": "Price per second",
+			"audioMinimumSeconds": "Minimum seconds"
+		},
+		"kindAudio": "Audio"
 	},
 	"playground": {
 		"title": "Playground",
@@ -662,6 +682,10 @@
 		"routeSection": "Route",
 		"requestBody": "Request body",
 		"response": "Response",
+		"kind": "Kind",
+		"kindLlm": "LLM",
+		"kindImage": "Image",
+		"kindAudio": "Audio",
 		"modelId": "Model ID",
 		"provider": "Provider",
 		"protocol": "Protocol",
@@ -705,7 +729,12 @@
 			"allProviders": "All providers",
 			"allProtocols": "All protocols",
 			"allRouteGroups": "All route groups"
-		}
+		},
+		"audioOpenaiOnly": "Audio transcription models only work with upstream_protocol=openai (Playground calls /audio/transcriptions). Edit the route or pick an openai route.",
+		"audioTranscriptionsHint": "Audio model: JSON fields (language, response_format) plus an audio file below. File is sent as multipart to the upstream transcriptions endpoint. No billing or request logs.",
+		"audioFile": "Audio file",
+		"audioFileHint": "Select one audio file (mp3, wav, m4a, webm, …). Sent as multipart (not in the JSON editor).",
+		"audioFileRequired": "An audio file is required before Send."
 	},
 	"simulator": {
 		"title": "Simulator",
@@ -718,11 +747,15 @@
 		"localDevHint": "Local dev example: http://127.0.0.1:8787 — avoid pointing at production by mistake.",
 		"protocol": "Protocol",
 		"geminiAction": "Gemini action",
+		"kind": "Kind",
+		"kindLlm": "LLM",
+		"kindImage": "Image",
+		"kindAudio": "Audio",
 		"model": "Model",
 		"filter": "Filter",
 		"modelFilterPlaceholder": "id / display name / vendor contains…",
 		"selectModel": "— Select a model —",
-		"modelCount": "{total} model(s) · {filtered} filtered · 🟢 active route · 🔴 none",
+		"modelCount": "{total} in this kind · {filtered} shown · 🟢 active route · 🔴 none",
 		"routeGroupOptional": "Route group (optional)",
 		"defaultRouteGroup": "Default (no explicit suffix)",
 		"routeGroupHint": "From active routes for this model. OpenAI/Anthropic set body.model to id or id:group; Gemini uses the same path segment.",
@@ -782,7 +815,12 @@
 		"errKeyLoading": "API key is still loading",
 		"errSelectKey": "Select an API key and wait until it finishes loading (sk-…)",
 		"errBodyMustBeObject": "Request body must be a JSON object",
-		"infoModelOverwritten": "Set request body model to \"{model}\" (matches selected model and route group)."
+		"infoModelOverwritten": "Set request body model to \"{model}\" (matches selected model and route group).",
+		"protocolLockedAudio": "Audio models are locked to openai → POST /v1/audio/transcriptions.",
+		"audioTranscriptionsHint": "Transcriptions: JSON fields (language, response_format) plus an audio file → multipart POST /v1/audio/transcriptions.",
+		"audioFile": "Audio file",
+		"audioFileHint": "Select one audio file for multipart upload.",
+		"audioFileRequired": "An audio file is required before Send."
 	},
 	"users": {
 		"title": "Users",
@@ -987,6 +1025,7 @@
 			"rowDetail": "Click to show or hide pricing audit and request / usage bodies",
 			"inputOutputTokens": "Input / output tokens",
 			"imagePerImageUsage": "Input × output image count (per-image billing)",
+			"audioPerSecondUsage": "Billable audio duration (per-second billing)",
 			"cacheTokens": "Cache read / cache write tokens",
 			"standardCatalogPrice": "Standard (catalog price)",
 			"chargedUserBudget": "Charged (user budget)",

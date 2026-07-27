@@ -16,6 +16,7 @@ import { webSearchRoutes } from './routes/v1/tools/web-search';
 import { webFetchRoutes } from './routes/v1/tools/web-fetch';
 import { webDeepSearchRoutes } from './routes/v1/tools/web-deep-search';
 import { imageRoutes } from './routes/v1/images';
+import { audioRoutes } from './routes/v1/audio';
 import { proxyAppVersion } from './app-version';
 
 /** Cloudflare Worker bindings：D1 `DB`。Postgres 见 `src/runtime/node.ts`。 */
@@ -69,6 +70,7 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 	app.route('/health', healthRoutes);
 	app.route('/v1/chat/completions', chatRoutes);
 	app.route('/v1/images', imageRoutes);
+	app.route('/v1/audio', audioRoutes);
 	app.route('/v1/messages', messagesRoutes);
 	app.route('/v1beta', geminiRoutes);
 	app.route('/v1/me', meRoutes);

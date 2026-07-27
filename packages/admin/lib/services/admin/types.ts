@@ -194,8 +194,8 @@ export type AdminStaticModelPresetCatalogItem = {
 	id: string;
 	display_name: string | null;
 	vendor: string;
-	/** LLM vs 文生图（与列表页 Kind 一致：`output` 含 `image`，否则兜底看 USD `pricing.image`）。 */
-	kind: 'llm' | 'image';
+	/** LLM / 文生图 / 语音转写（与列表页 Kind 一致）。 */
+	kind: 'llm' | 'image' | 'audio';
 	context_window: number | null;
 	max_tokens: number | null;
 	/** English fallback used by non-localized Admin clients and on import. */

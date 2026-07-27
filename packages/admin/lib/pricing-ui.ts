@@ -489,6 +489,39 @@ export function summarizePricingAuditJson(raw: string | null | undefined): strin
 				parts.push(`policy ${o.uncertain_result_policy}`);
 			}
 		}
+		const snapEarly =
+			o.snapshot && typeof o.snapshot === 'object'
+				? (o.snapshot as Record<string, unknown>)
+				: null;
+		const audioKind =
+			o.kind === 'audio_per_second'
+				? 'audio_per_second'
+				: snapEarly?.kind === 'audio_per_second'
+					? 'audio_per_second'
+					: null;
+		if (audioKind) {
+			parts.push('audio_per_second');
+			const audioSrc = o.kind === 'audio_per_second' ? o : (snapEarly ?? o);
+			const dur =
+				typeof audioSrc.duration_seconds === 'number'
+					? audioSrc.duration_seconds
+					: typeof audioSrc.billable_seconds === 'number'
+						? audioSrc.billable_seconds
+						: null;
+			if (dur != null) {
+				parts.push(`${dur}s`);
+			}
+			const pps =
+				typeof audioSrc.price_per_second === 'number' ? audioSrc.price_per_second : null;
+			if (pps != null) {
+				parts.push(`${pps}/s`);
+			}
+			const minS =
+				typeof audioSrc.minimum_seconds === 'number' ? audioSrc.minimum_seconds : null;
+			if (minS != null) {
+				parts.push(`min ${minS}s`);
+			}
+		}
 		if (
 			typeof o.v === 'number' &&
 			(o.v === 3 || o.v === 4) &&

@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+} from '@octafuse/core/db/model-modalities';
 import {
 	parseModelStickyConfig,
 	stickyRuleKey,
 } from '@octafuse/core/db/model-sticky-config';
 import { useBusinessTimezone } from '@/components/BusinessTimezoneProvider';
+import { getCatalogAudioPricingDisplay, isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
 import { getCatalogImagePricingDisplay, getCatalogPricingTierRows } from '@/lib/pricing-ui';
 import { normalizeModelVendorInput } from '@/lib/model-vendor';
@@ -183,11 +187,13 @@ export function useRoutesPageState() {
 	const kindCounts = useMemo(() => {
 		let llm = 0;
 		let image = 0;
+		let audio = 0;
 		for (const m of models) {
 			if (isImageGenerationModel(m)) image += 1;
+			else if (isAudioTranscriptionModel(m)) audio += 1;
 			else llm += 1;
 		}
-		return { llm, image };
+		return { llm, image, audio };
 	}, [models]);
 
 	const routesByModel = useMemo(
@@ -262,26 +268,38 @@ export function useRoutesPageState() {
 		[selectedModel]
 	);
 
+	const selectedModelIsAudio = useMemo(
+		() => (selectedModel ? isAudioRouteModel(selectedModel) : false),
+		[selectedModel]
+	);
+
+	const lockOpenaiProtocol = selectedModelIsImage || selectedModelIsAudio;
+
 	const catalogStandardTierRows = useMemo(() => {
-		if (!selectedModel || selectedModelIsImage) return [];
+		if (!selectedModel || selectedModelIsImage || selectedModelIsAudio) return [];
 		return getCatalogPricingTierRows(selectedModel, billingCurrency);
-	}, [selectedModel, selectedModelIsImage, billingCurrency]);
+	}, [selectedModel, selectedModelIsImage, selectedModelIsAudio, billingCurrency]);
 
 	const catalogImagePricingDisplay = useMemo(() => {
 		if (!selectedModel || !selectedModelIsImage) return null;
 		return getCatalogImagePricingDisplay(selectedModel, billingCurrency);
 	}, [selectedModel, selectedModelIsImage, billingCurrency]);
 
+	const catalogAudioPricingDisplay = useMemo(() => {
+		if (!selectedModel || !selectedModelIsAudio) return null;
+		return getCatalogAudioPricingDisplay(selectedModel, billingCurrency);
+	}, [selectedModel, selectedModelIsAudio, billingCurrency]);
+
 	const allowedProtocolsForProvider = useMemo((): UpstreamProtocol[] => {
 		if (!selectedProvider) return [];
 		const supported = UPSTREAM_PROTOCOLS.filter((proto) =>
 			providerSupportsUpstreamProtocol(proto, selectedProvider)
 		);
-		if (selectedModelIsImage) {
+		if (lockOpenaiProtocol) {
 			return supported.includes('openai') ? ['openai'] : [];
 		}
 		return supported;
-	}, [selectedProvider, selectedModelIsImage]);
+	}, [selectedProvider, lockOpenaiProtocol]);
 
 	useEffect(() => {
 		if (!showModal || !selectedProvider || allowedProtocolsForProvider.length === 0) return;
@@ -292,11 +310,11 @@ export function useRoutesPageState() {
 	}, [showModal, formData.provider_id, selectedProvider, allowedProtocolsForProvider]);
 
 	useEffect(() => {
-		if (!showModal || !selectedModelIsImage) return;
+		if (!showModal || !lockOpenaiProtocol) return;
 		setFormData((fd) =>
 			fd.upstream_protocol === 'openai' ? fd : { ...fd, upstream_protocol: 'openai' }
 		);
-	}, [showModal, selectedModelIsImage, formData.model_id]);
+	}, [showModal, lockOpenaiProtocol, formData.model_id]);
 
 	const clearAllFilters = useCallback(() => {
 		setFilterVendor('');
@@ -532,7 +550,9 @@ export function useRoutesPageState() {
 		selectedModel,
 		catalogStandardTierRows,
 		catalogImagePricingDisplay,
+		catalogAudioPricingDisplay,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		allowedProtocolsForProvider,
 		businessTimezone,
 		stickyDialog,

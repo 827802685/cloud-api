@@ -13,7 +13,7 @@ type Props = {
 	selectedVendor: string;
 	modelsByVendor: [string, unknown[]][];
 	selectedKind: ModelKindFilter;
-	kindCounts: { llm: number; image: number };
+	kindCounts: { llm: number; image: number; audio: number };
 	onSelectVendor: (vendor: string) => void;
 	onSelectKind: (kind: ModelKindFilter) => void;
 	onClearFilter: () => void;
@@ -80,6 +80,12 @@ export function ModelFilterSidebar(props: Props) {
 						count={kindCounts.image}
 						isActive={selectedKind === 'image'}
 						onClick={() => onSelectKind('image')}
+					/>
+					<FilterNavButton
+						label={t('kindAudio')}
+						count={kindCounts.audio}
+						isActive={selectedKind === 'audio'}
+						onClick={() => onSelectKind('audio')}
 					/>
 				</FilterNavSection>
 

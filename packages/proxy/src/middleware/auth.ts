@@ -88,16 +88,19 @@ export const requireApiKey = createMiddleware<Env>(async (c, next) => {
   const isKeyInfoRoute = c.req.method === 'GET' && c.req.path.endsWith('/me');
   // Allow GET /v1/models even when budget is exceeded (just lists available models, no resource consumption)
   const isModelsRoute = c.req.method === 'GET' && c.req.path.endsWith('/models');
-  // Budget check for chat / images is done in route after resolving model (and image pre-estimate)
+  // Budget check for chat / images / audio is done in route after resolving model (and pre-estimate)
   const isChatRoute = c.req.method === 'POST' && c.req.path.endsWith('/chat/completions');
   const isImagesRoute =
     c.req.method === 'POST' &&
     (c.req.path.endsWith('/images/generations') || c.req.path.endsWith('/images/edits'));
+  const isAudioRoute =
+    c.req.method === 'POST' && c.req.path.endsWith('/audio/transcriptions');
   if (
     !isKeyInfoRoute &&
     !isModelsRoute &&
     !isChatRoute &&
     !isImagesRoute &&
+    !isAudioRoute &&
     authResult.budgetMax != null &&
     authResult.budgetSpent >= authResult.budgetMax
   ) {

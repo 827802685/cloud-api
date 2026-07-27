@@ -16,7 +16,7 @@ type Props = {
 	filteredCatalogRows: PresetCatalogRow[];
 	catalogSearch: string;
 	catalogKind: ModelKindFilter;
-	kindCounts: { llm: number; image: number };
+	kindCounts: { llm: number; image: number; audio: number };
 	catalogLoading: boolean;
 	catalogError: string;
 	selected: Record<string, boolean>;
@@ -206,11 +206,15 @@ export function ModelImportModal(props: Props) {
 	const canSelectAllVisible = filteredCatalogRows.some((r) => !existingModelIds.has(r.id));
 	const canImport = catalogRows.some((r) => selected[r.id] && !existingModelIds.has(r.id));
 	const unit = formatPerMillionTokenUnit(billingCurrency);
-	/** 始终单 Kind：不展示 Kind 列；Image 视图隐藏 Context / Max Tokens。 */
+	/** 始终单 Kind：不展示 Kind 列；Image / Audio 视图隐藏 Context / Max Tokens。 */
 	const showKindColumn = false;
-	const showTokenColumns = catalogKind !== 'image';
+	const showTokenColumns = catalogKind === 'llm';
 	const kindScopedTotal =
-		catalogKind === 'image' ? kindCounts.image : kindCounts.llm;
+		catalogKind === 'image'
+			? kindCounts.image
+			: catalogKind === 'audio'
+				? kindCounts.audio
+				: kindCounts.llm;
 
 	return (
 		<div
@@ -310,6 +314,13 @@ export function ModelImportModal(props: Props) {
 							disabled={catalogLoading}
 							onClick={() => onCatalogKindChange('image')}
 						/>
+						<KindFilterChip
+							label={tKind('kindAudio')}
+							count={kindCounts.audio}
+							active={catalogKind === 'audio'}
+							disabled={catalogLoading}
+							onClick={() => onCatalogKindChange('audio')}
+						/>
 					</div>
 					<div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm text-gray-600">
 						<span>
@@ -396,12 +407,15 @@ export function ModelImportModal(props: Props) {
 								<tbody className="divide-y divide-gray-100 bg-white">
 									{sortedRows.map((row) => {
 										const alreadyInGateway = existingModelIds.has(row.id);
-										const kind = row.kind === 'image' ? 'image' : 'llm';
+										const kind =
+											row.kind === 'image' ? 'image' : row.kind === 'audio' ? 'audio' : 'llm';
 										const pricingLabel =
 											row.pricing_label ??
 											(kind === 'image'
 												? t('pricingPerImageFallback')
-												: t('catalogTiers', { count: row.tier_count }));
+												: kind === 'audio'
+													? t('pricingPerSecondFallback')
+													: t('catalogTiers', { count: row.tier_count }));
 										const pricingDetail = row.pricing_preview ?? pricingLabel;
 										return (
 											<tr
@@ -443,10 +457,16 @@ export function ModelImportModal(props: Props) {
 															className={
 																kind === 'image'
 																	? 'inline-flex rounded bg-violet-50 px-1.5 py-0.5 text-xs font-medium text-violet-700'
-																	: 'inline-flex rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-700'
+																	: kind === 'audio'
+																		? 'inline-flex rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700'
+																		: 'inline-flex rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-700'
 															}
 														>
-															{kind === 'image' ? tKind('kindImage') : tKind('kindLlm')}
+															{kind === 'image'
+																? tKind('kindImage')
+																: kind === 'audio'
+																	? tKind('kindAudio')
+																	: tKind('kindLlm')}
 														</span>
 													</td>
 												) : null}
@@ -456,18 +476,14 @@ export function ModelImportModal(props: Props) {
 												{showTokenColumns ? (
 													<>
 														<td className="px-3 py-2 text-right tabular-nums text-gray-700">
-															{kind === 'image'
-																? '—'
-																: row.context_window != null
-																	? formatCompactTokens(row.context_window)
-																	: '—'}
+															{row.context_window != null
+																? formatCompactTokens(row.context_window)
+																: '—'}
 														</td>
 														<td className="px-3 py-2 text-right tabular-nums text-gray-700">
-															{kind === 'image'
-																? '—'
-																: row.max_tokens != null
-																	? formatCompactTokens(row.max_tokens)
-																	: '—'}
+															{row.max_tokens != null
+																? formatCompactTokens(row.max_tokens)
+																: '—'}
 														</td>
 													</>
 												) : null}

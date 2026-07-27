@@ -7,6 +7,7 @@ import {
 	coerceModelInputModalitiesInput,
 	coerceModelOutputModalitiesInput,
 	coerceModelReleasedAtInput,
+	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
 import {
@@ -137,10 +138,32 @@ function buildPerImagePricingPreview(
 	};
 }
 
-/** 按 `BILLING_CURRENCY` 选用的目录价分支：Image token / per_image / LLM 档位摘要。 */
+function buildPerSecondAudioPricingPreview(
+	rawPricing: Record<string, unknown>,
+	billing: GatewaySupportedBillingCurrency
+): CatalogPricingPreview | null {
+	const mode = rawPricing.audio_billing_mode;
+	const audio = rawPricing.audio;
+	const audioObj =
+		audio && typeof audio === 'object' && !Array.isArray(audio)
+			? (audio as Record<string, unknown>)
+			: null;
+	const pricePerSecond = audioObj ? formatPriceForPreview(audioObj.price_per_second) : null;
+	if (mode !== 'per_second' || pricePerSecond == null) {
+		return null;
+	}
+	const sym = getGatewayCurrencySymbol(billing);
+	const unit = `${sym}/s`;
+	return {
+		label: `${sym}${pricePerSecond} ${unit}`,
+		detail: `Audio transcription: ${sym}${pricePerSecond} ${unit}`,
+	};
+}
+
+/** 按 `BILLING_CURRENCY` 选用的目录价分支：Audio / Image / LLM 档位摘要。 */
 function buildCatalogPricingPreview(
 	rawPricing: unknown,
-	_kind: 'llm' | 'image',
+	_kind: 'llm' | 'image' | 'audio',
 	billing: GatewaySupportedBillingCurrency
 ): CatalogPricingPreview {
 	if (!rawPricing || typeof rawPricing !== 'object' || Array.isArray(rawPricing)) {
@@ -148,6 +171,7 @@ function buildCatalogPricingPreview(
 	}
 	const obj = rawPricing as Record<string, unknown>;
 	return (
+		buildPerSecondAudioPricingPreview(obj, billing) ??
 		buildPerImagePricingPreview(obj, billing) ??
 		buildTokenPricingPreview(obj, billing) ?? {
 			label: null,
@@ -185,12 +209,17 @@ export async function createModelService(repos: GatewayRepositories, body: Admin
 		output_modalities: outputModalities,
 		pricing_profile: pricingProfile,
 	});
-	const maxTokens = isImage
+	const isAudio = isAudioTranscriptionModel({
+		output_modalities: outputModalities,
+		pricing_profile: pricingProfile,
+	});
+	const skipLlmDefaults = isImage || isAudio;
+	const maxTokens = skipLlmDefaults
 		? body.max_tokens == null
 			? null
 			: Number(body.max_tokens)
 		: (body.max_tokens ?? 8192);
-	const contextWindow = isImage
+	const contextWindow = skipLlmDefaults
 		? body.context_window == null
 			? null
 			: Number(body.context_window)
@@ -282,15 +311,17 @@ export function listStaticModelPresetCatalogForAdmin(
 					tierCount = tiers.length;
 				}
 			}
-			const kind: AdminStaticModelPresetCatalogItem['kind'] = isImageGenerationModel({
+			const pricingProfileJson =
+				pricingRaw != null && typeof pricingRaw === 'object' ? JSON.stringify(pricingRaw) : null;
+			const kindFields = {
 				output_modalities: p.modalities?.output ?? null,
-				pricing_profile:
-					pricingRaw != null && typeof pricingRaw === 'object'
-						? JSON.stringify(pricingRaw)
-						: null,
-			})
+				pricing_profile: pricingProfileJson,
+			};
+			const kind: AdminStaticModelPresetCatalogItem['kind'] = isImageGenerationModel(kindFields)
 				? 'image'
-				: 'llm';
+				: isAudioTranscriptionModel(kindFields)
+					? 'audio'
+					: 'llm';
 			const pricing = buildCatalogPricingPreview(pricingRaw, kind, billing);
 			return {
 				id,

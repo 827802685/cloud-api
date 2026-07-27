@@ -3,26 +3,34 @@
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import {
-	isImageGenerationModel,
 	MODEL_INPUT_MODALITIES,
 	MODEL_OUTPUT_MODALITIES,
 } from '@octafuse/core/db/model-modalities';
 import { ModelModalitiesBadgeFromRaw } from '@/components/model-modalities-badge';
 import { PricingTiersEditor } from '@/components/pricing-tiers-editor';
 import { MODEL_VENDOR_OPTIONS } from '@/lib/model-vendor';
-import type { ImageBillingModeDraft, ImagePerImageDraft, PricingTierDraftRow } from '@/lib/pricing-tiers-draft';
+import type {
+	AudioPricingDraftState,
+	ImageBillingModeDraft,
+	ImagePerImageDraft,
+	PricingTierDraftRow,
+} from '@/lib/pricing-tiers-draft';
 import { tagBadgeClass } from '../model-utils';
-import type { ModelFormData, ModelListItem } from '../types';
+import type { ModelFormData, ModelFormKind, ModelListItem } from '../types';
 
 type Props = {
 	open: boolean;
 	editingModel: ModelListItem | null;
 	formData: ModelFormData;
+	/** 当前 Kind（含 audio；由父级 formKind 驱动，避免仅靠 modalities 误判） */
+	formKind: ModelFormKind;
 	pricingTierRows: PricingTierDraftRow[];
 	imageBillingMode?: ImageBillingModeDraft;
 	onImageBillingModeChange?: (mode: ImageBillingModeDraft) => void;
 	imagePerImageDraft?: ImagePerImageDraft;
 	onImagePerImageDraftChange?: (draft: ImagePerImageDraft) => void;
+	audioPricingDraft?: AudioPricingDraftState;
+	onAudioPricingDraftChange?: (draft: AudioPricingDraftState) => void;
 	tagInput: string;
 	saveError: string;
 	isSaving: boolean;
@@ -35,8 +43,8 @@ type Props = {
 	onAddTag: () => void;
 	onRemoveTag: (tag: string) => void;
 	onToggleModality: (kind: 'input_modalities' | 'output_modalities', modality: string) => void;
-	/** 切换 LLM / Image Kind（同步 modalities 与默认 pricing） */
-	onKindChange: (kind: 'llm' | 'image') => void;
+	/** 切换 LLM / Image / Audio Kind（同步 modalities 与默认 pricing） */
+	onKindChange: (kind: ModelFormKind) => void;
 	onSave: () => void;
 	onDelete: (id: string) => void;
 };
@@ -46,11 +54,14 @@ export function ModelModal(props: Props) {
 		open,
 		editingModel,
 		formData,
+		formKind,
 		pricingTierRows,
 		imageBillingMode = 'token',
 		onImageBillingModeChange,
 		imagePerImageDraft,
 		onImagePerImageDraftChange,
+		audioPricingDraft,
+		onAudioPricingDraftChange,
 		tagInput,
 		saveError,
 		isSaving,
@@ -70,10 +81,9 @@ export function ModelModal(props: Props) {
 
 	const t = useTranslations('models.modal');
 	const tCommon = useTranslations('common');
-	const isImageModel = isImageGenerationModel({
-		output_modalities: formData.output_modalities,
-	});
-	const formKind: 'llm' | 'image' = isImageModel ? 'image' : 'llm';
+	const isImageModel = formKind === 'image';
+	const isAudioModel = formKind === 'audio';
+	const hideTokenLimits = isImageModel || isAudioModel;
 
 	if (!open) return null;
 
@@ -123,6 +133,7 @@ export function ModelModal(props: Props) {
 									[
 										{ id: 'llm' as const, label: t('kindLlm') },
 										{ id: 'image' as const, label: t('kindImage') },
+										{ id: 'audio' as const, label: t('kindAudio') },
 									] as const
 								).map((opt) => {
 									const active = formKind === opt.id;
@@ -146,7 +157,11 @@ export function ModelModal(props: Props) {
 								})}
 							</div>
 							<p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
-								{isImageModel ? t('kindHintImage') : t('kindHintLlm')}
+								{isAudioModel
+									? t('kindHintAudio')
+									: isImageModel
+										? t('kindHintImage')
+										: t('kindHintLlm')}
 							</p>
 						</div>
 						<div>
@@ -198,7 +213,7 @@ export function ModelModal(props: Props) {
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 							/>
 						</div>
-						{!isImageModel ? (
+						{!hideTokenLimits ? (
 							<>
 								<div>
 									<label className="block text-sm font-medium text-gray-700 mb-1">
@@ -231,7 +246,7 @@ export function ModelModal(props: Props) {
 							</>
 						) : (
 							<div className="col-span-2 rounded-md border border-amber-100 bg-amber-50/70 px-3 py-2 text-xs text-amber-800">
-								{t('imageNoTokenLimits')}
+								{isAudioModel ? t('audioNoTokenLimits') : t('imageNoTokenLimits')}
 							</div>
 						)}
 						<div className="col-span-2 rounded-md border border-gray-200 bg-gray-50/80 px-3 py-2.5">
@@ -295,7 +310,52 @@ export function ModelModal(props: Props) {
 							</div>
 						</div>
 						<div className="col-span-2">
-							{isImageModel ? (
+							{isAudioModel && audioPricingDraft && onAudioPricingDraftChange ? (
+								<div className="space-y-3 rounded-md border border-gray-200 bg-white p-3">
+									<p className="text-sm font-medium text-gray-800">{t('audioPricing')}</p>
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+										<div>
+											<label className="mb-1 block text-xs font-medium text-gray-600">
+												{t('audioPricePerSecond')}
+												<span className="ml-1 font-normal text-gray-400">
+													({billingCurrency}/s)
+												</span>
+											</label>
+											<input
+												type="number"
+												step="any"
+												min="0"
+												value={audioPricingDraft.price_per_second}
+												onChange={(e) =>
+													onAudioPricingDraftChange({
+														...audioPricingDraft,
+														price_per_second: e.target.value,
+													})
+												}
+												className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+											/>
+										</div>
+										<div>
+											<label className="mb-1 block text-xs font-medium text-gray-600">
+												{t('audioMinimumSeconds')}
+											</label>
+											<input
+												type="number"
+												step="any"
+												min="0"
+												value={audioPricingDraft.minimum_seconds}
+												onChange={(e) =>
+													onAudioPricingDraftChange({
+														...audioPricingDraft,
+														minimum_seconds: e.target.value,
+													})
+												}
+												className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+											/>
+										</div>
+									</div>
+								</div>
+							) : isImageModel ? (
 								<PricingTiersEditor
 									title={t('imageTokenPricing')}
 									rows={pricingTierRows}

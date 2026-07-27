@@ -11,6 +11,11 @@ import { ImageGenerationsPreview } from '@/components/image-generations-preview'
 import { RequestTargetUrl } from '@/components/request-target-url';
 import { readApiJson } from '@/lib/api-json';
 import {
+	AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE,
+	isAudioRouteModel,
+	validateAudioTranscriptionFile,
+} from '@/lib/audio-transcriptions';
+import {
 	IMAGE_EDITS_BODY_TEMPLATE,
 	IMAGE_GENERATIONS_BODY_TEMPLATE,
 	IMAGE_MAX_REFERENCE_COUNT,
@@ -35,10 +40,23 @@ import {
 } from '@/lib/playground/usage-parsing';
 import type { AdminModelRow } from '@/lib/services/admin/types';
 import type { ApiResponse, GatewayProvider } from '@/lib/types';
+import {
+	DEFAULT_KIND_FILTER,
+	type ModelKindFilter,
+} from '../models/types';
 
 const inputClass =
 	'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
 const labelClass = 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1';
+
+function resolveRouteModelKind(
+	m: AdminModelRow | undefined
+): ModelKindFilter {
+	if (!m) return 'llm';
+	if (isAudioRouteModel(m)) return 'audio';
+	if (isImageRouteModel(m)) return 'image';
+	return 'llm';
+}
 
 function ReadonlyField({ label, children }: { label: string; children: ReactNode }) {
 	return (
@@ -136,6 +154,8 @@ export default function PlaygroundPage() {
 	const [loadingRoutes, setLoadingRoutes] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
+	/** 与 Models/Routes 一致：无 All，默认 LLM，按 Kind 拆分模型列表 */
+	const [filterKind, setFilterKind] = useState<ModelKindFilter>(DEFAULT_KIND_FILTER);
 	const [filterModel, setFilterModel] = useState('');
 	const [filterProvider, setFilterProvider] = useState('');
 	const [filterProtocol, setFilterProtocol] = useState('');
@@ -147,6 +167,7 @@ export default function PlaygroundPage() {
 	const [geminiAction, setGeminiAction] = useState<'generateContent' | 'streamGenerateContent'>('streamGenerateContent');
 	const [imageOperation, setImageOperation] = useState<ImageOperation>('generations');
 	const [editFiles, setEditFiles] = useState<File[]>([]);
+	const [audioFile, setAudioFile] = useState<File | null>(null);
 
 	const [sending, setSending] = useState(false);
 	const [responseMeta, setResponseMeta] = useState<{
@@ -176,8 +197,16 @@ export default function PlaygroundPage() {
 		return m ? isImageRouteModel(m) : false;
 	}, [selected, modelsById]);
 
+	const selectedIsAudio = useMemo(() => {
+		if (!selected) return false;
+		const m = modelsById.get(selected.model_id);
+		return m ? isAudioRouteModel(m) : false;
+	}, [selected, modelsById]);
+
 	const imageSendBlocked =
 		selectedIsImage && normalizeProtocol(selected?.upstream_protocol ?? 'openai') !== 'openai';
+	const audioSendBlocked =
+		selectedIsAudio && normalizeProtocol(selected?.upstream_protocol ?? 'openai') !== 'openai';
 
 	const previewUpstreamUrl = useMemo(() => {
 		if (!selected) return null;
@@ -185,11 +214,12 @@ export default function PlaygroundPage() {
 			provider: providersById.get(selected.provider_id),
 			upstreamProtocol: selected.upstream_protocol,
 			providerModelName: selected.provider_model_name,
-			isImageModel: selectedIsImage,
-			imageOperation: selectedIsImage ? imageOperation : undefined,
+			isImageModel: selectedIsImage && !selectedIsAudio,
+			imageOperation: selectedIsImage && !selectedIsAudio ? imageOperation : undefined,
+			isAudioModel: selectedIsAudio,
 			geminiAction,
 		});
-	}, [selected, providersById, selectedIsImage, imageOperation, geminiAction]);
+	}, [selected, providersById, selectedIsImage, selectedIsAudio, imageOperation, geminiAction]);
 
 	/** 发送后以上游实际 URL 为准；否则展示与 Send 同规则的预览。 */
 	const requestTargetUrl = responseMeta?.upstreamUrl ?? previewUpstreamUrl;
@@ -221,13 +251,43 @@ export default function PlaygroundPage() {
 			r: RouteListRow,
 			omit: 'model' | 'provider' | 'protocol' | 'group' | null = null
 		) => {
+			if (resolveRouteModelKind(modelsById.get(r.model_id)) !== filterKind) return false;
 			if (omit !== 'model' && filterModel && r.model_id !== filterModel) return false;
 			if (omit !== 'provider' && filterProvider && r.provider_id !== filterProvider) return false;
 			if (omit !== 'protocol' && filterProtocol && r.upstream_protocol !== filterProtocol) return false;
 			if (omit !== 'group' && filterGroup && r.route_group !== filterGroup) return false;
 			return true;
 		},
-		[filterModel, filterProvider, filterProtocol, filterGroup]
+		[modelsById, filterKind, filterModel, filterProvider, filterProtocol, filterGroup]
+	);
+
+	const kindCounts = useMemo(() => {
+		const counts = { llm: 0, image: 0, audio: 0 };
+		const seen = new Set<string>();
+		for (const r of routes) {
+			if (seen.has(r.model_id)) continue;
+			seen.add(r.model_id);
+			counts[resolveRouteModelKind(modelsById.get(r.model_id))] += 1;
+		}
+		return counts;
+	}, [routes, modelsById]);
+
+	const onFilterKindChange = useCallback(
+		(next: ModelKindFilter) => {
+			if (next === filterKind) return;
+			setFilterKind(next);
+			setFilterModel('');
+			setSelectedId('');
+		},
+		[filterKind]
+	);
+
+	const routesInKind = useMemo(
+		() =>
+			routes.filter(
+				(r) => resolveRouteModelKind(modelsById.get(r.model_id)) === filterKind
+			),
+		[routes, modelsById, filterKind]
 	);
 
 	const filteredRoutes = useMemo(
@@ -356,12 +416,16 @@ export default function PlaygroundPage() {
 		const proto = normalizeProtocol(r.upstream_protocol);
 		const m = modelsById.get(r.model_id);
 		const isImage = m ? isImageRouteModel(m) : false;
+		const isAudio = m ? isAudioRouteModel(m) : false;
 		setImageOperation('generations');
 		setEditFiles([]);
+		setAudioFile(null);
 		setBodyText(
-			isImage && proto === 'openai'
-				? IMAGE_GENERATIONS_BODY_TEMPLATE
-				: (BODY_TEMPLATES[proto] ?? BODY_TEMPLATES.openai)
+			isAudio && proto === 'openai'
+				? AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE
+				: isImage && proto === 'openai'
+					? IMAGE_GENERATIONS_BODY_TEMPLATE
+					: (BODY_TEMPLATES[proto] ?? BODY_TEMPLATES.openai)
 		);
 		setBodyError(null);
 		setImagePreviews([]);
@@ -396,6 +460,10 @@ export default function PlaygroundPage() {
 			setBodyError(t('imageOpenaiOnly'));
 			return;
 		}
+		if (audioSendBlocked) {
+			setBodyError(t('audioOpenaiOnly'));
+			return;
+		}
 		let bodyObj: Record<string, unknown>;
 		try {
 			bodyObj = JSON.parse(bodyText) as Record<string, unknown>;
@@ -409,8 +477,25 @@ export default function PlaygroundPage() {
 		}
 
 		const proto = normalizeProtocol(selected.upstream_protocol);
-		const useImages = selectedIsImage && proto === 'openai';
+		const useAudio = selectedIsAudio && proto === 'openai';
+		const useImages = selectedIsImage && !selectedIsAudio && proto === 'openai';
 		const effectiveImageOp: ImageOperation | undefined = useImages ? imageOperation : undefined;
+
+		if (useAudio) {
+			const validated = validateAudioTranscriptionFile(audioFile);
+			if (!validated.ok) {
+				setBodyError(validated.error);
+				return;
+			}
+			try {
+				const dataUrl = await readFileAsDataUrl(audioFile!);
+				// file_name：供服务端拼 multipart 文件名（勿丢扩展名；中文名服务端会规范为 audio.<ext>）
+				bodyObj = { ...bodyObj, file: dataUrl, file_name: audioFile!.name };
+			} catch (e) {
+				setBodyError(e instanceof Error ? e.message : tCommon('requestFailed'));
+				return;
+			}
+		}
 
 		if (effectiveImageOp === 'edits') {
 			const validated = validateEditImageFiles(editFiles);
@@ -579,6 +664,39 @@ export default function PlaygroundPage() {
 						<div className="min-w-0 flex flex-col h-full">
 							<div className="bg-white rounded-lg shadow-md p-6 space-y-4 flex flex-col h-full min-h-0">
 							<h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-3">{t('routeSection')}</h2>
+							<div>
+								<label className={labelClass}>{t('kind')}</label>
+								<div
+									className="inline-flex w-full sm:w-auto rounded-md border border-gray-200 bg-gray-50 p-0.5"
+									role="group"
+									aria-label={t('kind')}
+								>
+									{(
+										[
+											{ id: 'llm' as const, label: t('kindLlm'), count: kindCounts.llm },
+											{ id: 'image' as const, label: t('kindImage'), count: kindCounts.image },
+											{ id: 'audio' as const, label: t('kindAudio'), count: kindCounts.audio },
+										] as const
+									).map((opt) => {
+										const active = filterKind === opt.id;
+										return (
+											<button
+												key={opt.id}
+												type="button"
+												onClick={() => onFilterKindChange(opt.id)}
+												className={
+													active
+														? 'flex-1 sm:flex-none rounded px-3 py-1.5 text-sm font-medium bg-white text-gray-900 shadow-sm'
+														: 'flex-1 sm:flex-none rounded px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900'
+												}
+											>
+												{opt.label}
+												<span className="ml-1.5 text-xs text-gray-400 tabular-nums">{opt.count}</span>
+											</button>
+										);
+									})}
+								</div>
+							</div>
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
 									<label className={labelClass}>{t('modelId')}</label>
@@ -657,7 +775,10 @@ export default function PlaygroundPage() {
 									))}
 								</select>
 								<p className="mt-2 text-xs text-gray-500">
-									{t('routeCount', { total: routes.length, filtered: filteredRoutes.length })}
+									{t('routeCount', {
+										total: routesInKind.length,
+										filtered: filteredRoutes.length,
+									})}
 								</p>
 							</div>
 							</div>
@@ -727,7 +848,10 @@ export default function PlaygroundPage() {
 										sending ||
 										!selected ||
 										imageSendBlocked ||
+										audioSendBlocked ||
+										(selectedIsAudio && !validateAudioTranscriptionFile(audioFile).ok) ||
 										(selectedIsImage &&
+											!selectedIsAudio &&
 											imageOperation === 'edits' &&
 											!validateEditImageFiles(editFiles).ok)
 									}
@@ -742,6 +866,11 @@ export default function PlaygroundPage() {
 									{t('imageOpenaiOnly')}
 								</div>
 							) : null}
+							{audioSendBlocked ? (
+								<div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-sm">
+									{t('audioOpenaiOnly')}
+								</div>
+							) : null}
 							<div className="space-y-1">
 								<RequestTargetUrl
 									label={t('requestTargetUrl')}
@@ -752,7 +881,39 @@ export default function PlaygroundPage() {
 									<p className="text-[11px] text-gray-400">{t('requestTargetUrlHint')}</p>
 								) : null}
 							</div>
-							{selectedIsImage && !imageSendBlocked ? (
+							{selectedIsAudio && !audioSendBlocked ? (
+								<div className="space-y-2">
+									<p className="text-xs text-gray-500">{t('audioTranscriptionsHint')}</p>
+									<div>
+										<label className={labelClass}>{t('audioFile')}</label>
+										<input
+											type="file"
+											accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
+											disabled={sending}
+											className={`${inputClass} file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700`}
+											onChange={(e) => {
+												const f = e.target.files?.[0] ?? null;
+												setAudioFile(f);
+											}}
+										/>
+										<p className="mt-1 text-[11px] text-gray-400">{t('audioFileHint')}</p>
+										{!audioFile ? (
+											<p className="mt-1 text-xs text-amber-700">{t('audioFileRequired')}</p>
+										) : (
+											<p className="mt-1 text-xs text-gray-600">
+												{audioFile.name} ({audioFile.size} bytes)
+											</p>
+										)}
+										{(() => {
+											if (!audioFile) return null;
+											const validated = validateAudioTranscriptionFile(audioFile);
+											if (validated.ok) return null;
+											return <p className="mt-1 text-xs text-red-600">{validated.error}</p>;
+										})()}
+									</div>
+								</div>
+							) : null}
+							{selectedIsImage && !selectedIsAudio && !imageSendBlocked ? (
 								<>
 									<fieldset className="flex flex-wrap items-center gap-4 text-sm border border-gray-200 rounded-md px-3 py-2">
 										<legend className="sr-only">{t('imageOperation')}</legend>
@@ -826,7 +987,8 @@ export default function PlaygroundPage() {
 								</>
 							) : null}
 							{normalizeProtocol(selected?.upstream_protocol ?? 'openai') === 'gemini' &&
-								!selectedIsImage && (
+								!selectedIsImage &&
+								!selectedIsAudio && (
 								<fieldset className="flex flex-wrap items-center gap-4 text-sm border border-gray-200 rounded-md px-3 py-2">
 									<legend className="sr-only">{t('geminiAction')}</legend>
 									<span className="text-gray-600 font-medium">{t('geminiAction')}</span>

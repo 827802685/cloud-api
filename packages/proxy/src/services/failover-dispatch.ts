@@ -29,12 +29,18 @@ import type { RequestTimingAttempt, RequestTimingCollector } from './request-tim
 /** Images 合成 abort（Gateway 超时 / 客户端取消）——禁止 failover 再打上游。 */
 export type ImageDispatchAbortReason = 'client_abort' | 'gateway_timeout';
 
-/** 协议 driver 可选透传（如 Images 已解析的 body / usage，避免 route 侧重复 parse）。 */
+/** 协议 driver 可选透传（如 Images / Audio 已解析的 body / usage，避免 route 侧重复 parse）。 */
 export type ProxyDispatchMeta = {
 	imageUsage?: import('@octafuse/core').ImageTokenUsage | null;
 	parsedBody?: unknown;
 	/** 仅 Images：上游 wait 被 abort 时由 driver 写入（见 openai-images-driver） */
 	imageAbortReason?: ImageDispatchAbortReason;
+	/** 仅 Audio transcriptions：计费时长（秒） */
+	audioDurationSeconds?: number | null;
+	/** 仅 Audio：duration 来源 */
+	audioDurationSource?: 'upstream' | 'estimated' | null;
+	/** 仅 Audio：上传文件字节数 */
+	audioFileBytes?: number;
 };
 
 /** Images abort 的 504 不得换 key / 换路由（避免客户端取消或超时后二次打 OpenAI）。 */

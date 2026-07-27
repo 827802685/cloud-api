@@ -73,6 +73,37 @@ describe('buildSimulatorRequest openai', () => {
 		assert.equal(result.url, 'https://gateway.example.com/v1/images/edits');
 		assert.match(result.multipartSummary ?? '', /none selected/);
 	});
+
+	it('builds multipart for audio/transcriptions', () => {
+		const file = new File([Uint8Array.from([1, 2, 3])], 'sample.mp3', { type: 'audio/mpeg' });
+		const result = buildSimulatorRequest({
+			baseUrl: 'https://gateway.example.com',
+			protocol: 'openai',
+			modelForRouting: 'whisper-1',
+			body: { language: 'en', response_format: 'json' },
+			apiKey: 'sk-test',
+			audioTranscriptions: true,
+			audioFile: file,
+		});
+		assert.equal(result.url, 'https://gateway.example.com/v1/audio/transcriptions');
+		assert.ok(result.formData);
+		assert.equal(result.headers['Content-Type'], undefined);
+		assert.match(result.multipartSummary ?? '', /sample\.mp3/);
+	});
+
+	it('previews audio/transcriptions URL even when no file yet', () => {
+		const result = buildSimulatorRequest({
+			baseUrl: 'https://gateway.example.com',
+			protocol: 'openai',
+			modelForRouting: 'whisper-1',
+			body: { language: 'zh' },
+			apiKey: 'sk-test',
+			audioTranscriptions: true,
+			audioFile: null,
+		});
+		assert.equal(result.url, 'https://gateway.example.com/v1/audio/transcriptions');
+		assert.match(result.multipartSummary ?? '', /none selected/);
+	});
 });
 
 describe('buildSimulatorRequest gemini', () => {

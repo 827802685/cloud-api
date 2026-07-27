@@ -37,6 +37,13 @@ describe('resolveUpstreamEndpoint', () => {
 		assert.equal(url, 'https://api.openai.com/v1/chat/completions');
 	});
 
+	it('derives audio.transcriptions from openai base', () => {
+		const url = resolveUpstreamEndpoint('openai', 'audio.transcriptions', {
+			openai: { base: 'https://api.openai.com/v1' },
+		});
+		assert.equal(url, 'https://api.openai.com/v1/audio/transcriptions');
+	});
+
 	it('uses capability template without appending suffix', () => {
 		const url = resolveUpstreamEndpoint('openai', 'chat', {
 			openai: {

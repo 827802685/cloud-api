@@ -353,7 +353,7 @@ export default function GatewayRequestLogsPage() {
     return `×${ratio.toLocaleString('en-US', { maximumFractionDigits: 3 })}`;
   };
 
-  /** Tokens：input/output；第二行 cache（无命中时留空以对齐 Cost 三行）；按张计费显示张数 */
+  /** Tokens：input/output；第二行 cache（无命中时留空以对齐 Cost 三行）；按张/按秒显示用量 */
   const renderTokensCell = (log: GatewayRequestLog) => {
     if (log.billing_kind === 'image_per_image') {
       const inN = log.input_image_count ?? 0;
@@ -365,6 +365,21 @@ export default function GatewayRequestLogsPage() {
       return (
         <div className="leading-tight space-y-0.5">
           <div className="text-gray-900 tabular-nums" title={t('titles.imagePerImageUsage')}>
+            {line}
+          </div>
+          <div className="text-gray-400 tabular-nums min-h-[1em]">{'\u00A0'}</div>
+        </div>
+      );
+    }
+    if (log.billing_kind === 'audio_per_second') {
+      const secs = log.audio_duration_seconds;
+      const line =
+        secs != null && Number.isFinite(secs)
+          ? `${Number(secs).toLocaleString('en-US', { maximumFractionDigits: 3 })} s`
+          : '—';
+      return (
+        <div className="leading-tight space-y-0.5">
+          <div className="text-gray-900 tabular-nums" title={t('titles.audioPerSecondUsage')}>
             {line}
           </div>
           <div className="text-gray-400 tabular-nums min-h-[1em]">{'\u00A0'}</div>

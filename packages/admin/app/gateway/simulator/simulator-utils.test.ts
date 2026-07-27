@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE } from '../../../lib/audio-transcriptions';
 import {
 	IMAGE_EDITS_BODY_TEMPLATE,
 	IMAGE_GENERATIONS_BODY_TEMPLATE,
@@ -111,5 +112,13 @@ describe('simulator-utils', () => {
 		assert.equal(bodyTemplateForSelection('openai', true), IMAGE_GENERATIONS_BODY_TEMPLATE);
 		assert.equal(bodyTemplateForSelection('openai', true, 'edits'), IMAGE_EDITS_BODY_TEMPLATE);
 		assert.notEqual(bodyTemplateForSelection('openai', false), IMAGE_GENERATIONS_BODY_TEMPLATE);
+	});
+
+	it('bodyTemplateForSelection uses audio transcriptions template', () => {
+		assert.equal(
+			bodyTemplateForSelection('openai', false, 'generations', true),
+			AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE
+		);
+		assert.equal(isBodyDirty(AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE, 'openai', false, 'generations', true), false);
 	});
 });

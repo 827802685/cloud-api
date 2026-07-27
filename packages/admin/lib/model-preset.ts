@@ -8,6 +8,7 @@
  * 命名约定：
  * - `<vendor>.json` — LLM（`modalities.output` 以 `text` 为主，含多模态「看图」LLM）
  * - `<vendor>-image.json` — 纯文生图（`modalities.output` 含 `image`）
+ * - `<vendor>-audio.json` — 语音转写 ASR（`pricing.audio_billing_mode: per_second`）
  *
  * 各预设内 **`pricing.usd`** 与 D1 导出 `data/remote/.../data-remote-table-models-*.sql` 中 `pricing_profile` 一致（美元口径）；
  * **`pricing.cny`**：国内厂商以中国区官方/Postgres 价为准；海外厂商（openai / anthropic / google / xai 等）按 **USD × 7** 换算占位。
@@ -34,6 +35,7 @@ import mistralPresets from './model-presets/mistral.json';
 import moonshotPresets from './model-presets/moonshot.json';
 import openaiPresets from './model-presets/openai.json';
 import openaiImagePresets from './model-presets/openai-image.json';
+import openaiAudioPresets from './model-presets/openai-audio.json';
 import perplexityPresets from './model-presets/perplexity.json';
 import stabilityPresets from './model-presets/stability.json';
 import stepfunPresets from './model-presets/stepfun.json';
@@ -93,6 +95,7 @@ const STATIC_MODEL_PRESETS_BY_VENDOR = [
 	moonshotPresets,
 	openaiPresets,
 	openaiImagePresets,
+	openaiAudioPresets,
 	perplexityPresets,
 	stabilityPresets,
 	stepfunPresets,

@@ -4,6 +4,7 @@ import { DocumentDuplicateIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ReadOnlyImagePricing } from '@/components/read-only-image-pricing';
 import { ReadOnlyPricingTiersTable } from '@/components/read-only-pricing-tiers-table';
+import { isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
 import type { CatalogImagePricingDisplay, CatalogPricingTierDisplayRow } from '@/lib/pricing-ui';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
@@ -31,7 +32,13 @@ type Props = {
 	selectedProvider: GatewayProvider | undefined;
 	catalogStandardTierRows: CatalogPricingTierDisplayRow[];
 	catalogImagePricingDisplay: CatalogImagePricingDisplay | null;
+	catalogAudioPricingDisplay: {
+		pricePerSecond: string;
+		minimumSeconds: string;
+		unit: string;
+	} | null;
 	selectedModelIsImage: boolean;
+	selectedModelIsAudio: boolean;
 	allowedProtocolsForProvider: UpstreamProtocol[];
 	businessTimezone: string;
 	onClose: () => void;
@@ -56,7 +63,9 @@ export function RouteModal(props: Props) {
 		selectedProvider,
 		catalogStandardTierRows,
 		catalogImagePricingDisplay,
+		catalogAudioPricingDisplay,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		allowedProtocolsForProvider,
 		businessTimezone,
 		onClose,
@@ -68,6 +77,7 @@ export function RouteModal(props: Props) {
 
 	const t = useTranslations('routes.modal');
 	const tCommon = useTranslations('common');
+	const lockOpenaiProtocol = selectedModelIsImage || selectedModelIsAudio;
 
 	if (!open) return null;
 
@@ -133,7 +143,8 @@ export function RouteModal(props: Props) {
 											onFormChange({
 												...formData,
 												model_id: nextModelId,
-												...(nextModel && isImageRouteModel(nextModel)
+												...(nextModel &&
+												(isImageRouteModel(nextModel) || isAudioRouteModel(nextModel))
 													? { upstream_protocol: 'openai' as const }
 													: {}),
 											});
@@ -195,13 +206,15 @@ export function RouteModal(props: Props) {
 												upstream_protocol: e.target.value as UpstreamProtocol,
 											})
 										}
-										disabled={selectedModelIsImage}
+										disabled={lockOpenaiProtocol}
 										title={
-											selectedModelIsImage
-												? t('protocolHintImageOpenaiOnly')
-												: selectedProvider
-													? t('protocolHintConfigured')
-													: t('protocolHintSelectProvider')
+											selectedModelIsAudio
+												? t('protocolHintAudioOpenaiOnly')
+												: selectedModelIsImage
+													? t('protocolHintImageOpenaiOnly')
+													: selectedProvider
+														? t('protocolHintConfigured')
+														: t('protocolHintSelectProvider')
 										}
 										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-600"
 									>
@@ -211,8 +224,14 @@ export function RouteModal(props: Props) {
 											</option>
 										))}
 									</select>
-									{selectedModelIsImage ? (
-										<p className="mt-1 text-[11px] text-amber-700">{t('protocolHintImageOpenaiOnly')}</p>
+									{selectedModelIsAudio ? (
+										<p className="mt-1 text-[11px] text-amber-700">
+											{t('protocolHintAudioOpenaiOnly')}
+										</p>
+									) : selectedModelIsImage ? (
+										<p className="mt-1 text-[11px] text-amber-700">
+											{t('protocolHintImageOpenaiOnly')}
+										</p>
 									) : null}
 								</div>
 								<div>
@@ -274,12 +293,44 @@ export function RouteModal(props: Props) {
 								variant="neutral"
 								title={t('standardCatalog')}
 								subtitle={
-									selectedModelIsImage
-										? t('standardCatalogHintImage')
-										: t('standardCatalogHint')
+									selectedModelIsAudio
+										? t('standardCatalogHintAudio')
+										: selectedModelIsImage
+											? t('standardCatalogHintImage')
+											: t('standardCatalogHint')
 								}
 							>
-								{selectedModelIsImage ? (
+								{selectedModelIsAudio ? (
+									catalogAudioPricingDisplay ? (
+										<ul className="divide-y divide-gray-100 rounded-md border border-gray-200 text-sm tabular-nums">
+											<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+												<span className="text-xs text-gray-500">
+													{t('audioPricePerSecond')}
+												</span>
+												<span className="font-medium text-gray-900">
+													{catalogAudioPricingDisplay.pricePerSecond}
+													<span className="ml-1 text-[10px] font-normal text-gray-400">
+														{catalogAudioPricingDisplay.unit}
+													</span>
+												</span>
+											</li>
+											<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+												<span className="text-xs text-gray-500">
+													{t('audioMinimumSeconds')}
+												</span>
+												<span className="font-medium text-gray-900">
+													{catalogAudioPricingDisplay.minimumSeconds}
+												</span>
+											</li>
+										</ul>
+									) : (
+										<p className="text-sm text-gray-500">
+											{formData.model_id
+												? t('noCatalogAudioPricing')
+												: t('selectModelForTiers')}
+										</p>
+									)
+								) : selectedModelIsImage ? (
 									<ReadOnlyImagePricing
 										compact
 										tokenRatesLayout="grid"

@@ -22,6 +22,7 @@ Octafuse Gateway 是可自托管的 **AI 能力网关与运营控制面**：统�
 | 统一入口 | 客户端只需要配置 Gateway Base URL 和用户 Key。 |
 | 多协议兼容 | 支持 OpenAI Chat Completions、Anthropic Messages、Gemini `v1beta` 风格入口。 |
 | 图片生成 / 编辑（Images） | OpenAI 兼容 `/v1/images/*`；目录价支持 **token** 分项与 **per_image** 按张；默认 `GET /v1/models` 不含纯 image 模型，可用 `kind=image` / `kind=all` 或直接打 Images API。 |
+| 语音转写（Audio） | OpenAI 兼容 `/v1/audio/transcriptions`；目录价 **`audio_billing_mode: per_second`**；默认 `GET /v1/models` 不含 ASR，可用 `kind=audio` / `kind=all`。 |
 | Agent Tools | 面向 Agent 的可扩展产品 API（`/v1/tools/*`）。当前提供联网类工具（`web-search` / `web-fetch` / `web-deep-search`），后续可继续扩展；Admin → **Tools** 配置第三方引擎 Key；**每种工具仅一个 Active 引擎**；**按次计费，上游失败不扣费**。调用记入请求日志（`provider_id=octafuse-tools`）。 |
 | 公开 Catalog | `GET /catalog/models` 无需用户 Key，聚合 active 路由的模型与协议能力，适合门户 discovery；与需鉴权的 `GET /v1/models`（默认 LLM、含 `default,free` route group）分工不同。 |
 | 路由与故障转移 | 同一模型可配置多条上游路由，按 **route priority**、可用性和 Provider **key pool**（key priority / headroom / weight）调度。**Route 层没有 weight**；weight 只作用于 Key 池内余量接近时的打散。可按模型开启 **粘性（sticky）**，让同一用户尽量复用同一把上游 Key，提高 prompt cache 命中。 |

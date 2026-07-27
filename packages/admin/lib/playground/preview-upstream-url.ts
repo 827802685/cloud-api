@@ -41,6 +41,8 @@ export function previewPlaygroundUpstreamUrl(input: {
 	isImageModel: boolean;
 	/** When image model: generations (default) or edits. */
 	imageOperation?: 'generations' | 'edits';
+	/** Audio transcription (ASR) catalog model. */
+	isAudioModel?: boolean;
 	geminiAction?: GeminiContentAction;
 }): string | null {
 	const provider = input.provider;
@@ -58,11 +60,13 @@ export function previewPlaygroundUpstreamUrl(input: {
 	try {
 		switch (protocol) {
 			case 'openai': {
-				const capability = input.isImageModel
-					? input.imageOperation === 'edits'
-						? 'images.edits'
-						: 'images.generations'
-					: 'chat';
+				const capability = input.isAudioModel
+					? 'audio.transcriptions'
+					: input.isImageModel
+						? input.imageOperation === 'edits'
+							? 'images.edits'
+							: 'images.generations'
+						: 'chat';
 				return resolveUpstreamEndpoint(protocol, capability, providerEndpoints, {
 					providerId: provider.id,
 				});

@@ -43,6 +43,7 @@ function ProtocolFields(props: {
 		chat: string;
 		imagesGenerations: string;
 		imagesEdits: string;
+		audioTranscriptions: string;
 		messages: string;
 		generateContent: string;
 		streamGenerateContent: string;
@@ -143,6 +144,20 @@ function ProtocolFields(props: {
 										autoComplete="off"
 									/>
 								</div>
+								<div>
+									<label className="mb-1 block text-xs text-gray-600">
+										{capLabels.audioTranscriptions}
+									</label>
+									<input
+										type="url"
+										value={form.audio_transcriptions}
+										onChange={(e) =>
+											onChange({ ...form, audio_transcriptions: e.target.value })
+										}
+										className={inputClass}
+										autoComplete="off"
+									/>
+								</div>
 							</>
 						) : null}
 						{protocol === 'anthropic' ? (
@@ -224,6 +239,7 @@ export function ProviderModal(props: ProviderModalProps) {
 		chat: t('capChat'),
 		imagesGenerations: t('capImagesGenerations'),
 		imagesEdits: t('capImagesEdits'),
+		audioTranscriptions: t('capAudioTranscriptions'),
 		messages: t('capMessages'),
 		generateContent: t('capGenerateContent'),
 		streamGenerateContent: t('capStreamGenerateContent'),

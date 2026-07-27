@@ -8,6 +8,7 @@ import {
 	labelClass,
 	panelClass,
 } from '../simulator-utils';
+import type { ModelKindFilter } from '../../models/types';
 import type { AdminModelRow, RouteListRow } from '../types';
 
 function ReadonlyField({ label, children }: { label: string; children: ReactNode }) {
@@ -20,10 +21,13 @@ function ReadonlyField({ label, children }: { label: string; children: ReactNode
 }
 
 type Props = {
+	filterKind: ModelKindFilter;
+	onFilterKindChange: (kind: ModelKindFilter) => void;
+	kindCounts: { llm: number; image: number; audio: number };
 	filterModel: string;
 	onFilterModelChange: (v: string) => void;
 	filteredModels: AdminModelRow[];
-	modelsTotal: number;
+	modelsInKindTotal: number;
 	modelIdsWithActiveRouter: Set<string>;
 	selectedModelId: string;
 	onSelectModel: (id: string) => void;
@@ -32,15 +36,19 @@ type Props = {
 	routeGroupsForModel: string[];
 	selectedModel: AdminModelRow | null;
 	selectedModelIsImage?: boolean;
+	selectedModelIsAudio?: boolean;
 	modelRoutingString: string;
 	matchingRoutes: RouteListRow[];
 };
 
 export function SimulatorRoutingPanel({
+	filterKind,
+	onFilterKindChange,
+	kindCounts,
 	filterModel,
 	onFilterModelChange,
 	filteredModels,
-	modelsTotal,
+	modelsInKindTotal,
 	modelIdsWithActiveRouter,
 	selectedModelId,
 	onSelectModel,
@@ -49,6 +57,7 @@ export function SimulatorRoutingPanel({
 	routeGroupsForModel,
 	selectedModel,
 	selectedModelIsImage = false,
+	selectedModelIsAudio = false,
 	modelRoutingString,
 	matchingRoutes,
 }: Props) {
@@ -58,6 +67,39 @@ export function SimulatorRoutingPanel({
 	return (
 		<section className={panelClass}>
 			<h2 className="text-sm font-semibold text-gray-900">{t('routingTarget')}</h2>
+			<div>
+				<label className={labelClass}>{t('kind')}</label>
+				<div
+					className="inline-flex w-full rounded-md border border-gray-200 bg-gray-50 p-0.5"
+					role="group"
+					aria-label={t('kind')}
+				>
+					{(
+						[
+							{ id: 'llm' as const, label: t('kindLlm'), count: kindCounts.llm },
+							{ id: 'image' as const, label: t('kindImage'), count: kindCounts.image },
+							{ id: 'audio' as const, label: t('kindAudio'), count: kindCounts.audio },
+						] as const
+					).map((opt) => {
+						const active = filterKind === opt.id;
+						return (
+							<button
+								key={opt.id}
+								type="button"
+								onClick={() => onFilterKindChange(opt.id)}
+								className={
+									active
+										? 'flex-1 rounded px-2 py-1.5 text-xs font-medium bg-white text-gray-900 shadow-sm'
+										: 'flex-1 rounded px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900'
+								}
+							>
+								{opt.label}
+								<span className="ml-1 text-[10px] text-gray-400 tabular-nums">{opt.count}</span>
+							</button>
+						);
+					})}
+				</div>
+			</div>
 			<div>
 				<label className={labelClass}>{t('filter')}</label>
 				<input
@@ -83,7 +125,7 @@ export function SimulatorRoutingPanel({
 					))}
 				</select>
 				<p className="mt-1.5 text-xs text-gray-500">
-					{t('modelCount', { total: modelsTotal, filtered: filteredModels.length })}
+					{t('modelCount', { total: modelsInKindTotal, filtered: filteredModels.length })}
 				</p>
 			</div>
 			<div>
@@ -106,7 +148,9 @@ export function SimulatorRoutingPanel({
 			{selectedModel ? (
 				<div className="grid grid-cols-1 gap-2 pt-2 border-t border-gray-100">
 					<ReadonlyField label={t('routingModelString')}>{modelRoutingString || '—'}</ReadonlyField>
-					{selectedModelIsImage ? (
+					{selectedModelIsAudio ? (
+						<ReadonlyField label={t('modelKind')}>{tRoutes('audioModelHint')}</ReadonlyField>
+					) : selectedModelIsImage ? (
 						<ReadonlyField label={t('modelKind')}>{tRoutes('imageModelHint')}</ReadonlyField>
 					) : (
 						<ReadonlyField label="max_tokens">{String(selectedModel.max_tokens ?? '—')}</ReadonlyField>

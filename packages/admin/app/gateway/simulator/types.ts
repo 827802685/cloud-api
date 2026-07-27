@@ -38,7 +38,9 @@ export type SendBlockReason =
 	| 'proxyBaseUrl'
 	| 'model'
 	| 'imageProtocol'
+	| 'audioProtocol'
 	| 'editImages'
+	| 'audioFile'
 	| 'keyLoading'
 	| 'key'
 	| null;

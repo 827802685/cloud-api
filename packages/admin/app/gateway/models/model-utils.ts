@@ -1,7 +1,12 @@
 import { catalogInputPriceSortKey } from '@/lib/pricing-ui';
 import { formatCompactTokens } from '@/lib/format-compact-tokens';
 import { normalizeModelVendorInput } from '@/lib/model-vendor';
-import { parsePricingProfile, profileHasImagePerImagePricing, type PricingTierPrices } from '@octafuse/core/db/pricing-profile';
+import {
+	parsePricingProfile,
+	profileHasAudioPerSecondPricing,
+	profileHasImagePerImagePricing,
+	type PricingTierPrices,
+} from '@octafuse/core/db/pricing-profile';
 import type { MetadataSummary, ModelListItem, PresetCatalogRow } from './types';
 import { ALL_VENDORS_KEY } from './types';
 
@@ -109,7 +114,7 @@ export type PricingMetricColumn = {
 	/** 悬停完整说明（表头缩写用） */
 	headerTitle?: string;
 	/** 单价单位：token 按百万；图片按张 */
-	unitKind?: 'per_m' | 'per_image';
+	unitKind?: 'per_m' | 'per_image' | 'per_second';
 	lines: PricingMetricLine[];
 };
 
@@ -147,6 +152,16 @@ export function buildPricingMetricColumns(pricingProfile: string | null | undefi
 				price: pickPrice(tier),
 			};
 		});
+
+	if (profileHasAudioPerSecondPricing(profile) && profile.audio) {
+		columns.push({
+			title: 'Audio',
+			headerTitle: 'Audio transcription (per second)',
+			unitKind: 'per_second',
+			lines: [{ condition: 'All', price: profile.audio.price_per_second }],
+		});
+		return columns;
+	}
 
 	if (profileHasImagePerImagePricing(profile) && profile.image) {
 		columns.push({

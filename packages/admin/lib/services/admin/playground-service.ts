@@ -2,7 +2,10 @@
  * Playground：按单条 `model_routes` 直连上游，不经过 Proxy、不鉴 API Key、不写 `api_key_request_logs`、不计费、无 failover。
  */
 import type { GatewayRepositories, ProviderEndpointsMap } from '@octafuse/core';
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+} from '@octafuse/core/db/model-modalities';
 import {
 	type GeminiContentAction,
 	prepareGeminiUpstreamFetch,
@@ -13,6 +16,7 @@ import {
 } from '@octafuse/core/provider-endpoints';
 import type { UpstreamProtocol } from '@octafuse/core/upstream-protocol';
 import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
+import { AUDIO_MAX_BYTES_PER_FILE } from '@/lib/audio-transcriptions';
 import {
 	IMAGE_MAX_BYTES_PER_FILE,
 	IMAGE_MAX_REFERENCE_COUNT,
@@ -34,6 +38,8 @@ export type PlaygroundResolvedRoute = {
 	providerKeyLabel: string;
 	/** Catalog model is image-generation (`output_modalities` includes image). */
 	isImageModel: boolean;
+	/** Catalog model is audio transcription (`audio_billing_mode: per_second`). */
+	isAudioModel: boolean;
 };
 
 type JsonObject = Record<string, unknown>;
@@ -130,6 +136,11 @@ export async function resolvePlaygroundRoute(
 				pricing_profile: model.pricing_profile as string | null | undefined,
 			})
 		: false;
+	const isAudioModel = model
+		? isAudioTranscriptionModel({
+				pricing_profile: model.pricing_profile as string | null | undefined,
+			})
+		: false;
 
 	return {
 		upstreamProtocol: protocol,
@@ -141,6 +152,7 @@ export async function resolvePlaygroundRoute(
 		providerKeyId: resolvedKey.id,
 		providerKeyLabel: resolvedKey.label,
 		isImageModel,
+		isAudioModel,
 	};
 }
 
@@ -290,6 +302,89 @@ function appendOptionalFormString(fd: FormData, key: string, value: unknown): vo
 	}
 }
 
+type DecodedAudioFile = {
+	filename: string;
+	mimeType: string;
+	bytes: Uint8Array;
+};
+
+/** MIME → 扩展名；勿默认 `.webm`（mp3 被标成 webm 时上游常报 invalid_audio）。 */
+function extensionFromAudioMime(mimeType: string): string {
+	const m = mimeType.trim().toLowerCase();
+	if (m.includes('mpeg') || m === 'audio/mp3') return 'mp3';
+	if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
+	if (m.includes('wav') || m.includes('wave') || m.includes('x-wav')) return 'wav';
+	if (m.includes('ogg')) return 'ogg';
+	if (m.includes('flac')) return 'flac';
+	if (m.includes('webm')) return 'webm';
+	return 'bin';
+}
+
+/**
+ * 上游 multipart Content-Disposition 对非 ASCII 文件名不友好时易拒识。
+ * 有安全 ASCII 名则保留；否则退回 `audio.<ext>`（扩展名与 MIME 对齐）。
+ */
+function resolveAudioUploadFilename(preferredName: string, mimeType: string): string {
+	const ext = extensionFromAudioMime(mimeType);
+	const raw = preferredName.trim();
+	if (raw && /^[\x20-\x7E]+$/.test(raw) && /\.[A-Za-z0-9]+$/.test(raw)) {
+		return raw;
+	}
+	if (raw && /^[\x20-\x7E]+$/.test(raw) && !raw.includes('.')) {
+		return `${raw}.${ext}`;
+	}
+	return `audio.${ext}`;
+}
+
+function decodeDataUrlAudio(
+	raw: string,
+	fallbackName: string
+): DecodedAudioFile | { error: string } {
+	const trimmed = raw.trim();
+	const m = /^data:([^;]+);base64,(.+)$/i.exec(trimmed);
+	if (!m) {
+		return { error: `file must be a data URL (got ${fallbackName})` };
+	}
+	const mimeType = m[1].trim() || 'application/octet-stream';
+	const b64 = m[2].replace(/\s/g, '');
+	let binary: string;
+	try {
+		binary = atob(b64);
+	} catch {
+		return { error: `invalid base64 in ${fallbackName}` };
+	}
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	if (bytes.byteLength > AUDIO_MAX_BYTES_PER_FILE) {
+		return { error: `audio file must be at most ${AUDIO_MAX_BYTES_PER_FILE} bytes` };
+	}
+	return {
+		filename: resolveAudioUploadFilename(fallbackName, mimeType),
+		mimeType,
+		bytes,
+	};
+}
+
+function collectAudioFileFromBody(
+	body: Record<string, unknown>
+): { ok: true; file: DecodedAudioFile } | { ok: false; error: string } {
+	const field = body.file ?? body.audio;
+	if (typeof field !== 'string' || field.trim() === '') {
+		return { ok: false, error: 'Audio transcriptions require body.file as a data URL string' };
+	}
+	const preferredName =
+		typeof body.file_name === 'string' && body.file_name.trim()
+			? body.file_name.trim()
+			: typeof body.filename === 'string' && body.filename.trim()
+				? body.filename.trim()
+				: 'audio';
+	const decoded = decodeDataUrlAudio(field, preferredName);
+	if ('error' in decoded) return { ok: false, error: decoded.error };
+	return { ok: true, file: decoded };
+}
+
 export type PlaygroundInvokeResult = {
 	response: Response;
 	/** 供响应头展示（已脱敏 query 中的 key） */
@@ -326,15 +421,67 @@ export async function invokePlaygroundUpstream(
 			'Image-generation models require upstream_protocol=openai (Playground Images only calls /images/generations or /images/edits).'
 		);
 	}
+	if (route.isAudioModel && route.upstreamProtocol !== 'openai') {
+		throw badRequest(
+			'Audio transcription models require upstream_protocol=openai (Playground Audio only calls /audio/transcriptions).'
+		);
+	}
 
-	const imageOperation: ImageOperation | null = route.isImageModel
-		? input.imageOperation === 'edits'
-			? 'edits'
-			: 'generations'
-		: null;
+	const imageOperation: ImageOperation | null =
+		route.isImageModel && !route.isAudioModel
+			? input.imageOperation === 'edits'
+				? 'edits'
+				: 'generations'
+			: null;
 
 	switch (route.upstreamProtocol) {
 		case 'openai': {
+			if (route.isAudioModel) {
+				const collected = collectAudioFileFromBody(merged);
+				if (!collected.ok) throw badRequest(collected.error);
+				try {
+					url = resolveUpstreamEndpoint('openai', 'audio.transcriptions', route.providerEndpoints, {
+						providerId: route.providerId,
+					});
+				} catch (e) {
+					throw badRequest(
+						e instanceof Error ? e.message : 'Failed to resolve OpenAI audio transcriptions URL'
+					);
+				}
+				const fd = new FormData();
+				fd.append('model', route.providerModelName);
+				appendOptionalFormString(fd, 'language', merged.language);
+				appendOptionalFormString(fd, 'response_format', merged.response_format);
+				appendOptionalFormString(fd, 'prompt', merged.prompt);
+				appendOptionalFormString(fd, 'temperature', merged.temperature);
+				const copy = collected.file.bytes.buffer.slice(
+					collected.file.bytes.byteOffset,
+					collected.file.bytes.byteOffset + collected.file.bytes.byteLength
+				) as ArrayBuffer;
+				const file = new File([copy], collected.file.filename, {
+					type: collected.file.mimeType,
+				});
+				fd.append('file', file, collected.file.filename);
+				headers = {
+					Authorization: `Bearer ${route.providerApiKey}`,
+				};
+				fetchBody = fd;
+				upstreamWireBodyJson = JSON.stringify(
+					{
+						__playground_multipart: true,
+						operation: 'audio.transcriptions',
+						model: route.providerModelName,
+						language: typeof merged.language === 'string' ? merged.language : undefined,
+						response_format:
+							typeof merged.response_format === 'string' ? merged.response_format : undefined,
+						file: `${collected.file.filename} (${collected.file.bytes.byteLength} bytes, ${collected.file.mimeType})`,
+					},
+					null,
+					2
+				);
+				break;
+			}
+
 			if (imageOperation === 'edits') {
 				const collected = collectEditImagesFromBody(merged);
 				if (!collected.ok) throw badRequest(collected.error);

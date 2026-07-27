@@ -231,6 +231,7 @@ export async function insertRequestUsageAndChargeTxPg(
 			billingKind: params.requestLog.billingKind ?? null,
 			inputImageCount: params.requestLog.inputImageCount ?? 0,
 			outputImageCount: params.requestLog.outputImageCount ?? 0,
+			audioDurationSeconds: params.requestLog.audioDurationSeconds ?? null,
 			createdAt: now,
 		});
 		if (!params.shouldChargeBudget) {

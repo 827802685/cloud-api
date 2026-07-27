@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { mysqlTable, text, timestamp, int, decimal, varchar, uniqueIndex, check } from 'drizzle-orm/mysql-core';
+import { mysqlTable, text, timestamp, int, decimal, double, varchar, uniqueIndex, check } from 'drizzle-orm/mysql-core';
 
 /**
  * PK / UNIQUE / FK 列宽与 migrations-mysql/0001_baseline.sql 对齐。
@@ -185,6 +185,7 @@ export const apiKeyRequestLogsTable = mysqlTable('api_key_request_logs', {
 	billingKind: varchar('billing_kind', { length: 32 }),
 	inputImageCount: int('input_image_count').notNull().default(0),
 	outputImageCount: int('output_image_count').notNull().default(0),
+	audioDurationSeconds: double('audio_duration_seconds'),
 	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
 });
 

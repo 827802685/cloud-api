@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { flushSync } from 'react-dom';
 import { readApiJson } from '@/lib/api-json';
+import { isAudioRouteModel, validateAudioTranscriptionFile } from '@/lib/audio-transcriptions';
 import {
 	imageRequestMetaFromBody,
 	isImageRouteModel,
@@ -26,6 +27,10 @@ import {
 import type { AdminKeyListItem, AdminModelRow } from '@/lib/services/admin/types';
 import type { ApiResponse } from '@/lib/types';
 import {
+	DEFAULT_KIND_FILTER,
+	type ModelKindFilter,
+} from '../models/types';
+import {
 	BODY_TEMPLATES,
 	bodyTemplateForSelection,
 	KEYS_PAGE_SIZE,
@@ -42,6 +47,13 @@ import {
 } from './simulator-utils';
 import type { ResponseMeta, ResponseTab, RouteListRow, SendBlockReason, WirePreview } from './types';
 
+function resolveModelKind(m: AdminModelRow | null | undefined): ModelKindFilter {
+	if (!m) return 'llm';
+	if (isAudioRouteModel(m)) return 'audio';
+	if (isImageRouteModel(m)) return 'image';
+	return 'llm';
+}
+
 export function useSimulatorPageState() {
 	const t = useTranslations('simulator');
 	const tCommon = useTranslations('common');
@@ -51,12 +63,15 @@ export function useSimulatorPageState() {
 	const [geminiAction, setGeminiAction] = useState<SimulatorGeminiAction>('streamGenerateContent');
 	const [imageOperation, setImageOperationState] = useState<ImageOperation>('generations');
 	const [editFiles, setEditFiles] = useState<File[]>([]);
+	const [audioFile, setAudioFile] = useState<File | null>(null);
 
 	const [models, setModels] = useState<AdminModelRow[]>([]);
 	const [routes, setRoutes] = useState<RouteListRow[]>([]);
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [catalogError, setCatalogError] = useState<string | null>(null);
 
+	/** 与 Models/Routes 一致：无 All，默认 LLM，按 Kind 拆分模型列表 */
+	const [filterKind, setFilterKind] = useState<ModelKindFilter>(DEFAULT_KIND_FILTER);
 	const [filterModel, setFilterModel] = useState('');
 	const [selectedModelId, setSelectedModelId] = useState('');
 	const [routeGroup, setRouteGroup] = useState('');
@@ -91,16 +106,40 @@ export function useSimulatorPageState() {
 	const streamEndRef = useRef<HTMLSpanElement>(null);
 	const mergedStreamEndRef = useRef<HTMLSpanElement>(null);
 
+	const kindCounts = useMemo(() => {
+		const counts = { llm: 0, image: 0, audio: 0 };
+		for (const m of models) {
+			counts[resolveModelKind(m)] += 1;
+		}
+		return counts;
+	}, [models]);
+
+	const modelsInKind = useMemo(
+		() => models.filter((m) => resolveModelKind(m) === filterKind),
+		[models, filterKind]
+	);
+
 	const filteredModels = useMemo(() => {
 		const q = filterModel.trim().toLowerCase();
-		if (!q) return models;
-		return models.filter(
+		if (!q) return modelsInKind;
+		return modelsInKind.filter(
 			(m) =>
 				m.id.toLowerCase().includes(q) ||
 				(m.display_name ?? '').toLowerCase().includes(q) ||
 				m.vendor.toLowerCase().includes(q)
 		);
-	}, [models, filterModel]);
+	}, [modelsInKind, filterModel]);
+
+	const setFilterKindAndClear = useCallback(
+		(next: ModelKindFilter) => {
+			if (next === filterKind) return;
+			setFilterKind(next);
+			setFilterModel('');
+			setSelectedModelId('');
+			setRouteGroup('');
+		},
+		[filterKind]
+	);
 
 	const modelIdsWithActiveRouter = useMemo(() => {
 		const s = new Set<string>();
@@ -133,6 +172,11 @@ export function useSimulatorPageState() {
 		[selectedModel]
 	);
 
+	const selectedModelIsAudio = useMemo(
+		() => (selectedModel ? isAudioRouteModel(selectedModel) : false),
+		[selectedModel]
+	);
+
 	const modelRoutingString = useMemo(() => {
 		if (!selectedModelId) return '';
 		return buildModelRoutingString(selectedModelId, routeGroup);
@@ -147,8 +191,20 @@ export function useSimulatorPageState() {
 		const parsed = tryParseProxyBaseUrl(proxyBaseUrl);
 		if (!parsed.ok) return 'proxyBaseUrl';
 		if (!selectedModelId) return 'model';
-		if (selectedModelIsImage && protocol !== 'openai') return 'imageProtocol';
-		if (selectedModelIsImage && protocol === 'openai' && imageOperation === 'edits') {
+		if (selectedModelIsAudio && protocol !== 'openai') return 'audioProtocol';
+		if (selectedModelIsImage && !selectedModelIsAudio && protocol !== 'openai') {
+			return 'imageProtocol';
+		}
+		if (selectedModelIsAudio && protocol === 'openai') {
+			const validated = validateAudioTranscriptionFile(audioFile);
+			if (!validated.ok) return 'audioFile';
+		}
+		if (
+			selectedModelIsImage &&
+			!selectedModelIsAudio &&
+			protocol === 'openai' &&
+			imageOperation === 'edits'
+		) {
 			const validated = validateEditImageFiles(editFiles);
 			if (!validated.ok) return 'editImages';
 		}
@@ -159,9 +215,11 @@ export function useSimulatorPageState() {
 		proxyBaseUrl,
 		selectedModelId,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		protocol,
 		imageOperation,
 		editFiles,
+		audioFile,
 		revealLoading,
 		selectedKeyId,
 		revealedSk,
@@ -175,6 +233,13 @@ export function useSimulatorPageState() {
 				return t('readyNeedModel');
 			case 'imageProtocol':
 				return t('readyNeedOpenaiForImage');
+			case 'audioProtocol':
+				return t('protocolLockedAudio');
+			case 'audioFile': {
+				if (!audioFile) return null;
+				const validated = validateAudioTranscriptionFile(audioFile);
+				return validated.ok ? null : validated.error;
+			}
 			case 'editImages': {
 				// Empty-file hint is shown under the reference-images control; only surface size/count errors here.
 				if (editFiles.length === 0) return null;
@@ -188,7 +253,7 @@ export function useSimulatorPageState() {
 			default:
 				return null;
 		}
-	}, [sendBlockReason, editFiles, t]);
+	}, [sendBlockReason, editFiles, audioFile, t]);
 
 	const liveWirePreview = useMemo((): WirePreview | null => {
 		const parsed = tryParseProxyBaseUrl(proxyBaseUrl);
@@ -205,7 +270,8 @@ export function useSimulatorPageState() {
 			bodyObj = { ...bodyObj, model: routing };
 		}
 		try {
-			const useImages = selectedModelIsImage && protocol === 'openai';
+			const useAudio = selectedModelIsAudio && protocol === 'openai';
+			const useImages = selectedModelIsImage && !selectedModelIsAudio && protocol === 'openai';
 			const built = buildSimulatorRequest({
 				baseUrl: parsed.base,
 				protocol,
@@ -213,6 +279,8 @@ export function useSimulatorPageState() {
 				geminiAction: protocol === 'gemini' ? geminiAction : undefined,
 				body: bodyObj,
 				apiKey: revealedSk,
+				audioTranscriptions: useAudio || undefined,
+				audioFile: useAudio ? audioFile : undefined,
 				imageOperation: useImages ? imageOperation : undefined,
 				editImages: useImages && imageOperation === 'edits' ? editFiles : undefined,
 			});
@@ -235,8 +303,10 @@ export function useSimulatorPageState() {
 		protocol,
 		geminiAction,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		imageOperation,
 		editFiles,
+		audioFile,
 	]);
 
 	const displayWire = wirePreview ?? liveWirePreview;
@@ -374,29 +444,57 @@ export function useSimulatorPageState() {
 		}
 	}, [selectedModelId, routeGroup, routeGroupsForModel]);
 
-	const prevSelectedWasImageRef = useRef(false);
-
-	/** Image models: force openai + image template; leaving image restores chat template. */
+	/**
+	 * localStorage 恢复的模型可能是 Image/Audio：把 Kind 对齐到该模型，
+	 * 避免默认 LLM 视图立刻把选中项清掉。
+	 */
 	useEffect(() => {
+		if (!selectedModelId || models.length === 0) return;
+		const m = models.find((x) => x.id === selectedModelId);
+		if (!m) return;
+		const k = resolveModelKind(m);
+		if (k !== filterKind) {
+			setFilterKind(k);
+		}
+	}, [models, selectedModelId, filterKind]);
+
+	const prevSelectedSpecialKindRef = useRef<'none' | 'image' | 'audio'>('none');
+
+	/** Image / Audio models: force openai + kind template; leaving restores chat template. */
+	useEffect(() => {
+		if (selectedModelIsAudio) {
+			if (protocol !== 'openai') {
+				setProtocolState('openai');
+			}
+			setBodyText(bodyTemplateForSelection('openai', false, 'generations', true));
+			setBodyError(null);
+			setImagePreviews([]);
+			setEditFiles([]);
+			setAudioFile(null);
+			prevSelectedSpecialKindRef.current = 'audio';
+			return;
+		}
 		if (selectedModelIsImage) {
 			if (protocol !== 'openai') {
 				setProtocolState('openai');
 			}
-			setBodyText(bodyTemplateForSelection('openai', true, imageOperation));
+			setBodyText(bodyTemplateForSelection('openai', true, imageOperation, false));
 			setBodyError(null);
 			setImagePreviews([]);
-			prevSelectedWasImageRef.current = true;
+			setAudioFile(null);
+			prevSelectedSpecialKindRef.current = 'image';
 			return;
 		}
-		if (prevSelectedWasImageRef.current) {
+		if (prevSelectedSpecialKindRef.current !== 'none') {
 			setImageOperationState('generations');
 			setEditFiles([]);
-			setBodyText(bodyTemplateForSelection(protocol, false));
+			setAudioFile(null);
+			setBodyText(bodyTemplateForSelection(protocol, false, 'generations', false));
 			setBodyError(null);
 			setImagePreviews([]);
-			prevSelectedWasImageRef.current = false;
+			prevSelectedSpecialKindRef.current = 'none';
 		}
-	}, [selectedModelId, selectedModelIsImage]); // eslint-disable-line react-hooks/exhaustive-deps -- template only on model kind switch
+	}, [selectedModelId, selectedModelIsImage, selectedModelIsAudio]); // eslint-disable-line react-hooks/exhaustive-deps -- template only on model kind switch
 
 	const setImageOperation = useCallback(
 		(next: ImageOperation) => {
@@ -474,36 +572,68 @@ export function useSimulatorPageState() {
 	}, [selectedKeyId, tCommon]);
 
 	const applyProtocolTemplate = useCallback(
-		(next: SimulatorProtocol, isImage = selectedModelIsImage) => {
+		(next: SimulatorProtocol, isImage = selectedModelIsImage, isAudio = selectedModelIsAudio) => {
 			setProtocolState(next);
 			setBodyText(
-				bodyTemplateForSelection(next, isImage && next === 'openai', imageOperation)
+				bodyTemplateForSelection(
+					next,
+					isImage && !isAudio && next === 'openai',
+					imageOperation,
+					isAudio && next === 'openai'
+				)
 			);
 			setBodyError(null);
 		},
-		[selectedModelIsImage, imageOperation]
+		[selectedModelIsImage, selectedModelIsAudio, imageOperation]
 	);
 
 	const requestProtocolChange = useCallback(
 		(next: SimulatorProtocol) => {
 			if (next === protocol) return;
-			if (selectedModelIsImage && next !== 'openai') {
+			if (selectedModelIsAudio && next !== 'openai') {
+				setInfoHint(t('protocolLockedAudio'));
+				return;
+			}
+			if (selectedModelIsImage && !selectedModelIsAudio && next !== 'openai') {
 				setInfoHint(t('readyNeedOpenaiForImage'));
 				return;
 			}
-			if (isBodyDirty(bodyText, protocol, selectedModelIsImage, imageOperation)) {
+			if (
+				isBodyDirty(
+					bodyText,
+					protocol,
+					selectedModelIsImage && !selectedModelIsAudio,
+					imageOperation,
+					selectedModelIsAudio
+				)
+			) {
 				const ok = window.confirm(t('protocolSwitchConfirm'));
 				if (!ok) return;
 			}
 			applyProtocolTemplate(next);
 		},
-		[protocol, bodyText, t, applyProtocolTemplate, selectedModelIsImage, imageOperation]
+		[
+			protocol,
+			bodyText,
+			t,
+			applyProtocolTemplate,
+			selectedModelIsImage,
+			selectedModelIsAudio,
+			imageOperation,
+		]
 	);
 
 	const applyCurrentTemplate = useCallback(() => {
-		setBodyText(bodyTemplateForSelection(protocol, selectedModelIsImage, imageOperation));
+		setBodyText(
+			bodyTemplateForSelection(
+				protocol,
+				selectedModelIsImage && !selectedModelIsAudio,
+				imageOperation,
+				selectedModelIsAudio
+			)
+		);
 		setBodyError(null);
-	}, [protocol, selectedModelIsImage, imageOperation]);
+	}, [protocol, selectedModelIsImage, selectedModelIsAudio, imageOperation]);
 
 	const stop = useCallback(() => {
 		abortRef.current?.abort();
@@ -556,7 +686,15 @@ export function useSimulatorPageState() {
 			}
 		}
 
-		const useImages = selectedModelIsImage && protocol === 'openai';
+		const useAudio = selectedModelIsAudio && protocol === 'openai';
+		const useImages = selectedModelIsImage && !selectedModelIsAudio && protocol === 'openai';
+		if (useAudio) {
+			const validated = validateAudioTranscriptionFile(audioFile);
+			if (!validated.ok) {
+				setBodyError(validated.error);
+				return;
+			}
+		}
 		if (useImages && imageOperation === 'edits') {
 			const validated = validateEditImageFiles(editFiles);
 			if (!validated.ok) {
@@ -574,6 +712,8 @@ export function useSimulatorPageState() {
 				geminiAction: protocol === 'gemini' ? geminiAction : undefined,
 				body: bodyObj,
 				apiKey: revealedSk,
+				audioTranscriptions: useAudio || undefined,
+				audioFile: useAudio ? audioFile : undefined,
 				imageOperation: useImages ? imageOperation : undefined,
 				editImages: useImages && imageOperation === 'edits' ? editFiles : undefined,
 			});
@@ -714,8 +854,10 @@ export function useSimulatorPageState() {
 		proxyBaseUrl,
 		selectedModelId,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		imageOperation,
 		editFiles,
+		audioFile,
 		revealLoading,
 		revealedSk,
 		bodyText,
@@ -740,17 +882,29 @@ export function useSimulatorPageState() {
 		protocol,
 		requestProtocolChange,
 		applyCurrentTemplate,
-		bodyDirty: isBodyDirty(bodyText, protocol, selectedModelIsImage, imageOperation),
+		bodyDirty: isBodyDirty(
+			bodyText,
+			protocol,
+			selectedModelIsImage && !selectedModelIsAudio,
+			imageOperation,
+			selectedModelIsAudio
+		),
 		geminiAction,
 		setGeminiAction,
 		imageOperation,
 		setImageOperation,
 		editFiles,
 		setEditFiles,
+		audioFile,
+		setAudioFile,
+		filterKind,
+		setFilterKind: setFilterKindAndClear,
+		kindCounts,
 		filterModel,
 		setFilterModel,
 		filteredModels,
 		models,
+		modelsInKind,
 		modelIdsWithActiveRouter,
 		selectedModelId,
 		selectModel,
@@ -759,6 +913,7 @@ export function useSimulatorPageState() {
 		routeGroupsForModel,
 		selectedModel,
 		selectedModelIsImage,
+		selectedModelIsAudio,
 		modelRoutingString,
 		matchingRoutes,
 		imagePreviews,

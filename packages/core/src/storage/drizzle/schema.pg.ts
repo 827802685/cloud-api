@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, integer, numeric, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, numeric, real, uniqueIndex, check } from 'drizzle-orm/pg-core';
 
 export const usersTable = pgTable(
 	'users',
@@ -156,6 +156,7 @@ export const apiKeyRequestLogsTable = pgTable('api_key_request_logs', {
 	billingKind: text('billing_kind'),
 	inputImageCount: integer('input_image_count').notNull().default(0),
 	outputImageCount: integer('output_image_count').notNull().default(0),
+	audioDurationSeconds: real('audio_duration_seconds'),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 

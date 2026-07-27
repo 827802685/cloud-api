@@ -10,6 +10,10 @@ import {
 	dispatchOpenAiImageGenerations,
 	type NormalizedImageEditRequest,
 } from './egress/openai-images-driver';
+import {
+	dispatchOpenAiAudioTranscriptions,
+	type NormalizedAudioTranscriptionRequest,
+} from './egress/openai-audio-driver';
 import { dispatchAnthropicRoute } from './egress/anthropic-driver';
 import { dispatchGeminiRoute } from './egress/gemini-driver';
 import {
@@ -153,6 +157,27 @@ export async function proxyImageEdits(
 		'openai',
 		(route, signal, timing?: RequestTimingCollector | null, attempt?: RequestTimingAttempt) =>
 			dispatchOpenAiImageEdits(route, edit, signal, timing, attempt),
+		requestSignal,
+		options
+	);
+}
+
+/**
+ * 代理 OpenAI Audio Transcriptions（multipart；每次 attempt 重建 FormData）。
+ */
+export async function proxyAudioTranscriptions(
+	repos: GatewayRepositories,
+	routes: RouteResult[],
+	req: NormalizedAudioTranscriptionRequest,
+	requestSignal?: AbortSignal,
+	options?: FailoverDispatchOptions
+): Promise<ProxyResult> {
+	return failoverDispatchWithKeyPool(
+		repos,
+		routes,
+		'openai',
+		(route, signal, timing?: RequestTimingCollector | null, attempt?: RequestTimingAttempt) =>
+			dispatchOpenAiAudioTranscriptions(route, req, signal, timing, attempt),
 		requestSignal,
 		options
 	);

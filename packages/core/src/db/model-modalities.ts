@@ -2,9 +2,10 @@
  * Model input/output modalities — aligned with OpenRouter-style capability labels.
  * Stored in `models.input_modalities` / `models.output_modalities` as JSON string arrays.
  *
- * Kind (LLM vs image-generation) is derived — no separate DB column:
+ * Kind (LLM vs image-generation vs audio ASR) is derived — no separate DB column:
  * - Image generation: `output_modalities` includes `image`
  * - Fallback when output modalities missing: `pricing_profile.image` present
+ * - Audio transcription: `pricing_profile.audio_billing_mode === 'per_second'` + `audio` block
  * - Do **not** use `input_modalities` containing `image` (multimodal LLMs also accept images)
  */
 
@@ -103,10 +104,11 @@ export function modelModalitiesJsonEqual(a: string | null | undefined, b: string
 	return true;
 }
 
-/** Fields needed to classify catalog models as LLM vs image-generation. */
+/** Fields needed to classify catalog models as LLM vs image-generation vs audio ASR. */
 export type ModelKindFields = {
 	/** Stored JSON text, or already-parsed modality list */
 	output_modalities?: string | string[] | null;
+	input_modalities?: string | string[] | null;
 	pricing_profile?: string | null;
 };
 
@@ -139,7 +141,16 @@ export function isImageGenerationModel(m: ModelKindFields): boolean {
 	return profile?.image != null;
 }
 
-/** Text for image-generation models; true for chat / multimodal LLMs and unknown. */
+/**
+ * Whether this catalog model is an audio transcription (ASR) model.
+ * Detected via explicit `audio_billing_mode: per_second` + `audio` block in pricing_profile.
+ */
+export function isAudioTranscriptionModel(m: ModelKindFields): boolean {
+	const profile = parsePricingProfile(m.pricing_profile ?? undefined);
+	return profile?.audio_billing_mode === 'per_second' && profile.audio != null;
+}
+
+/** False for image-generation / ASR models; true for chat / multimodal LLMs and unknown. */
 export function isTextLlmModel(m: ModelKindFields): boolean {
-	return !isImageGenerationModel(m);
+	return !isImageGenerationModel(m) && !isAudioTranscriptionModel(m);
 }

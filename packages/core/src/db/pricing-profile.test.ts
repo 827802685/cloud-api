@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+	computeAudioPerSecondMeteredCost,
 	parsePricingProfile,
+	profileHasAudioPerSecondPricing,
 	profileHasImagePerImagePricing,
 	profileHasImageTokenPricing,
+	resolveAudioBillingMode,
+	resolveBillableAudioSeconds,
 	resolveImageBillingMode,
 	resolveImageCatalogUnitPrice,
 } from './pricing-profile';
@@ -219,6 +223,42 @@ describe('resolveImageCatalogUnitPrice', () => {
 			resolveImageCatalogUnitPrice({ default: 0.04 }, 'high', '1024x1024', 'input'),
 			0
 		);
+	});
+});
+
+describe('parsePricingProfile audio_billing_mode', () => {
+	it('parses explicit per_second mode without tiers', () => {
+		const p = parsePricingProfile(
+			JSON.stringify({
+				audio_billing_mode: 'per_second',
+				audio: { price_per_second: 0.0001, minimum_seconds: 1 },
+			})
+		);
+		assert.ok(p);
+		assert.equal(p!.audio_billing_mode, 'per_second');
+		assert.equal(p!.tiers.length, 0);
+		assert.equal(p!.audio!.price_per_second, 0.0001);
+		assert.equal(profileHasAudioPerSecondPricing(p), true);
+		assert.equal(resolveAudioBillingMode(p), 'per_second');
+	});
+
+	it('rejects negative price_per_second by ignoring audio block', () => {
+		const p = parsePricingProfile(
+			JSON.stringify({
+				audio_billing_mode: 'per_second',
+				audio: { price_per_second: -1 },
+				tiers: [{ upto: null, input_price: 0, output_price: 0 }],
+			})
+		);
+		assert.ok(p);
+		assert.equal(p!.audio, undefined);
+		assert.equal(resolveAudioBillingMode(p), null);
+	});
+
+	it('computes billable seconds with minimum', () => {
+		assert.equal(resolveBillableAudioSeconds(0.2, { price_per_second: 0.1, minimum_seconds: 1 }), 1);
+		assert.equal(resolveBillableAudioSeconds(3.5, { price_per_second: 0.1 }), 3.5);
+		assert.equal(computeAudioPerSecondMeteredCost({ durationSeconds: 0.5, pricePerSecond: 0.006 / 60 }), 0.006 / 60);
 	});
 });
 

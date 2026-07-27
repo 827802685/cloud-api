@@ -58,6 +58,7 @@ OpenAI 兼容的 AI Gateway：用户推理、API Key 与目录管理、用量与
 | `/v1/chat/completions` | POST | OpenAI 兼容聊天 |
 | `/v1/images/generations` | POST | OpenAI 兼容图片生成（见 [image-models](../reference/image-models.md)） |
 | `/v1/images/edits` | POST | OpenAI 兼容图片编辑（multipart；Seedream 不适用） |
+| `/v1/audio/transcriptions` | POST | OpenAI 兼容语音转写（multipart；按秒计费，见 [user.md](./user.md#语音转写audio-transcriptions)） |
 | `/v1/tools/web-search` | POST | Agent Tools：联网搜索（按次计费；Admin Tools 配置 Active 引擎） |
 | `/v1/tools/web-fetch` | POST | Agent Tools：网页抓取（按次计费） |
 | `/v1/tools/web-deep-search` | POST | Agent Tools：深度检索（搜+读；按次计费） |

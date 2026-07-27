@@ -309,7 +309,7 @@ Admin 中 Provider 的权威配置为 **`providers.endpoints`** JSON（迁移 `0
 
 OpenAI 兼容的模型列表接口。返回网关中 **至少有一条活跃路由** 的模型（全量可见，不按 API Key 区分）。
 
-面向 Chat Completions / Agent 的默认行为：**仅返回 LLM**（`output_modalities` 不含 `image` 的文本模型；多模态「看图」LLM 仍会返回）。文生图模型（如 `gpt-image-2`）默认不出现在本列表，请使用 `POST /v1/images/*`，或显式传 `kind=image` / `kind=all`。
+面向 Chat Completions / Agent 的默认行为：**仅返回 LLM**（排除文生图与 ASR；多模态「看图」LLM 仍会返回）。文生图模型（如 `gpt-image-2`）请使用 `POST /v1/images/*` 或 `kind=image`；语音转写（如 `whisper-1`）请使用 `POST /v1/audio/transcriptions` 或 `kind=audio`；`kind=all` 不过滤。
 
 ### 请求
 
@@ -322,7 +322,7 @@ GET /v1/models
 | 参数 | 说明 |
 |------|------|
 | `route_groups` | CSV，大小写不敏感。未传 → 默认 `default,free`；传入后仅保留匹配的 group（无匹配则该模型不出现） |
-| `kind` | `llm`（**默认**）仅文本/多模态 LLM；`image` 仅文生图；`all` 不过滤 kind。非法值回退为 `llm` |
+| `kind` | `llm`（**默认**）仅文本/多模态 LLM；`image` 仅文生图；`audio` 仅语音转写 ASR；`all` 不过滤 kind。非法值回退为 `llm` |
 
 ### 响应
 
@@ -770,6 +770,73 @@ Image 模型支持两种 `pricing_profile.image_billing_mode`（再乘路由 `ch
 ```
 
 Admin 中为图片模型配置 `output_modalities: ["image"]` 及对应 mode 价目即可。
+
+---
+
+## 语音转写（Audio Transcriptions）
+
+OpenAI 兼容 Audio Transcriptions API，供桌面 Agent 语音输入等场景调用。鉴权与 Chat 相同（用户 API Key）；模型须配置 **OpenAI 协议**路由，且 `pricing_profile` 含按秒音频价（见 Admin 预设 `whisper-1`）。
+
+```
+POST /v1/audio/transcriptions
+Authorization: Bearer <USER_API_KEY>
+Content-Type: multipart/form-data
+```
+
+表单字段：
+
+| 字段 | 说明 |
+|------|------|
+| `model` | 必填；支持 `id:route_group` 后缀 |
+| `file` | 必填；音频文件（如 `webm` / `mp3` / `wav` / `ogg` / `m4a`）；Gateway 硬上限约 **25MB** |
+| `language` | 可选；ISO-639-1（如 `zh`、`en`） |
+| `response_format` | 可选；`json`（默认）/ `text` / `srt` / `verbose_json` / `vtt` |
+| `prompt` / `temperature` | 可选；透传上游 |
+
+### 计费与审计
+
+| 项 | 说明 |
+|----|------|
+| 模式 | `pricing_profile.audio_billing_mode = "per_second"` |
+| 费用 | `billable_seconds × price_per_second × charged_factor`（`minimum_seconds` 可选下限） |
+| 时长来源 | 上游强制 `verbose_json` 取 `duration`；缺失时按文件字节估算，并在 `pricing_audit.duration_source` 标注 |
+| 日志 | `billing_kind=audio_per_second`，列 `audio_duration_seconds`；**不**落音频二进制 |
+
+Admin 静态预设（`openai-audio.json`，与 [Speech to text](https://developers.openai.com/api/docs/guides/speech-to-text) 当前别名一致）：
+
+| model id | 上游官方价（参考） | Gateway 目录按秒价（USD） |
+|----------|-------------------|---------------------------|
+| `whisper-1` | **$0.006 / minute** | `0.0001` |
+| `gpt-4o-mini-transcribe` | audio tokens **$1.25 / $5 /1M**（目录按约 $0.003/min） | `0.00005` |
+| `gpt-4o-transcribe` | audio tokens **$2.50 / $10 /1M**（目录按约 $0.006/min） | `0.0001` |
+| `gpt-4o-transcribe-diarize` | 同 `gpt-4o-transcribe` | `0.0001` |
+
+不收录日期快照（如 `gpt-4o-mini-transcribe-2025-12-15`）与 Realtime-only 模型（如 `gpt-realtime-whisper`）。
+
+`pricing_profile` 示例（`whisper-1`）：
+
+```json
+{
+  "audio_billing_mode": "per_second",
+  "audio": {
+    "price_per_second": 0.0001,
+    "minimum_seconds": 1
+  }
+}
+```
+
+示例：
+
+```bash
+curl -sS "$GATEWAY_URL/v1/audio/transcriptions" \
+  -H "Authorization: Bearer $USER_API_KEY" \
+  -F model=whisper-1 \
+  -F file=@recording.webm \
+  -F language=zh \
+  -F response_format=json
+```
+
+默认 `GET /v1/models` **不含** ASR 模型；列表可用 `kind=audio` / `kind=all`。
 
 ---
 

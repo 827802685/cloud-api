@@ -53,4 +53,20 @@ describe('previewPlaygroundUpstreamUrl', () => {
 		});
 		assert.equal(url, 'https://api.openai.com/v1/images/edits');
 	});
+
+	it('appends /audio/transcriptions for audio models', () => {
+		const url = previewPlaygroundUpstreamUrl({
+			provider: {
+				id: 'p1',
+				endpoints: JSON.stringify({
+					openai: { base: 'https://api.openai.com/v1' },
+				}),
+			},
+			upstreamProtocol: 'openai',
+			providerModelName: 'whisper-1',
+			isImageModel: false,
+			isAudioModel: true,
+		});
+		assert.equal(url, 'https://api.openai.com/v1/audio/transcriptions');
+	});
 });

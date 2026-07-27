@@ -2,16 +2,20 @@
 
 import { useCallback, useState } from 'react';
 import {
+	isAudioTranscriptionModel,
 	isImageGenerationModel,
 	parseModelModalitiesJson,
 } from '@octafuse/core/db/model-modalities';
 import {
+	createDefaultAudioPricingDraft,
 	createDefaultImagePerImageDraft,
 	createDefaultImageTokenTierRow,
 	createDefaultNewModelTierRow,
 	draftRowsHaveImageTokenPrices,
 	draftRowsLookLikeImageOnly,
+	profileJsonToAudioDraftState,
 	profileJsonToDraftState,
+	type AudioPricingDraftState,
 	type ImageBillingModeDraft,
 	type ImagePerImageDraft,
 	type ImagePricingDraftState,
@@ -22,6 +26,7 @@ import { useBillingCurrency } from '@/lib/use-billing-currency';
 import { deleteModel, fetchModelDetail, saveModel } from './model-api';
 import { formatMetadataForEditor } from './model-utils';
 import {
+	EMPTY_AUDIO_MODEL_FORM,
 	EMPTY_IMAGE_MODEL_FORM,
 	EMPTY_MODEL_FORM,
 	type ModelFormData,
@@ -58,10 +63,14 @@ export function useModelEditModal(options?: Options) {
 	const [showModal, setShowModal] = useState(false);
 	const [editingModel, setEditingModel] = useState<ModelListItem | null>(null);
 	const [formData, setFormData] = useState<ModelFormData>(EMPTY_MODEL_FORM);
+	const [formKind, setFormKind] = useState<ModelFormKind>('llm');
 	const [pricingTierRows, setPricingTierRows] = useState<PricingTierDraftRow[]>([]);
 	const [imageBillingMode, setImageBillingMode] = useState<ImageBillingModeDraft>('token');
 	const [imagePerImageDraft, setImagePerImageDraft] = useState<ImagePerImageDraft>(
 		createDefaultImagePerImageDraft()
+	);
+	const [audioPricingDraft, setAudioPricingDraft] = useState<AudioPricingDraftState>(
+		createDefaultAudioPricingDraft()
 	);
 	const [tagInput, setTagInput] = useState('');
 	const [saveError, setSaveError] = useState('');
@@ -82,12 +91,17 @@ export function useModelEditModal(options?: Options) {
 				output_modalities: outputMods,
 				pricing_profile: model.pricing_profile,
 			});
+			const audioModel = isAudioTranscriptionModel({
+				pricing_profile: model.pricing_profile,
+			});
+			const kind: ModelFormKind = audioModel ? 'audio' : imageModel ? 'image' : 'llm';
+			setFormKind(kind);
 			setFormData({
 				id: model.id,
 				display_name: model.display_name || '',
 				vendor: normalizeModelVendorInput(model.vendor),
-				context_window: imageModel ? '' : model.context_window?.toString() || '',
-				max_tokens: imageModel ? '' : model.max_tokens?.toString() || '4096',
+				context_window: imageModel || audioModel ? '' : model.context_window?.toString() || '',
+				max_tokens: imageModel || audioModel ? '' : model.max_tokens?.toString() || '4096',
 				input_modalities: parseModelModalitiesJson(model.input_modalities) ?? ['text'],
 				output_modalities: outputMods,
 				released_at: model.released_at ?? '',
@@ -95,32 +109,48 @@ export function useModelEditModal(options?: Options) {
 				description: model.description ?? '',
 				metadata: formatMetadataForEditor(model.metadata),
 			});
-			applyImagePricingDraft(profileJsonToDraftState(model.pricing_profile));
+			if (audioModel) {
+				setAudioPricingDraft(profileJsonToAudioDraftState(model.pricing_profile));
+				setPricingTierRows([]);
+			} else {
+				applyImagePricingDraft(profileJsonToDraftState(model.pricing_profile));
+			}
 		},
 		[applyImagePricingDraft]
 	);
 
-	const handleCreate = useCallback((presetVendorKey?: string, kind: ModelFormKind = 'llm') => {
-		setEditingModel(null);
-		const vendor = presetVendorKey !== undefined ? presetVendorKey : EMPTY_MODEL_FORM.vendor;
-		if (kind === 'image') {
-			setFormData({
-				...EMPTY_IMAGE_MODEL_FORM,
-				vendor,
-			});
-			applyImagePricingDraft(createInitialImagePricingDraft('token'));
-		} else {
-			setFormData({
-				...EMPTY_MODEL_FORM,
-				vendor,
-			});
-			setPricingTierRows([createDefaultNewModelTierRow()]);
-			setImageBillingMode('token');
-			setImagePerImageDraft(createDefaultImagePerImageDraft());
-		}
-		setShowModal(true);
-		setSaveError('');
-	}, [applyImagePricingDraft]);
+	const handleCreate = useCallback(
+		(presetVendorKey?: string, kind: ModelFormKind = 'llm') => {
+			setEditingModel(null);
+			setFormKind(kind);
+			const vendor = presetVendorKey !== undefined ? presetVendorKey : EMPTY_MODEL_FORM.vendor;
+			if (kind === 'image') {
+				setFormData({
+					...EMPTY_IMAGE_MODEL_FORM,
+					vendor,
+				});
+				applyImagePricingDraft(createInitialImagePricingDraft('token'));
+			} else if (kind === 'audio') {
+				setFormData({
+					...EMPTY_AUDIO_MODEL_FORM,
+					vendor,
+				});
+				setAudioPricingDraft(createDefaultAudioPricingDraft());
+				setPricingTierRows([]);
+			} else {
+				setFormData({
+					...EMPTY_MODEL_FORM,
+					vendor,
+				});
+				setPricingTierRows([createDefaultNewModelTierRow()]);
+				setImageBillingMode('token');
+				setImagePerImageDraft(createDefaultImagePerImageDraft());
+			}
+			setShowModal(true);
+			setSaveError('');
+		},
+		[applyImagePricingDraft]
+	);
 
 	const handleImageBillingModeChange = useCallback((mode: ImageBillingModeDraft) => {
 		setImageBillingMode(mode);
@@ -134,48 +164,68 @@ export function useModelEditModal(options?: Options) {
 	}, []);
 
 	/** 切换 Kind：同步 modalities / token 字段，并在无对应单价时写入默认档。 */
-	const applyFormKind = useCallback(
-		(kind: ModelFormKind) => {
-			if (kind === 'image') {
-				setFormData((prev) => ({
-					...prev,
-					input_modalities: prev.input_modalities.includes('image')
-						? prev.input_modalities
-						: [...prev.input_modalities, 'image'],
-					output_modalities: prev.output_modalities.includes('image')
-						? prev.output_modalities
-						: ['image'],
-					context_window: '',
-					max_tokens: '',
-				}));
-				setImageBillingMode((mode) => {
-					if (mode === 'per_image') {
-						setPricingTierRows([]);
-					} else {
-						setPricingTierRows((rows) =>
-							draftRowsHaveImageTokenPrices(rows)
-								? rows
-								: [createDefaultImageTokenTierRow()]
-						);
-					}
-					return mode;
-				});
-				return;
-			}
-			setFormData((prev) => {
-				const withoutImage = prev.output_modalities.filter((m) => m !== 'image');
-				return {
-					...prev,
-					output_modalities: withoutImage.length > 0 ? withoutImage : ['text'],
-					max_tokens: prev.max_tokens.trim() !== '' ? prev.max_tokens : '8192',
-				};
+	const applyFormKind = useCallback((kind: ModelFormKind) => {
+		setFormKind(kind);
+		if (kind === 'image') {
+			setFormData((prev) => ({
+				...prev,
+				input_modalities: prev.input_modalities.includes('image')
+					? prev.input_modalities
+					: [...prev.input_modalities, 'image'],
+				output_modalities: prev.output_modalities.includes('image')
+					? prev.output_modalities
+					: ['image'],
+				context_window: '',
+				max_tokens: '',
+			}));
+			setImageBillingMode((mode) => {
+				if (mode === 'per_image') {
+					setPricingTierRows([]);
+				} else {
+					setPricingTierRows((rows) =>
+						draftRowsHaveImageTokenPrices(rows)
+							? rows
+							: [createDefaultImageTokenTierRow()]
+					);
+				}
+				return mode;
 			});
-			setPricingTierRows((rows) =>
-				draftRowsLookLikeImageOnly(rows) ? [createDefaultNewModelTierRow()] : rows
+			return;
+		}
+		if (kind === 'audio') {
+			setFormData((prev) => ({
+				...prev,
+				input_modalities: prev.input_modalities.includes('audio')
+					? prev.input_modalities.filter((m) => m !== 'image')
+					: ['audio'],
+				output_modalities: ['text'],
+				context_window: '',
+				max_tokens: '',
+			}));
+			setAudioPricingDraft((prev) =>
+				prev.price_per_second.trim() !== '' ? prev : createDefaultAudioPricingDraft()
 			);
-		},
-		[]
-	);
+			setPricingTierRows([]);
+			return;
+		}
+		setFormData((prev) => {
+			const withoutImage = prev.output_modalities.filter((m) => m !== 'image');
+			const input = prev.input_modalities.includes('text')
+				? prev.input_modalities
+				: ['text', ...prev.input_modalities.filter((m) => m !== 'audio')];
+			return {
+				...prev,
+				input_modalities: input.length > 0 ? input : ['text'],
+				output_modalities: withoutImage.length > 0 ? withoutImage : ['text'],
+				max_tokens: prev.max_tokens.trim() !== '' ? prev.max_tokens : '8192',
+			};
+		});
+		setPricingTierRows((rows) =>
+			rows.length === 0 || draftRowsLookLikeImageOnly(rows)
+				? [createDefaultNewModelTierRow()]
+				: rows
+		);
+	}, []);
 
 	const handleEdit = useCallback(
 		async (model: ModelListItem) => {
@@ -261,6 +311,7 @@ export function useModelEditModal(options?: Options) {
 					: [...current, modality];
 				const nextList = next.length > 0 ? next : [modality];
 				if (kind === 'output_modalities' && nextList.includes('image')) {
+					setFormKind('image');
 					setImageBillingMode((mode) => {
 						if (mode === 'per_image') {
 							setPricingTierRows([]);
@@ -285,6 +336,7 @@ export function useModelEditModal(options?: Options) {
 					!nextList.includes('image') &&
 					prev.output_modalities.includes('image')
 				) {
+					setFormKind((fk) => (fk === 'image' ? 'llm' : fk));
 					setPricingTierRows((rows) =>
 						draftRowsLookLikeImageOnly(rows) ? [createDefaultNewModelTierRow()] : rows
 					);
@@ -304,19 +356,25 @@ export function useModelEditModal(options?: Options) {
 		setSaveError('');
 		setIsSaving(true);
 		try {
-			const isImage = isImageGenerationModel({ output_modalities: formData.output_modalities });
-			const imageDraft: ImagePricingDraftState | null = isImage
-				? {
-						mode: imageBillingMode,
-						tiers: pricingTierRows,
-						perImage: imagePerImageDraft,
-					}
-				: null;
+			const isImage =
+				formKind === 'image' ||
+				isImageGenerationModel({ output_modalities: formData.output_modalities });
+			const isAudio = formKind === 'audio';
+			const imageDraft: ImagePricingDraftState | null =
+				isImage && !isAudio
+					? {
+							mode: imageBillingMode,
+							tiers: pricingTierRows,
+							perImage: imagePerImageDraft,
+						}
+					: null;
+			const audioDraft: AudioPricingDraftState | null = isAudio ? audioPricingDraft : null;
 			const result = await saveModel(
 				formData,
 				pricingTierRows,
 				editingModel?.id ?? null,
-				imageDraft
+				imageDraft,
+				audioDraft
 			);
 			if (result.success) {
 				setShowModal(false);
@@ -331,8 +389,10 @@ export function useModelEditModal(options?: Options) {
 			setIsSaving(false);
 		}
 	}, [
+		audioPricingDraft,
 		editingModel?.id,
 		formData,
+		formKind,
 		imageBillingMode,
 		imagePerImageDraft,
 		onChanged,
@@ -350,12 +410,15 @@ export function useModelEditModal(options?: Options) {
 		editingModel,
 		formData,
 		setFormData,
+		formKind,
 		pricingTierRows,
 		setPricingTierRows,
 		imageBillingMode,
 		setImageBillingMode: handleImageBillingModeChange,
 		imagePerImageDraft,
 		setImagePerImageDraft,
+		audioPricingDraft,
+		setAudioPricingDraft,
 		tagInput,
 		setTagInput,
 		saveError,

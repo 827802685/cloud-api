@@ -153,6 +153,7 @@ export const apiKeyRequestLogsTable = sqliteTable('api_key_request_logs', {
 	billingKind: text('billing_kind'),
 	inputImageCount: integer('input_image_count').notNull().default(0),
 	outputImageCount: integer('output_image_count').notNull().default(0),
+	audioDurationSeconds: real('audio_duration_seconds'),
 	createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

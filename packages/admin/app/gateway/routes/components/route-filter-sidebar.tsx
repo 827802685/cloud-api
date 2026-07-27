@@ -15,7 +15,7 @@ type Props = {
 	filterVendor: string;
 	filterProviderId: string;
 	statusCounts: { all: number; active: number; inactive: number };
-	kindCounts: { llm: number; image: number };
+	kindCounts: { llm: number; image: number; audio: number };
 	routesCount: number;
 	routeGroupFilterOptions: string[];
 	routeGroupCounts: Map<string, number>;
@@ -115,6 +115,12 @@ export function RouteFilterSidebar(props: Props) {
 						count={kindCounts.image}
 						isActive={filterKind === 'image'}
 						onClick={() => onFilterKindChange('image')}
+					/>
+					<FilterNavButton
+						label={t('kindAudio')}
+						count={kindCounts.audio}
+						isActive={filterKind === 'audio'}
+						onClick={() => onFilterKindChange('audio')}
 					/>
 				</FilterNavSection>
 

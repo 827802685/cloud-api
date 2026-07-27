@@ -4,10 +4,11 @@ import type {
 	ProviderEndpointsMap,
 } from '@octafuse/core/provider-endpoints';
 
-/** 卡片上紧凑展示的能力标签（OpenAI images.* 合并为 images）。 */
+/** 卡片上紧凑展示的能力标签（OpenAI images.* 合并为 images；audio.transcriptions → audio）。 */
 export type ProviderCapabilityBadge =
 	| 'chat'
 	| 'images'
+	| 'audio'
 	| 'messages'
 	| 'generateContent'
 	| 'streamGenerateContent';
@@ -55,6 +56,7 @@ export type ProtocolEndpointForm = {
 	chat: string;
 	images_generations: string;
 	images_edits: string;
+	audio_transcriptions: string;
 	messages: string;
 	generateContent: string;
 	streamGenerateContent: string;
@@ -95,6 +97,7 @@ export const EMPTY_PROTOCOL_FORM: ProtocolEndpointForm = {
 	chat: '',
 	images_generations: '',
 	images_edits: '',
+	audio_transcriptions: '',
 	messages: '',
 	generateContent: '',
 	streamGenerateContent: '',

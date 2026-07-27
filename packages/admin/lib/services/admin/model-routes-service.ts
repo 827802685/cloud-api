@@ -2,7 +2,10 @@
  * 管理后台 `model_routes` CRUD：校验上游协议与 provider 是否配置对应 base URL，并规范化 JSON 参数字段。
  */
 import type { GatewayRepositories } from '@octafuse/core';
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+} from '@octafuse/core/db/model-modalities';
 import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
 import { badRequest, notFound } from './errors';
 import { coerceRoutePriceOverrideInput, assertRoutePriceOverrideFactors } from './pricing-input';
@@ -30,6 +33,26 @@ async function assertImageModelOpenaiProtocol(
 	) {
 		throw badRequest(
 			'Image-generation models require upstream_protocol=openai (Gateway Images API only uses OpenAI routes).'
+		);
+	}
+}
+
+/** Audio transcription catalog models may only use OpenAI Audio–compatible routes. */
+async function assertAudioModelOpenaiProtocol(
+	repos: GatewayRepositories,
+	modelId: string,
+	proto: 'openai' | 'anthropic' | 'gemini'
+): Promise<void> {
+	const model = await repos.models.getModelDetailWithRouteCounts(modelId);
+	if (!model) return;
+	if (
+		isAudioTranscriptionModel({
+			pricing_profile: model.pricing_profile as string | null | undefined,
+		}) &&
+		proto !== 'openai'
+	) {
+		throw badRequest(
+			'Audio transcription models require upstream_protocol=openai (Gateway Audio API only uses OpenAI routes).'
 		);
 	}
 }
@@ -78,6 +101,7 @@ export async function createModelRouteService(
 		throw badRequest(`Provider has no base URL for upstream protocol "${proto}".`);
 	}
 	await assertImageModelOpenaiProtocol(repos, modelId, proto);
+	await assertAudioModelOpenaiProtocol(repos, modelId, proto);
 
 	const routeGroup =
 		typeof body.route_group === 'string' && body.route_group.trim() !== '' ? body.route_group.trim() : 'default';
@@ -152,6 +176,7 @@ export async function updateModelRouteService(
 		? patch.upstream_protocol
 		: existing.upstream_protocol) as 'openai' | 'anthropic' | 'gemini';
 	await assertImageModelOpenaiProtocol(repos, effectiveModelId, effectiveProto);
+	await assertAudioModelOpenaiProtocol(repos, effectiveModelId, effectiveProto);
 
 	const changes = await repos.routes.updateModelRouteByPatch(id, patch);
 	if (!changes) throw notFound('Route not found');

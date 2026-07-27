@@ -15,7 +15,7 @@ import type {
 } from './types';
 import { EMPTY_PROTOCOL_FORM } from './types';
 
-/** 完整 capability → 卡片紧凑标签（OpenAI images.* 合并为 images）。 */
+/** 完整 capability → 卡片紧凑标签（OpenAI images.* → images；audio.transcriptions → audio）。 */
 export function capabilityDisplayBadges(
 	capabilities: readonly ProviderEndpointCapability[]
 ): ProviderCapabilityBadge[] {
@@ -23,6 +23,7 @@ export function capabilityDisplayBadges(
 	const set = new Set(capabilities);
 	if (set.has('chat')) badges.push('chat');
 	if (set.has('images.generations') || set.has('images.edits')) badges.push('images');
+	if (set.has('audio.transcriptions')) badges.push('audio');
 	if (set.has('messages')) badges.push('messages');
 	if (set.has('generateContent')) badges.push('generateContent');
 	if (set.has('streamGenerateContent')) badges.push('streamGenerateContent');
@@ -87,6 +88,7 @@ function protocolFormFromConfig(cfg: ProtocolEndpointsConfig | undefined): Proto
 	form.chat = eps.chat ?? '';
 	form.images_generations = eps['images.generations'] ?? '';
 	form.images_edits = eps['images.edits'] ?? '';
+	form.audio_transcriptions = eps['audio.transcriptions'] ?? '';
 	form.messages = eps.messages ?? '';
 	form.generateContent = eps.generateContent ?? '';
 	form.streamGenerateContent = eps.streamGenerateContent ?? '';
@@ -117,6 +119,9 @@ function configFromProtocolForm(
 		if (form.chat.trim()) endpoints.chat = form.chat.trim();
 		if (form.images_generations.trim()) endpoints['images.generations'] = form.images_generations.trim();
 		if (form.images_edits.trim()) endpoints['images.edits'] = form.images_edits.trim();
+		if (form.audio_transcriptions.trim()) {
+			endpoints['audio.transcriptions'] = form.audio_transcriptions.trim();
+		}
 	} else if (protocol === 'anthropic') {
 		if (form.messages.trim()) endpoints.messages = form.messages.trim();
 	} else {
@@ -225,7 +230,12 @@ export function protocolFormHasOverrides(
 	form: ProtocolEndpointForm
 ): boolean {
 	if (protocol === 'openai') {
-		return !!(form.chat.trim() || form.images_generations.trim() || form.images_edits.trim());
+		return !!(
+			form.chat.trim() ||
+			form.images_generations.trim() ||
+			form.images_edits.trim() ||
+			form.audio_transcriptions.trim()
+		);
 	}
 	if (protocol === 'anthropic') return !!form.messages.trim();
 	return !!(form.generateContent.trim() || form.streamGenerateContent.trim());

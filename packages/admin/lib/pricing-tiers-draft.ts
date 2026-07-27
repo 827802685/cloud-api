@@ -1,9 +1,11 @@
 /**
  * 管理 UI：`pricing_profile` 的 `{ tiers }` 表单行与 JSON 序列化（与 `@octafuse/core` 解析一致）。
  * Image 双模式：`image_billing_mode` token / per_image + 可选 `image` 块。
+ * Audio：`audio_billing_mode: per_second` + `audio` 块（不计价 tiers）。
  */
 import {
 	parsePricingProfile,
+	profileHasAudioPerSecondPricing,
 	profileHasImagePerImagePricing,
 	profileHasImageTokenPricing,
 	type PricingTierPrices,
@@ -25,6 +27,20 @@ export type ImagePricingDraftState = {
 	tiers: PricingTierDraftRow[];
 	perImage: ImagePerImageDraft;
 };
+
+/** Audio 转写：按秒计费草稿（对齐 whisper-1 预设字段）。 */
+export type AudioPricingDraftState = {
+	price_per_second: string;
+	minimum_seconds: string;
+};
+
+/** 新建 Audio 模型默认价（对齐 openai-audio.json USD：0.0001 / 最低 1 秒）。 */
+export function createDefaultAudioPricingDraft(): AudioPricingDraftState {
+	return {
+		price_per_second: '0.0001',
+		minimum_seconds: '1',
+	};
+}
 
 /**
  * 将末档 `upto` 规范为开放上界草稿（清空输入，由 UI 显示 ∞）。
@@ -218,6 +234,25 @@ export function profileJsonToDraftState(json: string | null | undefined): ImageP
 	};
 }
 
+/** 从已存 JSON 解析 Audio per_second 编辑态；非 audio profile 返回默认草稿。 */
+export function profileJsonToAudioDraftState(
+	json: string | null | undefined
+): AudioPricingDraftState {
+	const trimmed = json?.trim();
+	if (!trimmed) {
+		return createDefaultAudioPricingDraft();
+	}
+	const p = parsePricingProfile(trimmed);
+	if (!p || !profileHasAudioPerSecondPricing(p) || !p.audio) {
+		return createDefaultAudioPricingDraft();
+	}
+	return {
+		price_per_second: String(p.audio.price_per_second),
+		minimum_seconds:
+			p.audio.minimum_seconds != null ? String(p.audio.minimum_seconds) : '1',
+	};
+}
+
 export type SerializeTiersResult =
 	| { ok: true; json: string | null }
 	| { ok: false; error: string };
@@ -313,6 +348,38 @@ export function serializeDraftRowsToProfileJson(rows: PricingTierDraftRow[]): Se
 	const json = JSON.stringify(body);
 	if (!parsePricingProfile(json)) {
 		return { ok: false, error: 'Serialized profile failed pricing validation' };
+	}
+	return { ok: true, json };
+}
+
+/** Audio 转写：序列化为 `{ audio_billing_mode: "per_second", audio: {...} }`（无 tiers）。 */
+export function serializeAudioPricingDraft(draft: AudioPricingDraftState): SerializeTiersResult {
+	const pricePerSecond = Number(draft.price_per_second.trim());
+	if (!Number.isFinite(pricePerSecond) || pricePerSecond < 0) {
+		return { ok: false, error: 'Audio price_per_second must be a finite number ≥ 0' };
+	}
+	const minTrim = draft.minimum_seconds.trim();
+	let minimumSeconds = 1;
+	if (minTrim !== '') {
+		const n = Number(minTrim);
+		if (!Number.isFinite(n) || n < 0) {
+			return {
+				ok: false,
+				error: 'Audio minimum_seconds must be a finite number ≥ 0 or empty (default 1)',
+			};
+		}
+		minimumSeconds = n;
+	}
+	const body = {
+		audio_billing_mode: 'per_second',
+		audio: {
+			price_per_second: pricePerSecond,
+			minimum_seconds: minimumSeconds,
+		},
+	};
+	const json = JSON.stringify(body);
+	if (!parsePricingProfile(json)) {
+		return { ok: false, error: 'Serialized per-second audio profile failed pricing validation' };
 	}
 	return { ok: true, json };
 }

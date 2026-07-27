@@ -65,12 +65,16 @@ function ModelsContent() {
 							hasModels={state.models.length > 0}
 							importSubmitting={state.importSubmitting}
 							onImport={state.openImportCatalogModal}
-							onCreate={() =>
+							onCreate={() => {
 								state.handleCreate(
 									state.isAllVendors ? undefined : state.activeVendorKey,
-									state.selectedKind === 'image' ? 'image' : 'llm'
-								)
-							}
+									state.selectedKind === 'image'
+										? 'image'
+										: state.selectedKind === 'audio'
+											? 'audio'
+											: 'llm'
+								);
+							}}
 							createTitle={createTitle}
 						/>
 
@@ -102,11 +106,14 @@ function ModelsContent() {
 				open={state.showModal}
 				editingModel={state.editingModel}
 				formData={state.formData}
+				formKind={state.formKind}
 				pricingTierRows={state.pricingTierRows}
 				imageBillingMode={state.imageBillingMode}
 				onImageBillingModeChange={state.setImageBillingMode}
 				imagePerImageDraft={state.imagePerImageDraft}
 				onImagePerImageDraftChange={state.setImagePerImageDraft}
+				audioPricingDraft={state.audioPricingDraft}
+				onAudioPricingDraftChange={state.setAudioPricingDraft}
 				tagInput={state.tagInput}
 				saveError={state.saveError}
 				isSaving={state.isSaving}

@@ -1,4 +1,8 @@
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+	isTextLlmModel,
+} from '@octafuse/core/db/model-modalities';
 import { stickyRuleKey } from '@octafuse/core/db/model-sticky-config';
 import {
 	findDailyWindowOverlap,
@@ -328,8 +332,12 @@ export function modelMatchesKindFilter(
 	meta: GatewayModel | undefined,
 	filterKind: ModelKindFilter
 ): boolean {
-	const isImage = meta ? isImageGenerationModel(meta) : false;
-	return filterKind === 'image' ? isImage : !isImage;
+	if (!meta) {
+		return filterKind === 'llm';
+	}
+	if (filterKind === 'image') return isImageGenerationModel(meta);
+	if (filterKind === 'audio') return isAudioTranscriptionModel(meta);
+	return isTextLlmModel(meta);
 }
 
 /** Normalize API tags (string[] or JSON string) for route card display. */

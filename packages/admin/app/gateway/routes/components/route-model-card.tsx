@@ -1,7 +1,10 @@
 'use client';
 
 import { ClipboardDocumentIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import {
+	isAudioTranscriptionModel,
+	isImageGenerationModel,
+} from '@octafuse/core/db/model-modalities';
 import { formatCompactTokens } from '@/lib/format-compact-tokens';
 import { useTranslations } from 'next-intl';
 import type { GatewayModel } from '@/lib/types';
@@ -47,14 +50,19 @@ export function RouteModelCard(props: Props) {
 	const tModelsCard = useTranslations('models.card');
 	const { model_id, title, groupRoutes, activeCount } = card;
 	const isImage = meta ? isImageGenerationModel(meta) : false;
+	const isAudio = meta ? isAudioTranscriptionModel(meta) : false;
 	const contextStr = formatCompactTokens(meta?.context_window);
 	const maxStr = formatCompactTokens(meta?.max_tokens);
-	const modelStatsTitle = isImage
-		? t('imageModelHint')
-		: t('contextMaxOutput', { context: contextStr, max: maxStr });
-	const modelStatsLine = isImage
-		? t('imageModelHint')
-		: t('contextLine', { context: contextStr, max: maxStr });
+	const modelStatsTitle = isAudio
+		? t('audioModelHint')
+		: isImage
+			? t('imageModelHint')
+			: t('contextMaxOutput', { context: contextStr, max: maxStr });
+	const modelStatsLine = isAudio
+		? t('audioModelHint')
+		: isImage
+			? t('imageModelHint')
+			: t('contextLine', { context: contextStr, max: maxStr });
 	const tags = parseModelTagsList(meta);
 	const tagShown = tags.slice(0, 6);
 	const tagExtra = tags.length - tagShown.length;

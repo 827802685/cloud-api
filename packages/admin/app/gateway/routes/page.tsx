@@ -126,7 +126,9 @@ function RoutesContent() {
 				selectedProvider={state.selectedProvider}
 				catalogStandardTierRows={state.catalogStandardTierRows}
 				catalogImagePricingDisplay={state.catalogImagePricingDisplay}
+				catalogAudioPricingDisplay={state.catalogAudioPricingDisplay}
 				selectedModelIsImage={state.selectedModelIsImage}
+				selectedModelIsAudio={state.selectedModelIsAudio}
 				allowedProtocolsForProvider={state.allowedProtocolsForProvider}
 				businessTimezone={state.businessTimezone}
 				onClose={state.closeRouteModal}
@@ -140,11 +142,14 @@ function RoutesContent() {
 				open={state.modelEdit.showModal}
 				editingModel={state.modelEdit.editingModel}
 				formData={state.modelEdit.formData}
+				formKind={state.modelEdit.formKind}
 				pricingTierRows={state.modelEdit.pricingTierRows}
 				imageBillingMode={state.modelEdit.imageBillingMode}
 				onImageBillingModeChange={state.modelEdit.setImageBillingMode}
 				imagePerImageDraft={state.modelEdit.imagePerImageDraft}
 				onImagePerImageDraftChange={state.modelEdit.setImagePerImageDraft}
+				audioPricingDraft={state.modelEdit.audioPricingDraft}
+				onAudioPricingDraftChange={state.modelEdit.setAudioPricingDraft}
 				tagInput={state.modelEdit.tagInput}
 				saveError={state.modelEdit.saveError}
 				isSaving={state.modelEdit.isSaving}

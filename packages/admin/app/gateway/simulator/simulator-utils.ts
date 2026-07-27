@@ -1,3 +1,4 @@
+import { AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE } from '@/lib/audio-transcriptions';
 import {
 	IMAGE_EDITS_BODY_TEMPLATE,
 	IMAGE_GENERATIONS_BODY_TEMPLATE,
@@ -40,12 +41,16 @@ export const BODY_TEMPLATES: Record<SimulatorProtocol, string> = {
 }`,
 };
 
-/** Chat or Images generations/edits template for the current selection. */
+/** Chat / Images / Audio template for the current selection. */
 export function bodyTemplateForSelection(
 	protocol: SimulatorProtocol,
 	isImageModel: boolean,
-	imageOperation: ImageOperation = 'generations'
+	imageOperation: ImageOperation = 'generations',
+	isAudioModel = false
 ): string {
+	if (isAudioModel && protocol === 'openai') {
+		return AUDIO_TRANSCRIPTIONS_BODY_TEMPLATE;
+	}
 	if (isImageModel && protocol === 'openai') {
 		return imageOperation === 'edits' ? IMAGE_EDITS_BODY_TEMPLATE : IMAGE_GENERATIONS_BODY_TEMPLATE;
 	}
@@ -81,11 +86,14 @@ export function isBodyDirty(
 	bodyText: string,
 	protocol: SimulatorProtocol,
 	isImageModel = false,
-	imageOperation: ImageOperation = 'generations'
+	imageOperation: ImageOperation = 'generations',
+	isAudioModel = false
 ): boolean {
 	return (
 		normalizeBodyWhitespace(bodyText) !==
-		normalizeBodyWhitespace(bodyTemplateForSelection(protocol, isImageModel, imageOperation))
+		normalizeBodyWhitespace(
+			bodyTemplateForSelection(protocol, isImageModel, imageOperation, isAudioModel)
+		)
 	);
 }
 

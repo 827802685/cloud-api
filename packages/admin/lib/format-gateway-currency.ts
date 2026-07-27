@@ -113,3 +113,7 @@ export function formatPerMillionTokenUnit(currencyCode: string): string {
 export function formatPerImageUnit(currencyCode: string): string {
 	return `${getGatewayCurrencySymbol(currencyCode)}/image`;
 }
+
+export function formatPerSecondUnit(currencyCode: string): string {
+	return `${getGatewayCurrencySymbol(currencyCode)}/s`;
+}

@@ -3,6 +3,7 @@
 import { PaperAirplaneIcon, StopIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { RequestTargetUrl } from '@/components/request-target-url';
+import { validateAudioTranscriptionFile } from '@/lib/audio-transcriptions';
 import {
 	IMAGE_MAX_REFERENCE_COUNT,
 	validateEditImageFiles,
@@ -32,6 +33,10 @@ type Props = {
 	onImageOperationChange?: (op: ImageOperation) => void;
 	editFiles?: File[];
 	onEditFilesChange?: (files: File[]) => void;
+	/** Audio ASR model selected with openai protocol. */
+	showAudioTranscriptions?: boolean;
+	audioFile?: File | null;
+	onAudioFileChange?: (file: File | null) => void;
 };
 
 export function SimulatorRequestPanel({
@@ -54,6 +59,9 @@ export function SimulatorRequestPanel({
 	onImageOperationChange,
 	editFiles = [],
 	onEditFilesChange,
+	showAudioTranscriptions = false,
+	audioFile = null,
+	onAudioFileChange,
 }: Props) {
 	const t = useTranslations('simulator');
 	const tCommon = useTranslations('common');
@@ -106,6 +114,37 @@ export function SimulatorRequestPanel({
 				url={displayWire?.url}
 				emptyHint={t('requestTargetUrlEmpty')}
 			/>
+			{showAudioTranscriptions ? (
+				<div className="space-y-2">
+					<p className="text-xs text-gray-500">{t('audioTranscriptionsHint')}</p>
+					<div>
+						<label className={labelClass}>{t('audioFile')}</label>
+						<input
+							type="file"
+							accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
+							disabled={sending}
+							className={`${inputClass} file:mr-3 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-blue-700`}
+							onChange={(e) => {
+								onAudioFileChange?.(e.target.files?.[0] ?? null);
+							}}
+						/>
+						<p className="mt-1 text-[11px] text-gray-400">{t('audioFileHint')}</p>
+						{!audioFile ? (
+							<p className="mt-1 text-xs text-amber-700">{t('audioFileRequired')}</p>
+						) : (
+							<p className="mt-1 text-xs text-gray-600">
+								{audioFile.name} ({audioFile.size} bytes)
+							</p>
+						)}
+						{(() => {
+							if (!audioFile) return null;
+							const validated = validateAudioTranscriptionFile(audioFile);
+							if (validated.ok) return null;
+							return <p className="mt-1 text-xs text-red-600">{validated.error}</p>;
+						})()}
+					</div>
+				</div>
+			) : null}
 			{showImageOperation ? (
 				<>
 					<fieldset className="flex flex-wrap items-center gap-4 text-sm border border-gray-200 rounded-md px-3 py-2">

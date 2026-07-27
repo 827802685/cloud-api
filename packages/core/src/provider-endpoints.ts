@@ -17,6 +17,7 @@ export type ProviderEndpointCapability =
 	| 'chat'
 	| 'images.generations'
 	| 'images.edits'
+	| 'audio.transcriptions'
 	| 'messages'
 	| 'generateContent'
 	| 'streamGenerateContent';
@@ -25,6 +26,7 @@ export const OPENAI_ENDPOINT_CAPABILITIES = [
 	'chat',
 	'images.generations',
 	'images.edits',
+	'audio.transcriptions',
 ] as const satisfies readonly ProviderEndpointCapability[];
 
 export const ANTHROPIC_ENDPOINT_CAPABILITIES = ['messages'] as const satisfies readonly ProviderEndpointCapability[];
@@ -296,6 +298,8 @@ export function resolveUpstreamEndpoint(
 				return buildOpenAiCompatibleImagesUrl(root, 'generations');
 			case 'images.edits':
 				return buildOpenAiCompatibleImagesUrl(root, 'edits');
+			case 'audio.transcriptions':
+				return `${root}/audio/transcriptions`;
 			case 'messages':
 				return `${root}/v1/messages`;
 			case 'generateContent':

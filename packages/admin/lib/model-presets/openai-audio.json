@@ -1,0 +1,134 @@
+[
+	{
+		"id": "whisper-1",
+		"display_name": "Whisper",
+		"description": "OpenAI Whisper (whisper-1) speech-to-text for /v1/audio/transcriptions. Official price $0.006/minute.",
+		"i18n": {
+			"en": "OpenAI Whisper (whisper-1) speech-to-text for /v1/audio/transcriptions. Official price $0.006/minute.",
+			"zh": "OpenAI Whisper（whisper-1）语音转写，用于 /v1/audio/transcriptions。官方价 $0.006/分钟。"
+		},
+		"vendor": "openai",
+		"context_window": null,
+		"max_tokens": null,
+		"pricing": {
+			"usd": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0001,
+					"minimum_seconds": 1
+				}
+			},
+			"cny": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0007,
+					"minimum_seconds": 1
+				}
+			}
+		},
+		"modalities": {
+			"input": ["audio"],
+			"output": ["text"]
+		},
+		"released": "2022-09-01"
+	},
+	{
+		"id": "gpt-4o-mini-transcribe",
+		"display_name": "GPT-4o mini Transcribe",
+		"description": "OpenAI GPT-4o mini speech-to-text for /v1/audio/transcriptions (json/text). Upstream bills audio tokens ($1.25/$5 per 1M); gateway meters duration (~$0.003/minute catalog).",
+		"i18n": {
+			"en": "OpenAI GPT-4o mini speech-to-text for /v1/audio/transcriptions (json/text). Upstream bills audio tokens ($1.25/$5 per 1M); gateway meters duration (~$0.003/minute catalog).",
+			"zh": "OpenAI GPT-4o mini 语音转写（/v1/audio/transcriptions，json/text）。上游按 audio token 计费（$1.25/$5 /1M）；网关按秒计量（目录约 $0.003/分钟）。"
+		},
+		"vendor": "openai",
+		"context_window": 16000,
+		"max_tokens": 2000,
+		"pricing": {
+			"usd": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.00005,
+					"minimum_seconds": 1
+				}
+			},
+			"cny": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.00035,
+					"minimum_seconds": 1
+				}
+			}
+		},
+		"modalities": {
+			"input": ["audio", "text"],
+			"output": ["text"]
+		},
+		"released": "2025-03-20"
+	},
+	{
+		"id": "gpt-4o-transcribe",
+		"display_name": "GPT-4o Transcribe",
+		"description": "OpenAI GPT-4o speech-to-text for /v1/audio/transcriptions (json/text). Upstream bills audio tokens ($2.50/$10 per 1M); gateway meters duration (~$0.006/minute catalog).",
+		"i18n": {
+			"en": "OpenAI GPT-4o speech-to-text for /v1/audio/transcriptions (json/text). Upstream bills audio tokens ($2.50/$10 per 1M); gateway meters duration (~$0.006/minute catalog).",
+			"zh": "OpenAI GPT-4o 语音转写（/v1/audio/transcriptions，json/text）。上游按 audio token 计费（$2.50/$10 /1M）；网关按秒计量（目录约 $0.006/分钟）。"
+		},
+		"vendor": "openai",
+		"context_window": 16000,
+		"max_tokens": 2000,
+		"pricing": {
+			"usd": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0001,
+					"minimum_seconds": 1
+				}
+			},
+			"cny": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0007,
+					"minimum_seconds": 1
+				}
+			}
+		},
+		"modalities": {
+			"input": ["audio", "text"],
+			"output": ["text"]
+		},
+		"released": "2025-03-20"
+	},
+	{
+		"id": "gpt-4o-transcribe-diarize",
+		"display_name": "GPT-4o Transcribe Diarize",
+		"description": "OpenAI GPT-4o transcription with speaker diarization (/v1/audio/transcriptions; json/text/diarized_json). Same token rates as gpt-4o-transcribe; gateway meters duration (~$0.006/minute catalog).",
+		"i18n": {
+			"en": "OpenAI GPT-4o transcription with speaker diarization (/v1/audio/transcriptions; json/text/diarized_json). Same token rates as gpt-4o-transcribe; gateway meters duration (~$0.006/minute catalog).",
+			"zh": "OpenAI GPT-4o 带说话人分离的语音转写（/v1/audio/transcriptions；json/text/diarized_json）。上游单价同 gpt-4o-transcribe；网关按秒计量（目录约 $0.006/分钟）。"
+		},
+		"vendor": "openai",
+		"context_window": 16000,
+		"max_tokens": 2000,
+		"pricing": {
+			"usd": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0001,
+					"minimum_seconds": 1
+				}
+			},
+			"cny": {
+				"audio_billing_mode": "per_second",
+				"audio": {
+					"price_per_second": 0.0007,
+					"minimum_seconds": 1
+				}
+			}
+		},
+		"modalities": {
+			"input": ["audio", "text"],
+			"output": ["text"]
+		},
+		"released": "2025-10-18"
+	}
+]

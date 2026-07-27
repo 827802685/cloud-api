@@ -35,6 +35,13 @@ export type BuildSimulatorRequestInput = {
 	imagesGenerations?: boolean;
 	/** Required when `imageOperation === 'edits'`: reference image files for multipart. */
 	editImages?: File[];
+	/**
+	 * OpenAI audio models: Proxy `POST /v1/audio/transcriptions` (multipart).
+	 * When true, prefer over chat / images.
+	 */
+	audioTranscriptions?: boolean;
+	/** Required when `audioTranscriptions`: audio file for multipart. */
+	audioFile?: File | null;
 };
 
 export type BuildSimulatorRequestResult = {
@@ -87,6 +94,41 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 
 	switch (input.protocol) {
 		case 'openai': {
+			if (input.audioTranscriptions) {
+				const file = input.audioFile ?? null;
+				const fd = new FormData();
+				fd.append('model', input.modelForRouting);
+				appendOptionalFormField(fd, 'language', input.body.language);
+				appendOptionalFormField(fd, 'response_format', input.body.response_format);
+				appendOptionalFormField(fd, 'prompt', input.body.prompt);
+				appendOptionalFormField(fd, 'temperature', input.body.temperature);
+				const fileLines: string[] = [];
+				if (file) {
+					fd.append('file', file, file.name || 'audio.webm');
+					fileLines.push(`${file.name || 'audio.webm'} (${file.size} bytes)`);
+				}
+				const fieldParts = ['model', 'file'];
+				if (input.body.language != null) fieldParts.push('language');
+				if (input.body.response_format != null) fieldParts.push('response_format');
+				if (input.body.prompt != null) fieldParts.push('prompt');
+				if (input.body.temperature != null) fieldParts.push('temperature');
+				const fileSummary =
+					!file
+						? 'file: (none selected yet — required before Send)'
+						: [`file:`, ...fileLines.map((l) => `  - ${l}`)].join('\n');
+				return {
+					url: `${base}/v1/audio/transcriptions`,
+					headers: {
+						Authorization: auth,
+					},
+					bodyText: '',
+					formData: fd,
+					multipartSummary: [
+						`multipart/form-data fields: ${fieldParts.join(', ')}`,
+						fileSummary,
+					].join('\n'),
+				};
+			}
 			const imageOp = resolveImageOperation(input);
 			if (imageOp === 'edits') {
 				// Allow empty files for live URL preview; Send path validates before fetch.

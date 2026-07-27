@@ -104,4 +104,24 @@ describe('summarizePricingAuditJson', () => {
 		assert.ok(line!.includes('out 0.22/img'));
 		assert.ok(line!.includes('uncertain'));
 	});
+
+	it('summarizes audio_per_second audit (snapshot.kind)', () => {
+		const line = summarizePricingAuditJson(
+			JSON.stringify({
+				v: 4,
+				snapshot: {
+					kind: 'audio_per_second',
+					duration_seconds: 12.5,
+					billable_seconds: 12.5,
+					price_per_second: 0.0001,
+					minimum_seconds: 1,
+					user_charge: { source: 'model_x_factor', effective_factor: 1 },
+				},
+			})
+		);
+		assert.ok(line);
+		assert.ok(line!.includes('audio_per_second'));
+		assert.ok(line!.includes('12.5s'));
+		assert.ok(line!.includes('0.0001/s'));
+	});
 });

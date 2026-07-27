@@ -100,7 +100,8 @@
 		"failedToLoadUsers": "ユーザーの読み込みに失敗しました",
 		"failedToLoadApiKeys": "API Key の読み込みに失敗しました",
 		"failedToLoadModels": "モデルの読み込みに失敗しました",
-		"infinity": "∞"
+		"infinity": "∞",
+		"kindAudio": "音声"
 	},
 	"auth": {
 		"username": "ユーザー名",
@@ -279,7 +280,8 @@
 		"routeGroup": "Route Group",
 		"routeGroupAria": "Route Group フィルター",
 		"modelsAndRoutes": "{models} モデル · {routes} Route",
-		"narrowModelsRoutes": "モデルと Route を絞り込む"
+		"narrowModelsRoutes": "モデルと Route を絞り込む",
+		"kindAudio": "音声"
 	},
 	"modalities": {
 		"text": "テキスト",
@@ -327,6 +329,7 @@
 			"cap": {
 				"chat": "chat",
 				"images": "images",
+				"audio": "audio",
 				"messages": "messages",
 				"generateContent": "generate",
 				"streamGenerateContent": "stream"
@@ -376,6 +379,7 @@
 			"capChat": "chat (/v1/chat/completions)",
 			"capImagesGenerations": "images.generations (/v1/images/generations)",
 			"capImagesEdits": "images.edits (/v1/images/edits)",
+			"capAudioTranscriptions": "audio.transcriptions (/v1/audio/transcriptions)",
 			"capMessages": "messages (/v1/messages)",
 			"capGenerateContent": "generateContent (/v1beta/models/{model}:generateContent)",
 			"capStreamGenerateContent": "streamGenerateContent (/v1beta/models/{model}:streamGenerateContent)",
@@ -428,7 +432,8 @@
 			"kind": "種類",
 			"kindAria": "モデル種別フィルター",
 			"kindLlm": "LLM",
-			"kindImage": "画像"
+			"kindImage": "画像",
+			"kindAudio": "音声"
 		},
 		"imagePricing": {
 			"enabled": "旧機能（廃止済み）",
@@ -471,7 +476,8 @@
 			"importPresetRow": "プリセット {id} をインポート",
 			"catalogTiers": "{count} 段階",
 			"pricingPerImageFallback": "Image token 料金",
-			"importSelected": "選択項目をインポート（{count}）"
+			"importSelected": "選択項目をインポート（{count}）",
+			"pricingPerSecondFallback": "秒単位の音声"
 		},
 		"modal": {
 			"editTitle": "モデルを編集",
@@ -479,8 +485,10 @@
 			"kind": "種類",
 			"kindLlm": "LLM",
 			"kindImage": "画像",
+			"kindAudio": "音声",
 			"kindHintLlm": "Token 料金（input / output / cache）を使用する chat / completion モデルです。",
 			"kindHintImage": "画像生成モデル：出力に image を含み、Image token 料金を使用します。context/max tokens はありません。",
+			"kindHintAudio": "音声文字起こし（ASR）モデル：入力 audio → 出力 text、秒単位課金、context/max tokens なし。",
 			"modelIdRequired": "Model ID *",
 			"modelIdPlaceholder": "gpt-4o",
 			"displayName": "表示名",
@@ -496,7 +504,11 @@
 			"preview": "プレビュー",
 			"pricingProfile": "Pricing Profile",
 			"imageTokenPricing": "Image token 料金",
+			"audioPricing": "音声の秒単価",
+			"audioPricePerSecond": "1 秒あたりの料金",
+			"audioMinimumSeconds": "最低課金秒数",
 			"imageNoTokenLimits": "画像モデルでは chat の Context Window や Max Output Tokens を使用しません。保存時にこれらの項目はクリアされます。",
+			"audioNoTokenLimits": "音声文字起こしモデルでは chat の Context Window や Max Output Tokens を使用しません。保存時にこれらの項目はクリアされます。",
 			"tags": "タグ",
 			"tagsPlaceholder": "例：free、lite、pro、max — Enter で追加",
 			"removeTag": "{tag} を削除",
@@ -528,7 +540,8 @@
 			"imagePerImagePricing": "画像単位のカタログ料金",
 			"description": "説明",
 			"metadata": "Metadata",
-			"viewMetadataJson": "Metadata JSON を表示"
+			"viewMetadataJson": "Metadata JSON を表示",
+			"kindAudio": "音声"
 		}
 	},
 	"routes": {
@@ -557,6 +570,7 @@
 			"contextMaxOutput": "Context：{context} · Max output：{max}",
 			"contextLine": "Context {context} · Max output {max}",
 			"imageModelHint": "画像モデル · token 料金",
+			"audioModelHint": "音声 ASR · 秒単位課金",
 			"modelTagTitle": "モデルタグ：{tag}",
 			"copied": "コピーしました",
 			"newRouteFor": "{title} の新しい Route",
@@ -652,8 +666,14 @@
 			"summaryUserBillingDetail": "catalog × charged_factor × schedule.charged → charged_cost",
 			"summaryMeteredCost": "計量コスト：",
 			"summaryMeteredCostDetail": "catalog × metered_factor × schedule.metered → metered_cost",
-			"deleteRoute": "Route を削除"
-		}
+			"deleteRoute": "Route を削除",
+			"protocolHintAudioOpenaiOnly": "音声文字起こしモデルは upstream_protocol=openai が必要です。",
+			"standardCatalogHintAudio": "この ASR モデルのカタログ秒単価（読み取り専用）。",
+			"noCatalogAudioPricing": "このモデルに秒単位の音声料金がありません。",
+			"audioPricePerSecond": "1 秒あたりの料金",
+			"audioMinimumSeconds": "最低秒数"
+		},
+		"kindAudio": "音声"
 	},
 	"playground": {
 		"title": "Playground",
@@ -662,6 +682,10 @@
 		"routeSection": "Route",
 		"requestBody": "リクエスト Body",
 		"response": "レスポンス",
+		"kind": "種類",
+		"kindLlm": "LLM",
+		"kindImage": "画像",
+		"kindAudio": "音声",
 		"modelId": "Model ID",
 		"provider": "Provider",
 		"protocol": "プロトコル",
@@ -705,7 +729,12 @@
 			"allProviders": "すべての Provider",
 			"allProtocols": "すべてのプロトコル",
 			"allRouteGroups": "すべての Route Group"
-		}
+		},
+		"audioOpenaiOnly": "音声文字起こしモデルは upstream_protocol=openai のみ対応です（Playground は /audio/transcriptions を呼び出します）。ルートを編集するか openai ルートを選んでください。",
+		"audioTranscriptionsHint": "音声モデル：JSON フィールド（language、response_format）と下の音声ファイル。ファイルは multipart で transcriptions に送信されます。課金・リクエストログなし。",
+		"audioFile": "音声ファイル",
+		"audioFileHint": "音声ファイルを 1 つ選択（mp3、wav、m4a、webm…）。multipart で送信（JSON エディタには入りません）。",
+		"audioFileRequired": "送信前に音声ファイルが必要です。"
 	},
 	"simulator": {
 		"title": "Simulator",
@@ -718,11 +747,15 @@
 		"localDevHint": "ローカル開発例：http://127.0.0.1:8787 — 誤って本番環境を指定しないよう注意してください。",
 		"protocol": "プロトコル",
 		"geminiAction": "Gemini action",
+		"kind": "種類",
+		"kindLlm": "LLM",
+		"kindImage": "画像",
+		"kindAudio": "音声",
 		"model": "モデル",
 		"filter": "フィルター",
 		"modelFilterPlaceholder": "id / 表示名 / ベンダーを検索…",
 		"selectModel": "— モデルを選択 —",
-		"modelCount": "全 {total} モデル · フィルター後 {filtered} 件 · 🟢 有効な Route · 🔴 なし",
+		"modelCount": "この種類 {total} · 表示 {filtered} · 🟢 有効な Route · 🔴 なし",
 		"routeGroupOptional": "Route Group（任意）",
 		"defaultRouteGroup": "デフォルト（明示的なサフィックスなし）",
 		"routeGroupHint": "このモデルの有効な Route から取得します。OpenAI/Anthropic は body.model を id または id:group に設定し、Gemini は同じパスセグメントを使用します。",
@@ -782,7 +815,12 @@
 		"errKeyLoading": "API Key を読み込み中です",
 		"errSelectKey": "API Key を選択し、読み込み（sk-…）が完了するまでお待ちください",
 		"errBodyMustBeObject": "リクエスト Body は JSON オブジェクトである必要があります",
-		"infoModelOverwritten": "リクエスト Body の model を \"{model}\" に設定しました（選択したモデルと Route Group に一致）。"
+		"infoModelOverwritten": "リクエスト Body の model を \"{model}\" に設定しました（選択したモデルと Route Group に一致）。",
+		"protocolLockedAudio": "音声モデルは openai → POST /v1/audio/transcriptions に固定されます。",
+		"audioTranscriptionsHint": "文字起こし：JSON フィールド（language、response_format）と音声ファイル → multipart POST /v1/audio/transcriptions。",
+		"audioFile": "音声ファイル",
+		"audioFileHint": "multipart アップロード用の音声ファイルを 1 つ選択。",
+		"audioFileRequired": "送信前に音声ファイルが必要です。"
 	},
 	"users": {
 		"title": "ユーザー",
@@ -987,6 +1025,7 @@
 			"rowDetail": "クリックして料金監査とリクエスト / usage Body の表示を切り替え",
 			"inputOutputTokens": "Input / output tokens",
 			"imagePerImageUsage": "入力 × 出力画像数（画像単位課金）",
+			"audioPerSecondUsage": "課金対象の音声時間（秒単位課金）",
 			"cacheTokens": "Cache read / cache write tokens",
 			"standardCatalogPrice": "標準（カタログ価格）",
 			"chargedUserBudget": "請求（ユーザー予算）",
