@@ -124,4 +124,17 @@ describe('summarizePricingAuditJson', () => {
 		assert.ok(line!.includes('12.5s'));
 		assert.ok(line!.includes('0.0001/s'));
 	});
+
+	it('summarizes audio_tokens audit', () => {
+		const line = summarizePricingAuditJson(
+			JSON.stringify({
+				v: 4,
+				kind: 'audio_tokens',
+				tokens: { input: 120, output: 15, audio: 100, text: 20, total: 135 },
+			})
+		);
+		assert.ok(line);
+		assert.ok(line!.includes('audio_tokens'));
+		assert.ok(line!.includes('120/15/100'));
+	});
 });

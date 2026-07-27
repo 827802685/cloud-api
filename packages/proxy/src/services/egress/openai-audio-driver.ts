@@ -1,15 +1,24 @@
 /**
  * OpenAI 兼容 Audio Transcriptions 上游驱动：`POST …/audio/transcriptions`（multipart）。
- * Gateway 对上游强制 `response_format=verbose_json` 以取得 `duration` 用于计费；
- * 再按客户端请求的 format 裁剪回包。日志禁止写入音频二进制。
+ * - whisper：上游强制 `verbose_json` 取 duration（per_second 计费）
+ * - gpt-4o-*transcribe：上游用 `json` 取 `usage.type=tokens`（token 计费；客户端 text 仍裁剪回包）
+ * 日志禁止写入音频二进制。
  */
-import { resolveUpstreamEndpoint } from '@octafuse/core';
+import {
+	parseOpenAiAudioTokenUsage,
+	resolveUpstreamEndpoint,
+	type AudioTokenUsage,
+} from '@octafuse/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { EMPTY_USAGE } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';
 import { extractUpstreamRequestId } from './upstream-request-id';
 import type { RequestTimingAttempt, RequestTimingCollector } from '../request-timing';
+import {
+	resolveAudioBillingDuration,
+	type AudioDurationSource,
+} from './audio-duration';
 
 export const AUDIO_TRANSCRIPTION_TIMEOUT_MS = 120_000;
 /** OpenAI Whisper 官方上限 25MB；Gateway 略收紧以保护 Worker 内存 */
@@ -34,9 +43,24 @@ export type AudioUpload = {
 	bytes: Uint8Array;
 };
 
+/**
+ * MediaRecorder 常带参数（如 `audio/webm;codecs=opus`）；校验与上游 Blob 只用主类型。
+ */
+export function normalizeAudioMimeType(mimeType: string): string {
+	const raw = mimeType.trim().toLowerCase();
+	if (!raw) {
+		return '';
+	}
+	const base = raw.split(';')[0]?.trim() || '';
+	if (base === 'audio/mp3') {
+		return 'audio/mpeg';
+	}
+	return base;
+}
+
 /** MIME → 扩展名；缺省勿用 `.webm`（mp3 被标成 webm 时上游常报 invalid_audio）。 */
 export function extensionFromAudioMime(mimeType: string): string {
-	const m = mimeType.trim().toLowerCase();
+	const m = normalizeAudioMimeType(mimeType) || mimeType.trim().toLowerCase();
 	if (m.includes('mpeg') || m === 'audio/mp3') return 'mp3';
 	if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
 	if (m.includes('wav') || m.includes('wave') || m.includes('x-wav')) return 'wav';
@@ -77,15 +101,19 @@ export type NormalizedAudioTranscriptionRequest = {
 	language?: string;
 	prompt?: string;
 	temperature?: number;
-	/** 透传额外表单字段（不含 file/model/response_format） */
+	/**
+	 * 客户端测量的录音墙钟秒数（如 MediaRecorder elapsed）。
+	 * Gateway 在无上游/容器时长时用于计费；不会转发给 OpenAI。
+	 */
+	clientDurationSeconds?: number;
+	/** 透传额外表单字段（不含 file/model/response_format/duration_seconds） */
 	extra?: Record<string, string>;
 };
 
 /**
  * 按上游模型能力选择 response_format。
- * - whisper-1：强制 verbose_json（含 duration）
- * - gpt-4o-*-transcribe：仅 json/text
- * - gpt-4o-transcribe-diarize：json/text/diarized_json
+ * - whisper-1：强制 verbose_json（含 duration，per_second 计费）
+ * - gpt-4o-*：上游始终 json/diarized_json（需 usage.tokens；勿用 text，否则丢计费）
  */
 export function resolveUpstreamAudioResponseFormat(
 	providerModelName: string,
@@ -96,15 +124,13 @@ export function resolveUpstreamAudioResponseFormat(
 		return 'verbose_json';
 	}
 	if (m.includes('diarize')) {
-		if (clientFormat === 'diarized_json' || clientFormat === 'text' || clientFormat === 'json') {
-			return clientFormat;
+		if (clientFormat === 'diarized_json') {
+			return 'diarized_json';
 		}
+		// text/json 客户端：上游仍要 json 以拿到 token usage
 		return 'json';
 	}
 	// gpt-4o-transcribe / gpt-4o-mini-transcribe（及日期快照）
-	if (clientFormat === 'text') {
-		return 'text';
-	}
 	return 'json';
 }
 
@@ -152,7 +178,7 @@ export function validateAudioUpload(file: AudioUpload): string | null {
 	if (file.bytes.byteLength > AUDIO_MAX_BYTES_PER_FILE) {
 		return `audio file must be at most ${AUDIO_MAX_BYTES_PER_FILE} bytes`;
 	}
-	const mime = (file.mimeType || '').trim().toLowerCase();
+	const mime = normalizeAudioMimeType(file.mimeType || '');
 	if (mime && !AUDIO_ALLOWED_MIME.has(mime)) {
 		return `unsupported audio mime type: ${mime}`;
 	}
@@ -297,8 +323,9 @@ export async function dispatchOpenAiAudioTranscriptions(
 	meta: {
 		parsedBody: unknown;
 		audioDurationSeconds: number | null;
-		audioDurationSource: 'upstream' | 'estimated' | null;
+		audioDurationSource: AudioDurationSource | null;
 		audioFileBytes: number;
+		audioTokenUsage: AudioTokenUsage | null;
 	};
 }> {
 	const url = resolveUpstreamEndpoint('openai', 'audio.transcriptions', route.providerEndpoints, {
@@ -366,15 +393,30 @@ export async function dispatchOpenAiAudioTranscriptions(
 			`[Gateway Audio] upstream transcriptions done status=${response.status} elapsedMs=${Date.now() - startedAt} url=${url}`
 		);
 
-		const durationFromUpstream = response.ok
-			? parseAudioDurationFromUpstreamBody(upstreamBody)
-			: null;
-		let audioDurationSeconds = durationFromUpstream;
-		let audioDurationSource: 'upstream' | 'estimated' | null =
-			durationFromUpstream != null ? 'upstream' : null;
-		if (response.ok && audioDurationSeconds == null) {
-			audioDurationSeconds = estimateAudioDurationFromBytes(req.file.bytes.byteLength);
-			audioDurationSource = 'estimated';
+		let audioDurationSeconds: number | null = null;
+		let audioDurationSource: AudioDurationSource | null = null;
+		let audioTokenUsage: AudioTokenUsage | null = null;
+		if (response.ok) {
+			audioTokenUsage = parseOpenAiAudioTokenUsage(upstreamBody);
+			const resolved = resolveAudioBillingDuration({
+				upstreamSeconds: parseAudioDurationFromUpstreamBody(upstreamBody),
+				fileBytes: req.file.bytes.byteLength,
+				mimeType: req.file.mimeType,
+				fileBytesForParse: req.file.bytes,
+				clientSeconds: req.clientDurationSeconds,
+			});
+			audioDurationSeconds = resolved.seconds;
+			audioDurationSource = resolved.source;
+			if (resolved.source !== 'upstream') {
+				console.log(
+					`[Gateway Audio] duration source=${resolved.source} seconds=${resolved.seconds} fileBytes=${req.file.bytes.byteLength}`
+				);
+			}
+			if (audioTokenUsage) {
+				console.log(
+					`[Gateway Audio] token usage in=${audioTokenUsage.input_tokens} out=${audioTokenUsage.output_tokens} audio=${audioTokenUsage.audio_tokens}`
+				);
+			}
 		}
 
 		const clientBody = response.ok
@@ -396,6 +438,7 @@ export async function dispatchOpenAiAudioTranscriptions(
 				audioDurationSeconds,
 				audioDurationSource,
 				audioFileBytes: req.file.bytes.byteLength,
+				audioTokenUsage,
 			},
 		};
 	} catch (err) {
@@ -436,6 +479,7 @@ export async function dispatchOpenAiAudioTranscriptions(
 				audioDurationSeconds: null,
 				audioDurationSource: null,
 				audioFileBytes: req.file.bytes.byteLength,
+				audioTokenUsage: null,
 			},
 		};
 	} finally {
@@ -451,6 +495,7 @@ export function redactAudioRequestForLog(input: {
 	byteLength: number;
 	language?: string;
 	responseFormat: string;
+	clientDurationSeconds?: number;
 }): Record<string, unknown> {
 	return {
 		operation: 'transcriptions',
@@ -460,5 +505,6 @@ export function redactAudioRequestForLog(input: {
 		byte_length: input.byteLength,
 		language: input.language ?? null,
 		response_format: input.responseFormat,
+		client_duration_seconds: input.clientDurationSeconds ?? null,
 	};
 }

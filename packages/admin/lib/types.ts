@@ -232,7 +232,7 @@ export interface GatewayRequestLog {
   raw_usage?: string | null;
   /** 计费审计 JSON（单列）；结构见 `@octafuse/core` `pricing-audit.ts` */
   pricing_audit?: string | null;
-  /** Image / Audio 计费种类：`image_tokens` | `image_per_image` | `audio_per_second`；旧行为 null */
+  /** Image / Audio 计费种类：`image_tokens` | `image_per_image` | `audio_per_second` | `audio_tokens`；旧行为 null */
   billing_kind?: string | null;
   /** 按张计费：参考图张数 */
   input_image_count?: number;

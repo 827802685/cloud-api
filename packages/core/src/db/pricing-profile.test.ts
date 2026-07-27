@@ -4,6 +4,7 @@ import {
 	computeAudioPerSecondMeteredCost,
 	parsePricingProfile,
 	profileHasAudioPerSecondPricing,
+	profileHasAudioTokenPricing,
 	profileHasImagePerImagePricing,
 	profileHasImageTokenPricing,
 	resolveAudioBillingMode,
@@ -259,6 +260,21 @@ describe('parsePricingProfile audio_billing_mode', () => {
 		assert.equal(resolveBillableAudioSeconds(0.2, { price_per_second: 0.1, minimum_seconds: 1 }), 1);
 		assert.equal(resolveBillableAudioSeconds(3.5, { price_per_second: 0.1 }), 3.5);
 		assert.equal(computeAudioPerSecondMeteredCost({ durationSeconds: 0.5, pricePerSecond: 0.006 / 60 }), 0.006 / 60);
+	});
+
+	it('parses explicit token mode with tiers', () => {
+		const p = parsePricingProfile(
+			JSON.stringify({
+				audio_billing_mode: 'token',
+				tiers: [{ upto: null, input_price: 1.25, output_price: 5 }],
+			})
+		);
+		assert.ok(p);
+		assert.equal(p!.audio_billing_mode, 'token');
+		assert.equal(p!.tiers[0]!.input_price, 1.25);
+		assert.equal(profileHasAudioTokenPricing(p), true);
+		assert.equal(resolveAudioBillingMode(p), 'token');
+		assert.equal(profileHasAudioPerSecondPricing(p), false);
 	});
 });
 

@@ -38,9 +38,11 @@ export type ProxyDispatchMeta = {
 	/** 仅 Audio transcriptions：计费时长（秒） */
 	audioDurationSeconds?: number | null;
 	/** 仅 Audio：duration 来源 */
-	audioDurationSource?: 'upstream' | 'estimated' | null;
+	audioDurationSource?: 'upstream' | 'media' | 'client' | 'estimated' | null;
 	/** 仅 Audio：上传文件字节数 */
 	audioFileBytes?: number;
+	/** 仅 Audio token 计费：上游 `usage.type=tokens` */
+	audioTokenUsage?: import('@octafuse/core').AudioTokenUsage | null;
 };
 
 /** Images abort 的 504 不得换 key / 换路由（避免客户端取消或超时后二次打 OpenAI）。 */

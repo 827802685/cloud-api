@@ -29,6 +29,7 @@ import {
 	AUDIO_MAX_BYTES_PER_FILE,
 	redactAudioRequestForLog,
 	resolveAudioUploadFilename,
+	normalizeAudioMimeType,
 	validateAudioUpload,
 	type NormalizedAudioTranscriptionRequest,
 } from '../../services/egress/openai-audio-driver';
@@ -120,6 +121,35 @@ const ALLOWED_RESPONSE_FORMATS = new Set([
 	'diarized_json',
 ]);
 
+/** Hono `parseBody({ all: true })` may yield string or string[] for text fields. */
+function multipartTextField(value: unknown): string {
+	if (typeof value === 'string') {
+		return value.trim();
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			if (typeof item === 'string' && item.trim() !== '') {
+				return item.trim();
+			}
+		}
+	}
+	return '';
+}
+
+function multipartFileField(value: unknown): File | null {
+	if (value != null && typeof value === 'object' && 'arrayBuffer' in value) {
+		return value as File;
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			if (item != null && typeof item === 'object' && 'arrayBuffer' in item) {
+				return item as File;
+			}
+		}
+	}
+	return null;
+}
+
 async function parseMultipartTranscription(c: {
 	req: { parseBody: (options?: { all?: boolean }) => Promise<Record<string, unknown>> };
 }): Promise<
@@ -133,24 +163,23 @@ async function parseMultipartTranscription(c: {
 		return { ok: false, error: 'Invalid multipart body' };
 	}
 
-	const modelRaw = body.model;
-	const model = typeof modelRaw === 'string' ? modelRaw.trim() : '';
+	const model = multipartTextField(body.model);
 	if (!model) {
 		return { ok: false, error: 'Missing model' };
 	}
 
-	const fileRaw = body.file;
-	if (fileRaw == null || typeof fileRaw !== 'object' || !('arrayBuffer' in fileRaw)) {
+	const file = multipartFileField(body.file);
+	if (!file) {
 		return { ok: false, error: 'Missing audio file' };
 	}
-	const file = fileRaw as File;
 	const declaredSize =
 		typeof file.size === 'number' && Number.isFinite(file.size) ? file.size : null;
 	if (declaredSize != null && declaredSize > AUDIO_MAX_BYTES_PER_FILE) {
 		return { ok: false, error: `audio file must be at most ${AUDIO_MAX_BYTES_PER_FILE} bytes` };
 	}
 	const buf = new Uint8Array(await file.arrayBuffer());
-	const mimeType = file.type || 'application/octet-stream';
+	const mimeType =
+		normalizeAudioMimeType(file.type || '') || 'application/octet-stream';
 	const upload = {
 		filename: resolveAudioUploadFilename(
 			(file as { name?: string }).name || '',
@@ -164,18 +193,15 @@ async function parseMultipartTranscription(c: {
 		return { ok: false, error: uploadErr };
 	}
 
-	const formatRaw =
-		typeof body.response_format === 'string' ? body.response_format.trim().toLowerCase() : 'json';
+	const formatRaw = multipartTextField(body.response_format).toLowerCase() || 'json';
 	const clientResponseFormat = (
 		ALLOWED_RESPONSE_FORMATS.has(formatRaw) ? formatRaw : 'json'
 	) as NormalizedAudioTranscriptionRequest['clientResponseFormat'];
 
-	const language =
-		typeof body.language === 'string' && body.language.trim() !== ''
-			? body.language.trim()
-			: undefined;
-	const prompt =
-		typeof body.prompt === 'string' && body.prompt.trim() !== '' ? body.prompt.trim() : undefined;
+	const languageField = multipartTextField(body.language);
+	const language = languageField !== '' ? languageField : undefined;
+	const promptField = multipartTextField(body.prompt);
+	const prompt = promptField !== '' ? promptField : undefined;
 	let temperature: number | undefined;
 	if (body.temperature != null && body.temperature !== '') {
 		const t = Number(body.temperature);
@@ -183,6 +209,17 @@ async function parseMultipartTranscription(c: {
 			return { ok: false, error: 'temperature must be between 0 and 1' };
 		}
 		temperature = t;
+	}
+
+	const clientDurationRaw = multipartTextField(
+		body.duration_seconds ?? body.duration
+	);
+	let clientDurationSeconds: number | undefined;
+	if (clientDurationRaw !== '') {
+		const n = Number(clientDurationRaw);
+		if (Number.isFinite(n) && n > 0) {
+			clientDurationSeconds = n;
+		}
 	}
 
 	return {
@@ -194,6 +231,7 @@ async function parseMultipartTranscription(c: {
 			language,
 			prompt,
 			temperature,
+			clientDurationSeconds,
 		},
 	};
 }
@@ -206,6 +244,7 @@ audioRoutes.post('/transcriptions', async (c) => {
 
 	const parsed = await parseMultipartTranscription(c);
 	if (!parsed.ok) {
+		console.warn(`[Gateway Audio] transcriptions parse failed: ${parsed.error}`);
 		return c.json({ error: parsed.error }, 400);
 	}
 	const { model: rawModelId, transcription } = parsed;
@@ -231,6 +270,9 @@ audioRoutes.post('/transcriptions', async (c) => {
 		{
 			modelPricingProfileJson: model.pricing_profile ?? null,
 			fileBytes: transcription.file.bytes.byteLength,
+			mimeType: transcription.file.mimeType,
+			fileBytesForParse: transcription.file.bytes,
+			clientDurationSeconds: transcription.clientDurationSeconds,
 			requestStartedAtMs: start,
 		},
 		routes.map((route) => route.priceOverrideRaw)
@@ -247,6 +289,7 @@ audioRoutes.post('/transcriptions', async (c) => {
 			byteLength: transcription.file.bytes.byteLength,
 			language: transcription.language,
 			responseFormat: transcription.clientResponseFormat,
+			clientDurationSeconds: transcription.clientDurationSeconds,
 		})
 	);
 
@@ -336,7 +379,10 @@ async function finalizeAudioResponse(params: {
 	const meta = proxyResult.meta;
 	const durationSeconds = response.ok ? (meta?.audioDurationSeconds ?? 0) : 0;
 	const durationSource =
-		response.ok && meta?.audioDurationSource === 'upstream' ? 'upstream' : 'estimated';
+		response.ok && meta?.audioDurationSource
+			? meta.audioDurationSource
+			: 'estimated';
+	const tokenUsage = response.ok ? (meta?.audioTokenUsage ?? null) : null;
 
 	let sensitiveCircuitEvent = null;
 	if (errorBodyText != null) {
@@ -395,6 +441,7 @@ async function finalizeAudioResponse(params: {
 				durationSource,
 				fileBytes,
 				requestStartedAtMs: start,
+				tokenUsage,
 			},
 			providerKeyId: chosenRoute.providerKeyId ?? null,
 			providerKeyLabel: chosenRoute.providerKeyLabel ?? null,

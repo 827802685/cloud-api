@@ -3,7 +3,12 @@
  * (`/v1/audio/transcriptions` multipart).
  */
 import { isAudioTranscriptionModel, type ModelKindFields } from '@octafuse/core/db/model-modalities';
-import { parsePricingProfile } from '@octafuse/core/db/pricing-profile';
+import {
+	parsePricingProfile,
+	profileHasAudioPerSecondPricing,
+	profileHasAudioTokenPricing,
+} from '@octafuse/core/db/pricing-profile';
+import { formatPerMillionTokenUnit, formatPerSecondUnit } from '@/lib/format-gateway-currency';
 
 /** Align with Proxy audio driver limits (admin must not depend on `@octafuse/proxy`). */
 export const AUDIO_MAX_BYTES_PER_FILE = 25 * 1024 * 1024;
@@ -35,18 +40,44 @@ export function validateAudioTranscriptionFile(
 	return { ok: true };
 }
 
-/** Catalog model → 只读按秒单价摘要（Routes 弹窗）。 */
+export type CatalogAudioPricingDisplay =
+	| {
+			mode: 'per_second';
+			pricePerSecond: string;
+			minimumSeconds: string;
+			unit: string;
+	  }
+	| {
+			mode: 'token';
+			inputPrice: string;
+			outputPrice: string;
+			unit: string;
+	  };
+
+/** Catalog model → 只读单价摘要（Routes 弹窗；per_second 或 token）。 */
 export function getCatalogAudioPricingDisplay(
 	model: { pricing_profile?: string | null } | null | undefined,
 	currencyCode = 'USD'
-): { pricePerSecond: string; minimumSeconds: string; unit: string } | null {
+): CatalogAudioPricingDisplay | null {
 	if (!model?.pricing_profile?.trim()) return null;
 	const p = parsePricingProfile(model.pricing_profile);
-	if (!p?.audio || p.audio_billing_mode !== 'per_second') return null;
-	const unit = currencyCode.toUpperCase() === 'CNY' ? '¥/s' : '$/s';
-	return {
-		pricePerSecond: String(p.audio.price_per_second),
-		minimumSeconds: String(p.audio.minimum_seconds ?? 1),
-		unit,
-	};
+	if (!p) return null;
+	if (profileHasAudioTokenPricing(p) && p.tiers.length > 0) {
+		const tier = p.tiers[0]!;
+		return {
+			mode: 'token',
+			inputPrice: String(tier.input_price),
+			outputPrice: String(tier.output_price),
+			unit: formatPerMillionTokenUnit(currencyCode),
+		};
+	}
+	if (profileHasAudioPerSecondPricing(p) && p.audio) {
+		return {
+			mode: 'per_second',
+			pricePerSecond: String(p.audio.price_per_second),
+			minimumSeconds: String(p.audio.minimum_seconds ?? 1),
+			unit: formatPerSecondUnit(currencyCode),
+		};
+	}
+	return null;
 }

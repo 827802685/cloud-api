@@ -8,6 +8,7 @@ import {
 } from '@octafuse/core/db/model-modalities';
 import {
 	createDefaultAudioPricingDraft,
+	createDefaultAudioTokenPricingDraft,
 	createDefaultImagePerImageDraft,
 	createDefaultImageTokenTierRow,
 	createDefaultNewModelTierRow,
@@ -202,9 +203,15 @@ export function useModelEditModal(options?: Options) {
 				context_window: '',
 				max_tokens: '',
 			}));
-			setAudioPricingDraft((prev) =>
-				prev.price_per_second.trim() !== '' ? prev : createDefaultAudioPricingDraft()
-			);
+			setAudioPricingDraft((prev) => {
+				if (prev.mode === 'token') {
+					const hasTier = prev.tiers.some(
+						(r) => r.input_price.trim() !== '' || r.output_price.trim() !== ''
+					);
+					return hasTier ? prev : createDefaultAudioTokenPricingDraft();
+				}
+				return prev.price_per_second.trim() !== '' ? prev : createDefaultAudioPricingDraft();
+			});
 			setPricingTierRows([]);
 			return;
 		}

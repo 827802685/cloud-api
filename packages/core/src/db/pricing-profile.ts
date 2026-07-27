@@ -13,8 +13,9 @@
  * - **`per_image`**（须显式 mode + `image` 块）：`image.default` / maps 按 quality×size 选 output 单价；可选 `image.input` 计参考图；`uncertain_result_policy` 控制未确认结果（默认 `requested`）。**不计价 `tiers`**（可省略；历史占位零档仍可解析）。
  * - **无 mode + 仅 legacy `image` 块**：解析可读入 `image`，但 **`resolveImageBillingMode` 返回 `null`（不计费）**；勿因 legacy 块自动恢复 per_image。
  *
- * **Audio 转写**（`audio_billing_mode`）：
- * - **`per_second`**（须显式 mode + `audio` 块）：`audio.price_per_second` × 时长秒数；可选 `minimum_seconds`（默认 1）。**不计价 `tiers`**（可省略）。
+ * **Audio 转写双模式**（`audio_billing_mode`）：
+ * - **`per_second`**（须显式 mode + `audio` 块）：`audio.price_per_second` × 时长秒数；可选 `minimum_seconds`（默认 1）。**不计价 `tiers`**（可省略）。对齐 whisper-1 官方按分钟/时长。
+ * - **`token`**（须显式 mode + 非空 `tiers`）：`tiers[].input_price` / `output_price`（$/1M）× 上游 `usage`（type=tokens）。对齐 gpt-4o-*transcribe 官方按 token；**不计价 `audio` 块**。
  */
 
 /** 每百万 token 单价快照（与 `usage-tracker.computeMeteredCost` / image token 计费对齐）。 */
@@ -50,8 +51,8 @@ export interface PricingTierPrices {
 /** Image 按张计价：`image_billing_mode === 'per_image'` 时使用。 */
 export type ImageBillingMode = 'token' | 'per_image';
 
-/** Audio 按时长计价：`audio_billing_mode === 'per_second'` 时使用。 */
-export type AudioBillingMode = 'per_second';
+/** Audio 计费模式：时长（whisper）或 token（gpt-4o-*transcribe）。 */
+export type AudioBillingMode = 'per_second' | 'token';
 
 /** 按张单价一侧（output 或 `image.input` 参考图）。 */
 export type ImagePerSidePricing = {
@@ -82,14 +83,15 @@ export type AudioPricingConfig = {
 
 export interface ParsedPricingProfile {
 	/**
-	 * Token / LLM 阶梯价。`image_billing_mode === 'per_image'` 或 `audio_billing_mode === 'per_second'` 时可为空数组。
+	 * Token / LLM / Audio-token 阶梯价。
+	 * `image_billing_mode === 'per_image'` 或 `audio_billing_mode === 'per_second'` 时可为空数组。
 	 */
 	tiers: PricingTierPrices[];
 	/** 显式 Image 计费模式；缺省时由 `resolveImageBillingMode` 推断（legacy 仅 image 块 → null）。 */
 	image_billing_mode?: ImageBillingMode;
 	/** 按张目录价；`per_image` 模式计费时使用。 */
 	image?: ImagePricingConfig | null;
-	/** 显式 Audio 计费模式；须配合 `audio` 块。 */
+	/** 显式 Audio 计费模式：`per_second` 须 `audio`；`token` 须非空 `tiers`。 */
 	audio_billing_mode?: AudioBillingMode;
 	/** 音频按时长目录价；`per_second` 模式计费时使用。 */
 	audio?: AudioPricingConfig | null;
@@ -328,8 +330,27 @@ export function profileHasAudioPerSecondPricing(
 	return p != null && p >= 0;
 }
 
+/** 是否配置了 audio token 目录价（显式 mode + 至少一档非负 input/output）。 */
+export function profileHasAudioTokenPricing(
+	profile: ParsedPricingProfile | null | undefined
+): boolean {
+	if (!profile || profile.audio_billing_mode !== 'token') {
+		return false;
+	}
+	if (!profile.tiers.length) {
+		return false;
+	}
+	return profile.tiers.some(
+		(t) =>
+			(Number.isFinite(t.input_price) && t.input_price >= 0) ||
+			(Number.isFinite(t.output_price) && t.output_price >= 0)
+	);
+}
+
 /**
- * 解析 Audio 计费模式：仅显式 `audio_billing_mode: per_second` + 合法 `audio` 块时返回 `per_second`。
+ * 解析 Audio 计费模式：
+ * - `per_second` + 合法 `audio` → per_second
+ * - `token` + 合法 tiers → token
  */
 export function resolveAudioBillingMode(
 	profile: ParsedPricingProfile | null | undefined
@@ -339,6 +360,9 @@ export function resolveAudioBillingMode(
 	}
 	if (profile.audio_billing_mode === 'per_second' && profileHasAudioPerSecondPricing(profile)) {
 		return 'per_second';
+	}
+	if (profile.audio_billing_mode === 'token' && profileHasAudioTokenPricing(profile)) {
+		return 'token';
 	}
 	return null;
 }
@@ -531,7 +555,7 @@ function parseAudioBillingMode(raw: unknown): AudioBillingMode | null | 'invalid
 	if (raw === undefined || raw === null) {
 		return null;
 	}
-	if (raw === 'per_second') {
+	if (raw === 'per_second' || raw === 'token') {
 		return raw;
 	}
 	return 'invalid';
@@ -568,7 +592,8 @@ function parseAudioPricingConfig(raw: unknown): AudioPricingConfig | null | unde
  * 解析并校验 `pricing_profile` JSON 文本；不合法时返回 `null`（调用方按无 profile 处理，单价按 0）。
  * - Token / LLM：`{ "tiers": [ ... ], "image_billing_mode"?: "token", ... }`（`tiers` 必填非空）
  * - 按张：`{ "image_billing_mode": "per_image", "image": { ... } }`（`tiers` 可省略；若给出须合法）
- * - 音频：`{ "audio_billing_mode": "per_second", "audio": { "price_per_second": ... } }`（`tiers` 可省略）
+ * - 音频时长：`{ "audio_billing_mode": "per_second", "audio": { "price_per_second": ... } }`（`tiers` 可省略）
+ * - 音频 token：`{ "audio_billing_mode": "token", "tiers": [ { "input_price", "output_price", "upto": null } ] }`
  * 非法 `image_billing_mode` / `audio_billing_mode` → 整段 `null`；`image` / `audio` 非法时忽略该键（仍返回 tiers）。
  */
 export function parsePricingProfile(jsonText: string | null | undefined): ParsedPricingProfile | null {
@@ -621,7 +646,7 @@ export function parsePricingProfile(jsonText: string | null | undefined): Parsed
 	if (modeParsed === 'token' || modeParsed === 'per_image') {
 		result.image_billing_mode = modeParsed;
 	}
-	if (audioModeParsed === 'per_second') {
+	if (audioModeParsed === 'per_second' || audioModeParsed === 'token') {
 		result.audio_billing_mode = audioModeParsed;
 	}
 	if (o.image !== undefined) {

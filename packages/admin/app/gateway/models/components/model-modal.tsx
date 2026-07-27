@@ -9,11 +9,14 @@ import {
 import { ModelModalitiesBadgeFromRaw } from '@/components/model-modalities-badge';
 import { PricingTiersEditor } from '@/components/pricing-tiers-editor';
 import { MODEL_VENDOR_OPTIONS } from '@/lib/model-vendor';
-import type {
-	AudioPricingDraftState,
-	ImageBillingModeDraft,
-	ImagePerImageDraft,
-	PricingTierDraftRow,
+import {
+	createDefaultAudioPricingDraft,
+	createDefaultAudioTokenPricingDraft,
+	type AudioBillingModeDraft,
+	type AudioPricingDraftState,
+	type ImageBillingModeDraft,
+	type ImagePerImageDraft,
+	type PricingTierDraftRow,
 } from '@/lib/pricing-tiers-draft';
 import { tagBadgeClass } from '../model-utils';
 import type { ModelFormData, ModelFormKind, ModelListItem } from '../types';
@@ -313,47 +316,180 @@ export function ModelModal(props: Props) {
 							{isAudioModel && audioPricingDraft && onAudioPricingDraftChange ? (
 								<div className="space-y-3 rounded-md border border-gray-200 bg-white p-3">
 									<p className="text-sm font-medium text-gray-800">{t('audioPricing')}</p>
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-										<div>
-											<label className="mb-1 block text-xs font-medium text-gray-600">
-												{t('audioPricePerSecond')}
-												<span className="ml-1 font-normal text-gray-400">
-													({billingCurrency}/s)
-												</span>
-											</label>
-											<input
-												type="number"
-												step="any"
-												min="0"
-												value={audioPricingDraft.price_per_second}
-												onChange={(e) =>
-													onAudioPricingDraftChange({
-														...audioPricingDraft,
-														price_per_second: e.target.value,
-													})
-												}
-												className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-											/>
-										</div>
-										<div>
-											<label className="mb-1 block text-xs font-medium text-gray-600">
-												{t('audioMinimumSeconds')}
-											</label>
-											<input
-												type="number"
-												step="any"
-												min="0"
-												value={audioPricingDraft.minimum_seconds}
-												onChange={(e) =>
-													onAudioPricingDraftChange({
-														...audioPricingDraft,
-														minimum_seconds: e.target.value,
-													})
-												}
-												className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-											/>
+									<div className="space-y-1.5">
+										<p className="text-[11px] font-medium text-gray-600">
+											{t('audioBillingMode')}
+										</p>
+										<div
+											className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
+											role="group"
+											aria-label={t('audioBillingMode')}
+										>
+											{(
+												[
+													{
+														id: 'per_second' as const,
+														label: t('audioBillingModePerSecond'),
+													},
+													{
+														id: 'token' as const,
+														label: t('audioBillingModeToken'),
+													},
+												] as const
+											).map((opt) => {
+												const active = audioPricingDraft.mode === opt.id;
+												return (
+													<button
+														key={opt.id}
+														type="button"
+														onClick={() => {
+															if (audioPricingDraft.mode === opt.id) return;
+															const nextMode: AudioBillingModeDraft = opt.id;
+															if (nextMode === 'per_second') {
+																onAudioPricingDraftChange({
+																	...createDefaultAudioPricingDraft(),
+																	price_per_second:
+																		audioPricingDraft.price_per_second.trim() !== ''
+																			? audioPricingDraft.price_per_second
+																			: createDefaultAudioPricingDraft()
+																					.price_per_second,
+																	minimum_seconds:
+																		audioPricingDraft.minimum_seconds.trim() !== ''
+																			? audioPricingDraft.minimum_seconds
+																			: createDefaultAudioPricingDraft()
+																					.minimum_seconds,
+																});
+																return;
+															}
+															onAudioPricingDraftChange(
+																audioPricingDraft.tiers.length > 0
+																	? {
+																			...audioPricingDraft,
+																			mode: 'token',
+																		}
+																	: createDefaultAudioTokenPricingDraft()
+															);
+														}}
+														className={
+															active
+																? 'rounded px-3 py-1.5 text-sm font-medium bg-white text-gray-900 shadow-sm'
+																: 'rounded px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900'
+														}
+													>
+														{opt.label}
+													</button>
+												);
+											})}
 										</div>
 									</div>
+									{audioPricingDraft.mode === 'token' ? (
+										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+											<div>
+												<label className="mb-1 block text-xs font-medium text-gray-600">
+													{t('audioInputPricePerM')}
+													<span className="ml-1 font-normal text-gray-400">
+														({billingCurrency}/1M)
+													</span>
+												</label>
+												<input
+													type="number"
+													step="any"
+													min="0"
+													value={audioPricingDraft.tiers[0]?.input_price ?? ''}
+													onChange={(e) => {
+														const base =
+															audioPricingDraft.tiers[0] ??
+															createDefaultAudioTokenPricingDraft().tiers[0]!;
+														onAudioPricingDraftChange({
+															...audioPricingDraft,
+															mode: 'token',
+															tiers: [
+																{
+																	...base,
+																	input_price: e.target.value,
+																},
+															],
+														});
+													}}
+													className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+												/>
+											</div>
+											<div>
+												<label className="mb-1 block text-xs font-medium text-gray-600">
+													{t('audioOutputPricePerM')}
+													<span className="ml-1 font-normal text-gray-400">
+														({billingCurrency}/1M)
+													</span>
+												</label>
+												<input
+													type="number"
+													step="any"
+													min="0"
+													value={audioPricingDraft.tiers[0]?.output_price ?? ''}
+													onChange={(e) => {
+														const base =
+															audioPricingDraft.tiers[0] ??
+															createDefaultAudioTokenPricingDraft().tiers[0]!;
+														onAudioPricingDraftChange({
+															...audioPricingDraft,
+															mode: 'token',
+															tiers: [
+																{
+																	...base,
+																	output_price: e.target.value,
+																},
+															],
+														});
+													}}
+													className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+												/>
+											</div>
+										</div>
+									) : (
+										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+											<div>
+												<label className="mb-1 block text-xs font-medium text-gray-600">
+													{t('audioPricePerSecond')}
+													<span className="ml-1 font-normal text-gray-400">
+														({billingCurrency}/s)
+													</span>
+												</label>
+												<input
+													type="number"
+													step="any"
+													min="0"
+													value={audioPricingDraft.price_per_second}
+													onChange={(e) =>
+														onAudioPricingDraftChange({
+															...audioPricingDraft,
+															mode: 'per_second',
+															price_per_second: e.target.value,
+														})
+													}
+													className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+												/>
+											</div>
+											<div>
+												<label className="mb-1 block text-xs font-medium text-gray-600">
+													{t('audioMinimumSeconds')}
+												</label>
+												<input
+													type="number"
+													step="any"
+													min="0"
+													value={audioPricingDraft.minimum_seconds}
+													onChange={(e) =>
+														onAudioPricingDraftChange({
+															...audioPricingDraft,
+															mode: 'per_second',
+															minimum_seconds: e.target.value,
+														})
+													}
+													className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+												/>
+											</div>
+										</div>
+									)}
 								</div>
 							) : isImageModel ? (
 								<PricingTiersEditor

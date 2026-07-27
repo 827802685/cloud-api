@@ -4,6 +4,7 @@ import { normalizeModelVendorInput } from '@/lib/model-vendor';
 import {
 	parsePricingProfile,
 	profileHasAudioPerSecondPricing,
+	profileHasAudioTokenPricing,
 	profileHasImagePerImagePricing,
 	type PricingTierPrices,
 } from '@octafuse/core/db/pricing-profile';
@@ -160,6 +161,24 @@ export function buildPricingMetricColumns(pricingProfile: string | null | undefi
 			unitKind: 'per_second',
 			lines: [{ condition: 'All', price: profile.audio.price_per_second }],
 		});
+		return columns;
+	}
+
+	if (profileHasAudioTokenPricing(profile) && profile.tiers.length > 0) {
+		columns.push(
+			{
+				title: 'Input',
+				headerTitle: 'Audio input (per 1M tokens)',
+				unitKind: 'per_m',
+				lines: buildMetricLines((tier) => tier.input_price),
+			},
+			{
+				title: 'Output',
+				headerTitle: 'Audio output (per 1M tokens)',
+				unitKind: 'per_m',
+				lines: buildMetricLines((tier) => tier.output_price),
+			}
+		);
 		return columns;
 	}
 

@@ -494,12 +494,12 @@ export function summarizePricingAuditJson(raw: string | null | undefined): strin
 				? (o.snapshot as Record<string, unknown>)
 				: null;
 		const audioKind =
-			o.kind === 'audio_per_second'
-				? 'audio_per_second'
-				: snapEarly?.kind === 'audio_per_second'
-					? 'audio_per_second'
+			o.kind === 'audio_per_second' || o.kind === 'audio_tokens'
+				? o.kind
+				: snapEarly?.kind === 'audio_per_second' || snapEarly?.kind === 'audio_tokens'
+					? (snapEarly.kind as string)
 					: null;
-		if (audioKind) {
+		if (audioKind === 'audio_per_second') {
 			parts.push('audio_per_second');
 			const audioSrc = o.kind === 'audio_per_second' ? o : (snapEarly ?? o);
 			const dur =
@@ -520,6 +520,18 @@ export function summarizePricingAuditJson(raw: string | null | undefined): strin
 				typeof audioSrc.minimum_seconds === 'number' ? audioSrc.minimum_seconds : null;
 			if (minS != null) {
 				parts.push(`min ${minS}s`);
+			}
+		}
+		if (audioKind === 'audio_tokens') {
+			parts.push('audio_tokens');
+			const tokens = o.tokens as Record<string, unknown> | undefined;
+			if (tokens && typeof tokens === 'object') {
+				const input = typeof tokens.input === 'number' ? tokens.input : 0;
+				const output = typeof tokens.output === 'number' ? tokens.output : 0;
+				const audio = typeof tokens.audio === 'number' ? tokens.audio : null;
+				parts.push(
+					audio != null ? `in/out/audio ${input}/${output}/${audio}` : `in/out ${input}/${output}`
+				);
 			}
 		}
 		if (

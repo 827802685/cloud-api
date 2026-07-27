@@ -18,12 +18,19 @@ type PresetPricingJson = Partial<ParsedPricingProfile> & {
 
 const asPricing = (raw: unknown): PresetPricingJson => raw as PresetPricingJson;
 
+function isAudioPresetPricing(usd: PresetPricingJson): boolean {
+	if (usd.audio_billing_mode === 'per_second' && usd.audio != null) return true;
+	if (usd.audio_billing_mode === 'token' && Array.isArray(usd.tiers) && usd.tiers.length > 0) {
+		return true;
+	}
+	return false;
+}
+
 describe('static audio model presets (*-audio.json)', () => {
-	it('every audio preset uses per_second pricing', () => {
-		const audioRows = listStaticModelPresets().filter((r) => {
-			const usd = asPricing(r.pricing.usd);
-			return usd.audio_billing_mode === 'per_second' && usd.audio != null;
-		});
+	it('every audio preset uses per_second or token pricing', () => {
+		const audioRows = listStaticModelPresets().filter((r) =>
+			isAudioPresetPricing(asPricing(r.pricing.usd))
+		);
 		assert.deepEqual(
 			audioRows.map((r) => r.id).sort(),
 			EXPECTED_AUDIO_IDS
@@ -42,21 +49,31 @@ describe('static audio model presets (*-audio.json)', () => {
 		);
 	});
 
-	it('locks OpenAI transcription catalog unit prices (duration catalog; CNY ×7)', () => {
+	it('locks OpenAI transcription catalog unit prices (whisper per_second; 4o token; CNY ×7)', () => {
 		const byId = new Map(listStaticModelPresets().map((r) => [r.id, r]));
 
 		const whisper = byId.get('whisper-1')!;
+		assert.equal(asPricing(whisper.pricing.usd).audio_billing_mode, 'per_second');
 		assert.equal(asPricing(whisper.pricing.usd).audio?.price_per_second, 0.0001);
 		assert.equal(asPricing(whisper.pricing.cny).audio?.price_per_second, 0.0007);
 
 		const mini = byId.get('gpt-4o-mini-transcribe')!;
-		assert.equal(asPricing(mini.pricing.usd).audio?.price_per_second, 0.00005);
-		assert.equal(asPricing(mini.pricing.cny).audio?.price_per_second, 0.00035);
+		assert.equal(asPricing(mini.pricing.usd).audio_billing_mode, 'token');
+		assert.equal(asPricing(mini.pricing.usd).tiers?.[0]?.input_price, 1.25);
+		assert.equal(asPricing(mini.pricing.usd).tiers?.[0]?.output_price, 5);
+		assert.equal(asPricing(mini.pricing.cny).tiers?.[0]?.input_price, 8.75);
+		assert.equal(asPricing(mini.pricing.cny).tiers?.[0]?.output_price, 35);
 
 		const full = byId.get('gpt-4o-transcribe')!;
-		assert.equal(asPricing(full.pricing.usd).audio?.price_per_second, 0.0001);
+		assert.equal(asPricing(full.pricing.usd).audio_billing_mode, 'token');
+		assert.equal(asPricing(full.pricing.usd).tiers?.[0]?.input_price, 2.5);
+		assert.equal(asPricing(full.pricing.usd).tiers?.[0]?.output_price, 10);
+		assert.equal(asPricing(full.pricing.cny).tiers?.[0]?.input_price, 17.5);
+		assert.equal(asPricing(full.pricing.cny).tiers?.[0]?.output_price, 70);
 
 		const diarize = byId.get('gpt-4o-transcribe-diarize')!;
-		assert.equal(asPricing(diarize.pricing.usd).audio?.price_per_second, 0.0001);
+		assert.equal(asPricing(diarize.pricing.usd).audio_billing_mode, 'token');
+		assert.equal(asPricing(diarize.pricing.usd).tiers?.[0]?.input_price, 2.5);
+		assert.equal(asPricing(diarize.pricing.usd).tiers?.[0]?.output_price, 10);
 	});
 });

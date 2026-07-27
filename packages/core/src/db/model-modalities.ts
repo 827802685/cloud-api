@@ -5,7 +5,7 @@
  * Kind (LLM vs image-generation vs audio ASR) is derived — no separate DB column:
  * - Image generation: `output_modalities` includes `image`
  * - Fallback when output modalities missing: `pricing_profile.image` present
- * - Audio transcription: `pricing_profile.audio_billing_mode === 'per_second'` + `audio` block
+ * - Audio transcription: `pricing_profile.audio_billing_mode` 为 `per_second`（+ `audio`）或 `token`（+ tiers）
  * - Do **not** use `input_modalities` containing `image` (multimodal LLMs also accept images)
  */
 
@@ -143,11 +143,20 @@ export function isImageGenerationModel(m: ModelKindFields): boolean {
 
 /**
  * Whether this catalog model is an audio transcription (ASR) model.
- * Detected via explicit `audio_billing_mode: per_second` + `audio` block in pricing_profile.
+ * Detected via `audio_billing_mode: per_second|token` with matching pricing payload.
  */
 export function isAudioTranscriptionModel(m: ModelKindFields): boolean {
 	const profile = parsePricingProfile(m.pricing_profile ?? undefined);
-	return profile?.audio_billing_mode === 'per_second' && profile.audio != null;
+	if (!profile?.audio_billing_mode) {
+		return false;
+	}
+	if (profile.audio_billing_mode === 'per_second') {
+		return profile.audio != null;
+	}
+	if (profile.audio_billing_mode === 'token') {
+		return profile.tiers.length > 0;
+	}
+	return false;
 }
 
 /** False for image-generation / ASR models; true for chat / multimodal LLMs and unknown. */

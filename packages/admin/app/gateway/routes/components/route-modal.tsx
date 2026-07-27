@@ -4,7 +4,10 @@ import { DocumentDuplicateIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ReadOnlyImagePricing } from '@/components/read-only-image-pricing';
 import { ReadOnlyPricingTiersTable } from '@/components/read-only-pricing-tiers-table';
-import { isAudioRouteModel } from '@/lib/audio-transcriptions';
+import {
+	isAudioRouteModel,
+	type CatalogAudioPricingDisplay,
+} from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
 import type { CatalogImagePricingDisplay, CatalogPricingTierDisplayRow } from '@/lib/pricing-ui';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
@@ -32,11 +35,7 @@ type Props = {
 	selectedProvider: GatewayProvider | undefined;
 	catalogStandardTierRows: CatalogPricingTierDisplayRow[];
 	catalogImagePricingDisplay: CatalogImagePricingDisplay | null;
-	catalogAudioPricingDisplay: {
-		pricePerSecond: string;
-		minimumSeconds: string;
-		unit: string;
-	} | null;
+	catalogAudioPricingDisplay: CatalogAudioPricingDisplay | null;
 	selectedModelIsImage: boolean;
 	selectedModelIsAudio: boolean;
 	allowedProtocolsForProvider: UpstreamProtocol[];
@@ -76,6 +75,7 @@ export function RouteModal(props: Props) {
 	} = props;
 
 	const t = useTranslations('routes.modal');
+	const tModels = useTranslations('models.modal');
 	const tCommon = useTranslations('common');
 	const lockOpenaiProtocol = selectedModelIsImage || selectedModelIsAudio;
 
@@ -302,27 +302,54 @@ export function RouteModal(props: Props) {
 							>
 								{selectedModelIsAudio ? (
 									catalogAudioPricingDisplay ? (
-										<ul className="divide-y divide-gray-100 rounded-md border border-gray-200 text-sm tabular-nums">
-											<li className="flex items-baseline justify-between gap-3 px-3 py-2">
-												<span className="text-xs text-gray-500">
-													{t('audioPricePerSecond')}
-												</span>
-												<span className="font-medium text-gray-900">
-													{catalogAudioPricingDisplay.pricePerSecond}
-													<span className="ml-1 text-[10px] font-normal text-gray-400">
-														{catalogAudioPricingDisplay.unit}
+										catalogAudioPricingDisplay.mode === 'token' ? (
+											<ul className="divide-y divide-gray-100 rounded-md border border-gray-200 text-sm tabular-nums">
+												<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+													<span className="text-xs text-gray-500">
+														{tModels('audioInputPricePerM')}
 													</span>
-												</span>
-											</li>
-											<li className="flex items-baseline justify-between gap-3 px-3 py-2">
-												<span className="text-xs text-gray-500">
-													{t('audioMinimumSeconds')}
-												</span>
-												<span className="font-medium text-gray-900">
-													{catalogAudioPricingDisplay.minimumSeconds}
-												</span>
-											</li>
-										</ul>
+													<span className="font-medium text-gray-900">
+														{catalogAudioPricingDisplay.inputPrice}
+														<span className="ml-1 text-[10px] font-normal text-gray-400">
+															{catalogAudioPricingDisplay.unit}
+														</span>
+													</span>
+												</li>
+												<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+													<span className="text-xs text-gray-500">
+														{tModels('audioOutputPricePerM')}
+													</span>
+													<span className="font-medium text-gray-900">
+														{catalogAudioPricingDisplay.outputPrice}
+														<span className="ml-1 text-[10px] font-normal text-gray-400">
+															{catalogAudioPricingDisplay.unit}
+														</span>
+													</span>
+												</li>
+											</ul>
+										) : (
+											<ul className="divide-y divide-gray-100 rounded-md border border-gray-200 text-sm tabular-nums">
+												<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+													<span className="text-xs text-gray-500">
+														{t('audioPricePerSecond')}
+													</span>
+													<span className="font-medium text-gray-900">
+														{catalogAudioPricingDisplay.pricePerSecond}
+														<span className="ml-1 text-[10px] font-normal text-gray-400">
+															{catalogAudioPricingDisplay.unit}
+														</span>
+													</span>
+												</li>
+												<li className="flex items-baseline justify-between gap-3 px-3 py-2">
+													<span className="text-xs text-gray-500">
+														{t('audioMinimumSeconds')}
+													</span>
+													<span className="font-medium text-gray-900">
+														{catalogAudioPricingDisplay.minimumSeconds}
+													</span>
+												</li>
+											</ul>
+										)
 									) : (
 										<p className="text-sm text-gray-500">
 											{formData.model_id

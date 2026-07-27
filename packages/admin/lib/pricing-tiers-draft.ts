@@ -1,11 +1,12 @@
 /**
  * 管理 UI：`pricing_profile` 的 `{ tiers }` 表单行与 JSON 序列化（与 `@octafuse/core` 解析一致）。
  * Image 双模式：`image_billing_mode` token / per_image + 可选 `image` 块。
- * Audio：`audio_billing_mode: per_second` + `audio` 块（不计价 tiers）。
+ * Audio 双模式：`audio_billing_mode` per_second（`audio` 块）/ token（`tiers`）。
  */
 import {
 	parsePricingProfile,
 	profileHasAudioPerSecondPricing,
+	profileHasAudioTokenPricing,
 	profileHasImagePerImagePricing,
 	profileHasImageTokenPricing,
 	type PricingTierPrices,
@@ -28,17 +29,25 @@ export type ImagePricingDraftState = {
 	perImage: ImagePerImageDraft;
 };
 
-/** Audio 转写：按秒计费草稿（对齐 whisper-1 预设字段）。 */
+export type AudioBillingModeDraft = 'per_second' | 'token';
+
+/** Audio 转写双模式草稿：per_second（whisper）或 token（gpt-4o-*transcribe）。 */
 export type AudioPricingDraftState = {
+	mode: AudioBillingModeDraft;
+	/** per_second 字段 */
 	price_per_second: string;
 	minimum_seconds: string;
+	/** token 字段（通常单档开放上界） */
+	tiers: PricingTierDraftRow[];
 };
 
-/** 新建 Audio 模型默认价（对齐 openai-audio.json USD：0.0001 / 最低 1 秒）。 */
+/** 新建 Audio 模型默认价（per_second；对齐 openai-audio.json whisper USD：0.0001 / 最低 1 秒）。 */
 export function createDefaultAudioPricingDraft(): AudioPricingDraftState {
 	return {
+		mode: 'per_second',
 		price_per_second: '0.0001',
 		minimum_seconds: '1',
+		tiers: [],
 	};
 }
 
@@ -117,6 +126,28 @@ export function createDefaultImageTokenTierRow(): PricingTierDraftRow {
 		image_input_price: '8',
 		image_input_cache_price: '2',
 		image_output_price: '30',
+	};
+}
+
+/** Audio token 计费默认档（对齐 gpt-4o-mini-transcribe USD：$1.25 / $5 per 1M）。 */
+export function createDefaultAudioTokenPricingDraft(): AudioPricingDraftState {
+	return {
+		mode: 'token',
+		price_per_second: '',
+		minimum_seconds: '1',
+		tiers: [
+			{
+				id: nextRowId(),
+				upto: DRAFT_UPTO_OPEN_SENTINEL,
+				input_price: '1.25',
+				output_price: '5',
+				cache_read_price: '',
+				cache_write_price: '',
+				image_input_price: '',
+				image_input_cache_price: '',
+				image_output_price: '',
+			},
+		],
 	};
 }
 
@@ -234,7 +265,7 @@ export function profileJsonToDraftState(json: string | null | undefined): ImageP
 	};
 }
 
-/** 从已存 JSON 解析 Audio per_second 编辑态；非 audio profile 返回默认草稿。 */
+/** 从已存 JSON 解析 Audio 双模式编辑态；非 audio profile 返回 per_second 默认草稿。 */
 export function profileJsonToAudioDraftState(
 	json: string | null | undefined
 ): AudioPricingDraftState {
@@ -243,14 +274,31 @@ export function profileJsonToAudioDraftState(
 		return createDefaultAudioPricingDraft();
 	}
 	const p = parsePricingProfile(trimmed);
-	if (!p || !profileHasAudioPerSecondPricing(p) || !p.audio) {
+	if (!p) {
 		return createDefaultAudioPricingDraft();
 	}
-	return {
-		price_per_second: String(p.audio.price_per_second),
-		minimum_seconds:
-			p.audio.minimum_seconds != null ? String(p.audio.minimum_seconds) : '1',
-	};
+	if (p.audio_billing_mode === 'token' || profileHasAudioTokenPricing(p)) {
+		const tiers =
+			p.tiers.length > 0
+				? ensureLastRowOpenUptoDraft(p.tiers.map(tierPricesToDraft))
+				: createDefaultAudioTokenPricingDraft().tiers;
+		return {
+			mode: 'token',
+			price_per_second: '',
+			minimum_seconds: '1',
+			tiers,
+		};
+	}
+	if (profileHasAudioPerSecondPricing(p) && p.audio) {
+		return {
+			mode: 'per_second',
+			price_per_second: String(p.audio.price_per_second),
+			minimum_seconds:
+				p.audio.minimum_seconds != null ? String(p.audio.minimum_seconds) : '1',
+			tiers: [],
+		};
+	}
+	return createDefaultAudioPricingDraft();
 }
 
 export type SerializeTiersResult =
@@ -352,8 +400,34 @@ export function serializeDraftRowsToProfileJson(rows: PricingTierDraftRow[]): Se
 	return { ok: true, json };
 }
 
-/** Audio 转写：序列化为 `{ audio_billing_mode: "per_second", audio: {...} }`（无 tiers）。 */
+/**
+ * Audio 转写：按 mode 序列化。
+ * - token → `{ audio_billing_mode: "token", tiers: [...] }`
+ * - per_second → `{ audio_billing_mode: "per_second", audio: {...} }`（无 tiers）
+ */
 export function serializeAudioPricingDraft(draft: AudioPricingDraftState): SerializeTiersResult {
+	if (draft.mode === 'token') {
+		const res = serializeDraftRowsToProfileJson(draft.tiers);
+		if (!res.ok) {
+			return res;
+		}
+		if (!res.json) {
+			return { ok: false, error: 'Audio token pricing requires at least one tier' };
+		}
+		try {
+			const obj = JSON.parse(res.json) as Record<string, unknown>;
+			obj.audio_billing_mode = 'token';
+			delete obj.audio;
+			const json = JSON.stringify(obj);
+			if (!parsePricingProfile(json)) {
+				return { ok: false, error: 'Serialized token audio profile failed pricing validation' };
+			}
+			return { ok: true, json };
+		} catch {
+			return { ok: false, error: 'Failed to serialize token audio profile' };
+		}
+	}
+
 	const pricePerSecond = Number(draft.price_per_second.trim());
 	if (!Number.isFinite(pricePerSecond) || pricePerSecond < 0) {
 		return { ok: false, error: 'Audio price_per_second must be a finite number ≥ 0' };

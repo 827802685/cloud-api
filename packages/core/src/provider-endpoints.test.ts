@@ -106,7 +106,7 @@ describe('listConfiguredCapabilities', () => {
 				{ openai: { base: 'https://api.openai.com/v1' } },
 				'openai'
 			),
-			['chat', 'images.generations', 'images.edits']
+			['chat', 'images.generations', 'images.edits', 'audio.transcriptions']
 		);
 	});
 
@@ -135,7 +135,7 @@ describe('listConfiguredCapabilities', () => {
 				},
 				'openai'
 			),
-			['chat', 'images.generations', 'images.edits']
+			['chat', 'images.generations', 'images.edits', 'audio.transcriptions']
 		);
 	});
 

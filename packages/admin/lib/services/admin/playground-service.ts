@@ -38,7 +38,7 @@ export type PlaygroundResolvedRoute = {
 	providerKeyLabel: string;
 	/** Catalog model is image-generation (`output_modalities` includes image). */
 	isImageModel: boolean;
-	/** Catalog model is audio transcription (`audio_billing_mode: per_second`). */
+	/** Catalog model is audio transcription (`audio_billing_mode: per_second | token`). */
 	isAudioModel: boolean;
 };
 

@@ -180,7 +180,7 @@ export interface RequestLogRow {
   upstream_request_id: string | null;
   /** 上游响应 body 里的生成结果 id（OpenAI `chatcmpl-*` / Anthropic `msg_*` / Gemini `responseId`）；应用层，穿透聚合商 */
   upstream_message_id: string | null;
-  /** 计费种类：`image_tokens` | `image_per_image` | `audio_per_second`；旧行为 null */
+  /** 计费种类：`image_tokens` | `image_per_image` | `audio_per_second` | `audio_tokens`；旧行为 null */
   billing_kind: string | null;
   /** 按张计费：参考图张数 */
   input_image_count: number;
