@@ -17,7 +17,7 @@
 - 複数プロトコルへの対応：OpenAI Chat Completions、Anthropic Messages、Gemini、OpenAI Images、OpenAI Audio Transcriptions API と互換性のあるエンドポイントを提供します。
 - ルーティングとフェイルオーバー：Route グループ、優先度、可用性に基づいてアップストリームを選択します。**スティッキールーティング**によりプロンプトキャッシュのヒット率を高め、レート制限や障害が発生した場合は自動的に切り替えます。
 - アップストリームキープール：複数の Provider API Key の優先度、重み、RPM / TPM 制限、同時実行数、サーキットブレーカーの状態を一元管理し、リアルタイムの残容量に応じて振り分けます。
-- **Provider / モデルのプリセット**：公式ベンダーに加え、集約プラットフォームや各種 Coding / Token Plan を含む多数のインポートテンプレートを同梱。Base URL とモデルカタログ情報を事前入力できるため、ドキュメントをあちこち調べて手作業で保守する手間を減らせます。
+- **Provider / モデルのプリセット**：公式ベンダーに加え、集約プラットフォームや各種 Coding / Token Plan を含む多数のインポートテンプレートを同梱。Base URL とモデルカタログ情報を事前入力できるため、ドキュメントをあちこち調べて手作業で保守する手間を減らせます。ワンクリックインポート対応の一覧は公式サイトの [Providers Catalog](https://octafuse.dev/en/catalog/providers/) と [Models Catalog](https://octafuse.dev/en/catalog/models/) を参照してください。新たな Provider / Model の追加は PR 歓迎です。
 - ユーザー API Key と予算：個人、チーム、顧客、プロジェクトごとに独立した Key を発行し、期間ごとの予算、ステータス、メタデータを設定できます。ユーザー自身による予算残高の確認にも対応します。
 - 画像生成・編集：OpenAI Images API と互換性のあるインターフェースから画像モデルを呼び出せます。トークン使用量の内訳に基づく課金と、画像単位の課金をサポートします。
 - 音声文字起こし：OpenAI 互換の `/v1/audio/transcriptions` から ASR モデルを呼び出せます。秒単位（再生時間）とトークン単位（アップストリーム usage）の 2 つのカタログ課金モードに対応します。

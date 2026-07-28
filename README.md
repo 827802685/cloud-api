@@ -17,7 +17,7 @@
 - 多协议兼容：提供兼容 OpenAI Chat Completions、Anthropic Messages、Gemini、OpenAI Images 与 OpenAI Audio Transcriptions API 的接入点。
 - 路由与故障转移：按路由组、优先级和可用性选择上游；通过**粘性路由**提高提示词缓存命中率，并在遇到限流或故障时自动切换。
 - 上游密钥池：集中管理多把 Provider API Key 的优先级、权重、RPM / TPM 限额、并发和熔断状态，并根据实时剩余容量进行调度。
-- **预置 Provider 与 Models**：内置大量导入模板，除官方模型厂外，还覆盖聚合平台与各类 Coding / Token Plan；预填 Base URL 与模型目录信息，减少四处查文档、手工维护端点与模型清单的成本。
+- **预置 Provider 与 Models**：内置大量导入模板，除官方模型厂外，还覆盖聚合平台与各类 Coding / Token Plan；预填 Base URL 与模型目录信息，减少四处查文档、手工维护端点与模型清单的成本。支持一键导入的完整列表见官网 [Providers Catalog](https://octafuse.dev/zh/catalog/providers/) 与 [Models Catalog](https://octafuse.dev/zh/catalog/models/)；若希望接入新的 Provider 或 Model，欢迎提交 PR。
 - 用户 API Key 与预算：为个人、团队、客户或项目签发独立 Key，设置周期预算、状态和元数据，并允许用户查询自身额度。
 - 图像生成与编辑：通过兼容 OpenAI Images API 的接口调用图像模型，支持按 Token 用量分项计价与按张计价。
 - 语音转写：通过兼容 OpenAI `/v1/audio/transcriptions` 的接口调用 ASR 模型，支持按秒（时长）与按 Token（上游 usage）两种目录计价。

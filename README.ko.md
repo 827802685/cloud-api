@@ -17,7 +17,7 @@
 - 다중 프로토콜 호환: OpenAI Chat Completions, Anthropic Messages, Gemini, OpenAI Images, OpenAI Audio Transcriptions API와 호환되는 엔드포인트를 제공합니다.
 - Route 및 장애 조치: Route 그룹, 우선순위, 가용성을 기준으로 업스트림을 선택합니다. **스티키 라우팅**으로 프롬프트 캐시 적중률을 높이고, 속도 제한이나 장애가 발생하면 자동으로 전환합니다.
 - 업스트림 Key 풀: 여러 Provider API Key의 우선순위, 가중치, RPM / TPM 제한, 동시 실행 수, 서킷 브레이커 상태를 중앙에서 관리하고 실시간 잔여 용량에 따라 스케줄링합니다.
-- **Provider / 모델 프리셋**: 공식 모델 벤더뿐 아니라 집계 플랫폼과 각종 Coding / Token Plan을 포함한 대량의 가져오기 템플릿을 제공합니다. Base URL과 모델 카탈로그 정보가 미리 채워져, 문서를 찾아다니며 엔드포인트와 모델 목록을 수작업으로 관리하는 비용을 줄입니다.
+- **Provider / 모델 프리셋**: 공식 모델 벤더뿐 아니라 집계 플랫폼과 각종 Coding / Token Plan을 포함한 대량의 가져오기 템플릿을 제공합니다. Base URL과 모델 카탈로그 정보가 미리 채워져, 문서를 찾아다니며 엔드포인트와 모델 목록을 수작업으로 관리하는 비용을 줄입니다. 원클릭 가져오기 지원 목록은 공식 사이트의 [Providers Catalog](https://octafuse.dev/en/catalog/providers/)와 [Models Catalog](https://octafuse.dev/en/catalog/models/)에서 확인할 수 있으며, 새 Provider / Model 추가 PR을 환영합니다.
 - 사용자 API Key 및 예산: 개인, 팀, 고객 또는 프로젝트별로 독립적인 Key를 발급하고 주기별 예산, 상태, 메타데이터를 설정할 수 있으며, 사용자는 자신의 잔여 한도를 조회할 수 있습니다.
 - 이미지 생성 및 편집: OpenAI Images API 호환 인터페이스로 이미지 모델을 호출하며, 토큰 사용량을 항목별로 산정하는 요금제와 이미지 수 기준 과금을 지원합니다.
 - 음성 전사: OpenAI 호환 `/v1/audio/transcriptions`로 ASR 모델을 호출하며, 초 단위(재생 시간)와 토큰 단위(업스트림 usage) 두 가지 카탈로그 과금 모드를 지원합니다.
