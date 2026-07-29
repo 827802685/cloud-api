@@ -3,7 +3,6 @@
 import {
 	ArrowDownIcon,
 	ArrowLongRightIcon,
-	CheckCircleIcon,
 	ClipboardDocumentIcon,
 	ExclamationTriangleIcon,
 	PencilSquareIcon,
@@ -103,24 +102,24 @@ function RouteTarget({
 
 	return (
 		<div
-			className={`w-full min-w-0 rounded-lg border bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md sm:w-72 sm:max-w-full ${
-				enabled ? 'border-gray-200' : 'border-gray-200 bg-gray-50/80 opacity-70'
+			className={`w-full min-w-0 rounded-lg border bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md sm:w-64 sm:max-w-full ${
+				enabled ? 'border-gray-200' : 'border-red-100 bg-red-50/20'
 			}`}
 		>
-			<div className="flex items-start gap-2.5 p-3">
+			<div className="flex items-start gap-2 p-2.5">
 				<button
 					type="button"
 					onClick={() => onToggleStatus(route)}
 					disabled={togglingId === route.id}
-					className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
+					className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
 						enabled
 							? 'bg-emerald-50 text-emerald-600 ring-emerald-200 hover:bg-emerald-100'
-							: 'bg-gray-100 text-gray-400 ring-gray-200 hover:bg-gray-200'
+							: 'bg-red-50 text-red-500 ring-red-200 hover:bg-red-100'
 					}`}
 					title={enabled ? tList('routeEnabled') : tList('routeDisabled')}
 					aria-label={enabled ? tList('routeEnabled') : tList('routeDisabled')}
 				>
-					{enabled ? <CheckCircleIcon className="h-4 w-4" /> : <PowerIcon className="h-4 w-4" />}
+					<PowerIcon className="h-3.5 w-3.5" />
 				</button>
 				<button
 					type="button"
@@ -129,17 +128,17 @@ function RouteTarget({
 					title={t('editRoute')}
 				>
 					<div className="flex min-w-0 items-center gap-2">
-						<span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-900">
+						<span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-gray-900">
 							{route.provider_name || provider?.name || route.provider_id}
 						</span>
-						<PencilSquareIcon className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+						<PencilSquareIcon className="h-3 w-3 shrink-0 text-gray-400" />
 					</div>
-					<p className="mt-0.5 truncate font-mono text-[11px] text-gray-500" title={route.provider_model_name}>
+					<p className="mt-0.5 truncate font-mono text-[10px] text-gray-500" title={route.provider_model_name}>
 						{route.provider_model_name}
 					</p>
 				</button>
 			</div>
-			<div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 px-3 py-2">
+			<div className="flex flex-wrap items-center gap-1 border-t border-gray-100 px-2.5 py-1.5">
 				{showUpstreamMapping ? (
 					<span className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${protocolBadgeClass(route.upstream_protocol)}`}>
 						<UpstreamProtocolBrandIcon protocol={route.upstream_protocol} />
@@ -182,15 +181,42 @@ function RouteTarget({
 	);
 }
 
-function FlowConnector() {
+function FlowConnector({ onAdd }: { onAdd: () => void }) {
+	const t = useTranslations('routes.flow');
+
 	return (
 		<>
-			<div className="relative hidden h-5 xl:block" aria-hidden>
-				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" />
-				<ArrowLongRightIcon className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500" />
+			<div className="relative hidden h-5 xl:block">
+				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" aria-hidden />
+				<ArrowLongRightIcon
+					className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500"
+					aria-hidden
+				/>
+				<span className="absolute bottom-[calc(50%+0.45rem)] left-0 right-0 truncate text-center text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+					{t('providerStep')}
+				</span>
+				<button
+					type="button"
+					onClick={onAdd}
+					className="absolute left-1/2 top-[calc(50%+0.7rem)] inline-flex -translate-x-1/2 items-center gap-0.5 whitespace-nowrap rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+				>
+					<PlusIcon className="h-3 w-3" />
+					{t('addProvider')}
+				</button>
 			</div>
-			<div className="flex justify-center py-0.5 xl:hidden" aria-hidden>
-				<ArrowDownIcon className="h-4 w-4 text-blue-400" />
+			<div className="flex flex-col items-center gap-1 py-1 xl:hidden">
+				<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+					{t('providerStep')}
+				</span>
+				<ArrowDownIcon className="h-4 w-4 text-blue-400" aria-hidden />
+				<button
+					type="button"
+					onClick={onAdd}
+					className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+				>
+					<PlusIcon className="h-3.5 w-3.5" />
+					{t('addProvider')}
+				</button>
 			</div>
 		</>
 	);
@@ -398,7 +424,7 @@ function FlowBranch({
 				className="absolute left-0 top-1/2 hidden h-px w-4 bg-blue-300 xl:block"
 				aria-hidden
 			/>
-			<div className="grid min-w-0 gap-y-2 xl:grid-cols-[minmax(150px,0.8fr)_minmax(190px,240px)_40px_minmax(360px,2.4fr)] xl:items-center">
+			<div className="grid min-w-0 gap-y-2 xl:grid-cols-[minmax(130px,0.6fr)_minmax(160px,200px)_112px_minmax(360px,2.8fr)] xl:items-center">
 				<RoutingMatchConnector modelId={card.model_id} routeGroup={section.group} />
 
 				<button
@@ -432,42 +458,25 @@ function FlowBranch({
 					</span>
 				</button>
 
-				<FlowConnector />
+				<FlowConnector
+					onAdd={() => onCreate(card.model_id, {
+						protocol: section.protocol,
+						operation: section.requestOperation,
+						group: section.group,
+					})}
+				/>
 
 				<div className="min-w-0 rounded-lg border border-emerald-200/80 bg-emerald-50/20 p-2 shadow-sm">
-					<div className="mb-2 flex items-center justify-between gap-2">
-						<div className="min-w-0">
-							<p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-								{t('targetsNode')}
-							</p>
-							<p className="text-[10px] text-gray-500">
-								{t('targetCount', { count: section.routes.length })}
-							</p>
-						</div>
-						<button
-							type="button"
-							onClick={() => onCreate(card.model_id, {
-								protocol: section.protocol,
-								operation: section.requestOperation,
-								group: section.group,
-							})}
-							className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-						>
-							<PlusIcon className="h-3.5 w-3.5" />
-							{t('addToPool')}
-						</button>
-					</div>
-
-					<div className="space-y-2">
+					<div className="space-y-1.5">
 						{priorityLayers.map(([priority, routes], layerIndex) => (
 							<div key={priority}>
 								{layerIndex > 0 ? (
-									<div className="flex items-center gap-2 py-1 text-[10px] font-medium text-gray-400">
-										<ArrowDownIcon className="h-3.5 w-3.5" />
+									<div className="flex items-center gap-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+										<ArrowDownIcon className="h-3 w-3" />
 										<span>{t('fallback')}</span>
 									</div>
 								) : null}
-								<div className="mb-1.5 flex items-center gap-2">
+								<div className="mb-1 flex items-center gap-1.5">
 									<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
 										P{priority}
 									</span>
@@ -523,7 +532,7 @@ function FlowSection({
 }) {
 	return (
 		<div className="bg-slate-50/70 px-3 sm:px-4">
-			<div className="xl:grid xl:grid-cols-[minmax(180px,240px)_minmax(0,1fr)]">
+			<div className="xl:grid xl:grid-cols-[minmax(160px,210px)_minmax(0,1fr)]">
 				<div className="relative flex min-w-0 flex-col justify-center py-3 xl:pr-4">
 					<RequestSurfaceNode surface={surface} modelId={card.model_id} />
 					<span

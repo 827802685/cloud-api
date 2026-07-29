@@ -570,6 +570,7 @@
 			"targetsNode": "Upstream targets",
 			"targetCount": "{count} target(s)",
 			"addToPool": "Add target",
+			"addProvider": "Add provider",
 			"addRoute": "Add route",
 			"firstAttempt": "First attempt layer",
 			"fallback": "On failure, continue",

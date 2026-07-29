@@ -570,6 +570,7 @@
 			"targetsNode": "上流ターゲット",
 			"targetCount": "{count} ターゲット",
 			"addToPool": "ターゲットを追加",
+			"addProvider": "プロバイダーを追加",
 			"addRoute": "ルートを追加",
 			"firstAttempt": "最初の試行レイヤー",
 			"fallback": "失敗時に続行",
