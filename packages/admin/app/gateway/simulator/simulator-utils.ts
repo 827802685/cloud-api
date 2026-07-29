@@ -110,15 +110,36 @@ export function routeGroupMatchesSelection(routeGroup: string, selected: string)
 export function filterMatchingActiveRoutes(
 	routes: RouteListRow[],
 	modelId: string,
-	routeGroup: string
+	routeGroup: string,
+	requestProtocol?: string,
+	requestOperation?: string
 ): RouteListRow[] {
 	if (!modelId) return [];
+	const matchesSurface = (route: RouteListRow): boolean => {
+		if (!requestProtocol || !requestOperation || !route.surfaces) return true;
+		try {
+			const surfaces = JSON.parse(route.surfaces) as Array<{
+				request_protocol?: string;
+				request_operation?: string;
+				status?: string;
+			}>;
+			return surfaces.some(
+				(surface) =>
+					surface.status !== 'disabled' &&
+					surface.request_protocol === requestProtocol &&
+					(surface.request_operation === requestOperation || surface.request_operation === '*')
+			);
+		} catch {
+			return true;
+		}
+	};
 	return routes
 		.filter(
 			(r) =>
 				r.model_id === modelId &&
 				String(r.status).toLowerCase() === 'active' &&
-				routeGroupMatchesSelection(r.route_group, routeGroup)
+				routeGroupMatchesSelection(r.route_group, routeGroup) &&
+				matchesSurface(r)
 		)
 		.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
 }

@@ -169,6 +169,15 @@ export type AdminModelRouteMutationInput = {
 	price_override?: unknown;
 	custom_params?: unknown;
 	upstream_protocol?: unknown;
+	/** Public Gateway protocol used to enter this route pool. Defaults to upstream_protocol. */
+	request_protocol?: unknown;
+	/** Public operation (`chat`, `messages`, `generateContent`, ...); `*` preserves legacy behavior. */
+	request_operation?: unknown;
+	/** Provider-side capability. `*` follows the request operation. */
+	upstream_operation?: unknown;
+	/** Request conversion adapter; first release supports `passthrough`. */
+	adapter?: unknown;
+	route_pool_id?: unknown;
 	[key: string]: unknown;
 };
 

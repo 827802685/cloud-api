@@ -114,6 +114,29 @@ export const modelsTable = mysqlTable('models', {
 	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
 });
 
+export const routePoolsTable = mysqlTable('route_pools', {
+	id: varchar('id', { length: COL.ID }).primaryKey(),
+	modelId: varchar('model_id', { length: COL.MODEL_ID }).notNull(),
+	routeGroup: varchar('route_group', { length: COL.ROUTE_GROUP }).notNull().default('default'),
+	name: varchar('name', { length: COL.NAME }).notNull(),
+	strategy: varchar('strategy', { length: COL.STATUS }),
+	status: varchar('status', { length: COL.STATUS }).notNull().default('active'),
+	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { fsp: 6, mode: 'string' }).notNull(),
+});
+
+export const modelSurfacesTable = mysqlTable('model_surfaces', {
+	id: varchar('id', { length: COL.ID }).primaryKey(),
+	modelId: varchar('model_id', { length: COL.MODEL_ID }).notNull(),
+	routeGroup: varchar('route_group', { length: COL.ROUTE_GROUP }).notNull().default('default'),
+	requestProtocol: varchar('request_protocol', { length: COL.STATUS }).notNull(),
+	requestOperation: varchar('request_operation', { length: 64 }).notNull().default('*'),
+	routePoolId: varchar('route_pool_id', { length: COL.ID }).notNull(),
+	status: varchar('status', { length: COL.STATUS }).notNull().default('active'),
+	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { fsp: 6, mode: 'string' }).notNull(),
+});
+
 export const modelRoutesTable = mysqlTable('model_routes', {
 	id: varchar('id', { length: COL.ID }).primaryKey(),
 	modelId: varchar('model_id', { length: COL.MODEL_ID }).notNull(),
@@ -127,6 +150,9 @@ export const modelRoutesTable = mysqlTable('model_routes', {
 	priceOverride: text('price_override'),
 	customParams: text('custom_params'),
 	upstreamProtocol: varchar('upstream_protocol', { length: COL.STATUS }).notNull().default('openai'),
+	routePoolId: varchar('route_pool_id', { length: COL.ID }),
+	upstreamOperation: varchar('upstream_operation', { length: 64 }).notNull().default('*'),
+	adapter: varchar('adapter', { length: 128 }).notNull().default('passthrough'),
 	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
 });
 
@@ -143,7 +169,14 @@ export const apiKeyRequestLogsTable = mysqlTable('api_key_request_logs', {
 	requestBody: text('request_body'),
 	upstreamRequestBody: text('upstream_request_body'),
 	requestProtocol: varchar('request_protocol', { length: COL.STATUS }),
+	requestOperation: varchar('request_operation', { length: 64 }),
 	upstreamProtocol: varchar('upstream_protocol', { length: COL.STATUS }).notNull().default('openai'),
+	upstreamOperation: varchar('upstream_operation', { length: 64 }),
+	modelSurfaceId: varchar('model_surface_id', { length: COL.ID }),
+	routePoolId: varchar('route_pool_id', { length: COL.ID }),
+	routeTargetId: varchar('route_target_id', { length: COL.ID }),
+	adapter: varchar('adapter', { length: 128 }),
+	routeTrace: text('route_trace'),
 	inputTokens: int('input_tokens').notNull().default(0),
 	outputTokens: int('output_tokens').notNull().default(0),
 	cacheReadTokens: int('cache_read_tokens').notNull().default(0),
@@ -213,6 +246,8 @@ export const mysqlCoreSchema = {
 	apiKeysTable,
 	providersTable,
 	modelsTable,
+	routePoolsTable,
+	modelSurfacesTable,
 	modelRoutesTable,
 	apiKeyRequestLogsTable,
 	systemConfigTable,

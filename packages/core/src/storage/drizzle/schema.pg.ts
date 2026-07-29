@@ -85,6 +85,29 @@ export const modelsTable = pgTable('models', {
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 
+export const routePoolsTable = pgTable('route_pools', {
+	id: text('id').primaryKey(),
+	modelId: text('model_id').notNull(),
+	routeGroup: text('route_group').notNull().default('default'),
+	name: text('name').notNull(),
+	strategy: text('strategy'),
+	status: text('status').notNull().default('active'),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull(),
+});
+
+export const modelSurfacesTable = pgTable('model_surfaces', {
+	id: text('id').primaryKey(),
+	modelId: text('model_id').notNull(),
+	routeGroup: text('route_group').notNull().default('default'),
+	requestProtocol: text('request_protocol').notNull(),
+	requestOperation: text('request_operation').notNull().default('*'),
+	routePoolId: text('route_pool_id').notNull(),
+	status: text('status').notNull().default('active'),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull(),
+});
+
 export const modelRoutesTable = pgTable('model_routes', {
 	id: text('id').primaryKey(),
 	modelId: text('model_id').notNull(),
@@ -98,6 +121,9 @@ export const modelRoutesTable = pgTable('model_routes', {
 	priceOverride: text('price_override'),
 	customParams: text('custom_params'),
 	upstreamProtocol: text('upstream_protocol').notNull().default('openai'),
+	routePoolId: text('route_pool_id'),
+	upstreamOperation: text('upstream_operation').notNull().default('*'),
+	adapter: text('adapter').notNull().default('passthrough'),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 
@@ -114,7 +140,14 @@ export const apiKeyRequestLogsTable = pgTable('api_key_request_logs', {
 	requestBody: text('request_body'),
 	upstreamRequestBody: text('upstream_request_body'),
 	requestProtocol: text('request_protocol'),
+	requestOperation: text('request_operation'),
 	upstreamProtocol: text('upstream_protocol').notNull().default('openai'),
+	upstreamOperation: text('upstream_operation'),
+	modelSurfaceId: text('model_surface_id'),
+	routePoolId: text('route_pool_id'),
+	routeTargetId: text('route_target_id'),
+	adapter: text('adapter'),
+	routeTrace: text('route_trace'),
 	inputTokens: integer('input_tokens').notNull().default(0),
 	outputTokens: integer('output_tokens').notNull().default(0),
 	cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
@@ -184,6 +217,8 @@ export const pgCoreSchema = {
 	apiKeysTable,
 	providersTable,
 	modelsTable,
+	routePoolsTable,
+	modelSurfacesTable,
 	modelRoutesTable,
 	apiKeyRequestLogsTable,
 	systemConfigTable,

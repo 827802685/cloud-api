@@ -177,6 +177,17 @@ export interface GatewayModelRoute {
   custom_params: string | null;
   /** NOT NULL DEFAULT 'openai' after gateway migration 0011 */
   upstream_protocol: string;
+  /** Provider-side capability; `*` follows the matched request operation. */
+  upstream_operation?: string;
+  /** Request conversion adapter. */
+  adapter?: string;
+  /** Stable target pool identity. */
+  route_pool_id?: string | null;
+  pool_name?: string | null;
+  pool_strategy?: string | null;
+  pool_status?: string | null;
+  /** JSON array of public ingress surfaces sharing this pool. */
+  surfaces?: string | null;
 }
 
 export interface GatewayRequestLog {
@@ -189,8 +200,15 @@ export interface GatewayRequestLog {
   /** 展示名快照（`api_key_request_logs.model_name`，读接口不 JOIN catalog） */
   model_name?: string | null;
   request_protocol?: string | null;
+  request_operation?: string | null;
   /** 所选路由的上游协议快照（`model_routes.upstream_protocol`）；旧行可能缺省 */
   upstream_protocol?: string | null;
+  upstream_operation?: string | null;
+  model_surface_id?: string | null;
+  route_pool_id?: string | null;
+  route_target_id?: string | null;
+  adapter?: string | null;
+  route_trace?: string | null;
   /** 供应商展示名快照（`api_key_request_logs.provider_name`） */
   provider_name?: string | null;
   /** 最终选用的 provider key id（`provider_api_keys.id`） */

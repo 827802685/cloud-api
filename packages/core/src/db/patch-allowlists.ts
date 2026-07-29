@@ -31,4 +31,7 @@ export const MODEL_ROUTE_PATCH_COLS = new Set([
 	'price_override',
 	'custom_params',
 	'upstream_protocol',
+	'route_pool_id',
+	'upstream_operation',
+	'adapter',
 ]);

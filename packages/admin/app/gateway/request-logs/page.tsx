@@ -504,6 +504,14 @@ export default function GatewayRequestLogsPage() {
           >
             @{route}
           </span>
+          {log.request_operation ? (
+            <span
+              className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+              title={`request_operation: ${log.request_operation}`}
+            >
+              {log.request_operation}
+            </span>
+          ) : null}
         </div>
         {id ? (
           <div className="mt-0.5 truncate font-mono text-[11px] text-gray-500" title={`model_id: ${id}`}>
@@ -539,6 +547,19 @@ export default function GatewayRequestLogsPage() {
         {upstream ? (
           <div className="mt-0.5 truncate font-mono text-gray-600" title={`Upstream model: ${upstream}`}>
             {upstream}
+          </div>
+        ) : null}
+        {(log.upstream_protocol || log.upstream_operation) ? (
+          <div className="mt-0.5 truncate font-mono text-[11px] text-indigo-600">
+            {[log.upstream_protocol, log.upstream_operation].filter(Boolean).join(' · ')}
+          </div>
+        ) : null}
+        {log.route_target_id ? (
+          <div
+            className="mt-0.5 truncate font-mono text-[10px] text-gray-400"
+            title={`surface: ${log.model_surface_id ?? 'legacy'}\npool: ${log.route_pool_id ?? 'legacy'}\ntarget: ${log.route_target_id}`}
+          >
+            target {log.route_target_id.slice(0, 8)}
           </div>
         ) : null}
         {keyText ? (

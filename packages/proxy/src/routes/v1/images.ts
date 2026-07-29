@@ -12,12 +12,10 @@ import type { Context } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey, type ApiKeyContext } from '../../middleware/auth';
 import {
-	getActiveModelRouteRows,
-	resolveRouteResultsFromRows,
+	resolveRoutesForSurface,
 	type RouteResult,
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
-import { selectActiveRouteRows } from '../../services/route-selection';
 import {
 	buildAffinityKey,
 	buildTierKeyPrefix,
@@ -64,7 +62,8 @@ imageRoutes.use('*', requireApiKey);
 
 async function resolveOpenAiImageRoutes(
 	repos: GatewayRepositories,
-	rawModelId: string
+	rawModelId: string,
+	requestOperation: 'images.generations' | 'images.edits'
 ): Promise<
 	| {
 			ok: true;
@@ -72,6 +71,7 @@ async function resolveOpenAiImageRoutes(
 			baseModelId: string;
 			effectiveRouteGroup: string;
 			routes: RouteResult[];
+			poolStrategy: string | null;
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
@@ -84,17 +84,13 @@ async function resolveOpenAiImageRoutes(
 	const { model, baseModelId, explicitGroup } = resolved;
 	const effectiveRouteGroup = explicitGroup?.trim() || 'default';
 	try {
-		const routeRows = await getActiveModelRouteRows(repos, baseModelId);
-		const selectedRows = selectActiveRouteRows(routeRows, explicitGroup);
-		if (selectedRows.length === 0) {
-			return {
-				ok: false,
-				status: 400,
-				error: `No active routes for route group "${effectiveRouteGroup}" for this model`,
-			};
-		}
-		let routes = await resolveRouteResultsFromRows(repos, selectedRows);
-		routes = routes.filter((route) => route.upstreamProtocol === 'openai');
+		const resolvedSurface = await resolveRoutesForSurface(repos, {
+			modelId: baseModelId,
+			routeGroup: effectiveRouteGroup,
+			requestProtocol: 'openai',
+			requestOperation,
+		});
+		const routes = resolvedSurface.routes;
 		if (routes.length === 0) {
 			return {
 				ok: false,
@@ -102,7 +98,14 @@ async function resolveOpenAiImageRoutes(
 				error: `No OpenAI route in route group "${effectiveRouteGroup}" for this model`,
 			};
 		}
-		return { ok: true, model, baseModelId, effectiveRouteGroup, routes };
+		return {
+			ok: true,
+			model,
+			baseModelId,
+			effectiveRouteGroup,
+			routes,
+			poolStrategy: resolvedSurface.surface?.pool_strategy ?? null,
+		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Model route resolution failed';
 		return { ok: false, status: 502, error: message };
@@ -395,7 +398,13 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 			requestBody: requestBodyForLog,
 			upstreamRequestBody: upstreamRequestBodyForLog,
 			requestProtocol: 'openai',
+			requestOperation: operation === 'generations' ? 'images.generations' : 'images.edits',
 			upstreamProtocol: chosenRoute.upstreamProtocol,
+			upstreamOperation: chosenRoute.upstreamOperation,
+			modelSurfaceId: chosenRoute.modelSurfaceId,
+			routePoolId: chosenRoute.routePoolId,
+			routeTargetId: chosenRoute.targetId,
+			adapter: chosenRoute.adapter,
 			routeGroup: effectiveRouteGroup,
 			status,
 			latencyMs: latency,
@@ -465,7 +474,7 @@ imageRoutes.post('/generations', async (c) => {
 		return c.json({ error: common.error }, 400);
 	}
 
-	const routed = await resolveOpenAiImageRoutes(repos, rawModelId);
+	const routed = await resolveOpenAiImageRoutes(repos, rawModelId, 'images.generations');
 	if (!routed.ok) {
 		if (routed.status !== 404) {
 			console.warn(
@@ -544,6 +553,7 @@ imageRoutes.post('/generations', async (c) => {
 
 	const strategy = await resolveRouteStrategy({
 		routePolicyRaw: model.route_policy ?? null,
+		poolStrategy: routed.poolStrategy,
 		protocol: 'openai',
 		capability: 'images.generations',
 		routeGroup: effectiveRouteGroup,
@@ -606,7 +616,7 @@ imageRoutes.post('/edits', async (c) => {
 	}
 	const { model: rawModelId, edit } = parsed;
 
-	const routed = await resolveOpenAiImageRoutes(repos, rawModelId);
+	const routed = await resolveOpenAiImageRoutes(repos, rawModelId, 'images.edits');
 	if (!routed.ok) {
 		if (routed.status !== 404) {
 			console.warn(
@@ -667,6 +677,7 @@ imageRoutes.post('/edits', async (c) => {
 
 	const strategy = await resolveRouteStrategy({
 		routePolicyRaw: model.route_policy ?? null,
+		poolStrategy: routed.poolStrategy,
 		protocol: 'openai',
 		capability: 'images.edits',
 		routeGroup: effectiveRouteGroup,

@@ -35,6 +35,8 @@ function RoutesContent() {
 				<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
 			</div>
 
+			<RouteFlowOverview />
+
 			<div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white/70 shadow-sm ring-1 ring-black/[0.02]">
 				<div className="flex min-w-0 flex-col lg:flex-row lg:items-start">
 					<RouteFilterSidebar
@@ -87,7 +89,6 @@ function RoutesContent() {
 								</div>
 							) : (
 								<div>
-									<RouteFlowOverview />
 									<div className={state.filterVendor ? '' : 'space-y-8'}>
 										{state.routeCardVendorGroups.map(
 											({ vendor, cards, showHeader }, vendorGroupIdx) => (
@@ -99,6 +100,7 @@ function RoutesContent() {
 													vendorGroupIdx={vendorGroupIdx}
 													modelMeta={state.modelMeta}
 													providerMeta={state.providerMeta}
+													globalRouteStrategy={state.globalRouteStrategy}
 													copiedModelId={state.copiedModelId}
 													togglingId={state.togglingId}
 													onCopyModelId={state.copyModelId}

@@ -20,15 +20,17 @@ export function RouteFlowOverview() {
 	const t = useTranslations('routes.flow');
 
 	return (
-		<div className="mb-5 overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 via-white to-emerald-50/70 p-4 shadow-sm">
+		<section className="mb-5 sm:mb-6" aria-labelledby="route-flow-overview-title">
 			<div className="mb-3">
-				<h3 className="text-sm font-semibold text-gray-900">{t('overviewTitle')}</h3>
+				<h2 id="route-flow-overview-title" className="text-sm font-semibold text-gray-900">
+					{t('overviewTitle')}
+				</h2>
 				<p className="mt-0.5 text-xs text-gray-500">{t('overviewHint')}</p>
 			</div>
 			<div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] sm:items-center">
 				{STEPS.map(({ key, icon: Icon }, index) => (
 					<div key={key} className="contents">
-						<div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-white/90 bg-white/85 px-3 py-2 shadow-sm">
+						<div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-gray-200/80 bg-white/80 px-3 py-2 shadow-sm">
 							<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100">
 								<Icon className="h-4 w-4" />
 							</span>
@@ -45,6 +47,6 @@ export function RouteFlowOverview() {
 					</div>
 				))}
 			</div>
-		</div>
+		</section>
 	);
 }

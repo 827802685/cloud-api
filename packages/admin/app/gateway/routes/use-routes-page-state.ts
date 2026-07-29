@@ -30,6 +30,7 @@ import {
 	deleteRoute,
 	fetchRoutesPageData,
 	patchModelRoutePolicy,
+	patchRoutePoolStrategy,
 	saveRoute,
 	toggleRouteStatus,
 } from './route-api';
@@ -42,7 +43,9 @@ import {
 	buildVendorFilterOptions,
 	createInitialRouteForm,
 	readRoutePolicyFormFromRaw,
+	resolveEffectiveRouteStrategy,
 	sortRouteCards,
+	upstreamOperationsForProviderModel,
 } from './route-utils';
 import {
 	EMPTY_ROUTE_FORM,
@@ -57,6 +60,7 @@ export function useRoutesPageState() {
 	const [routes, setRoutes] = useState<RouteListRow[]>([]);
 	const [models, setModels] = useState<GatewayModel[]>([]);
 	const [providers, setProviders] = useState<GatewayProvider[]>([]);
+	const [globalRouteStrategy, setGlobalRouteStrategy] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [showModal, setShowModal] = useState(false);
 	const [editingRoute, setEditingRoute] = useState<RouteListRow | null>(null);
@@ -111,6 +115,7 @@ export function useRoutesPageState() {
 			setRoutes(data.routes);
 			setModels(data.models);
 			setProviders(data.providers);
+			setGlobalRouteStrategy(data.globalRouteStrategy);
 		} catch (error) {
 			console.error('Fetch data error:', error);
 		} finally {
@@ -294,22 +299,40 @@ export function useRoutesPageState() {
 
 	const allowedProtocolsForProvider = useMemo((): UpstreamProtocol[] => {
 		if (!selectedProvider) return [];
-		const supported = UPSTREAM_PROTOCOLS.filter((proto) =>
-			providerSupportsUpstreamProtocol(proto, selectedProvider)
+		const supported = UPSTREAM_PROTOCOLS.filter(
+			(proto) =>
+				providerSupportsUpstreamProtocol(proto, selectedProvider) &&
+				upstreamOperationsForProviderModel(selectedProvider, selectedModel, proto).length > 0
 		);
 		if (lockOpenaiProtocol) {
 			return supported.includes('openai') ? ['openai'] : [];
 		}
 		return supported;
-	}, [selectedProvider, lockOpenaiProtocol]);
+	}, [selectedProvider, selectedModel, lockOpenaiProtocol]);
 
 	useEffect(() => {
 		if (!showModal || !selectedProvider || allowedProtocolsForProvider.length === 0) return;
 		setFormData((fd) => {
 			if (allowedProtocolsForProvider.includes(fd.upstream_protocol)) return fd;
-			return { ...fd, upstream_protocol: allowedProtocolsForProvider[0]! };
+			const upstreamProtocol = allowedProtocolsForProvider[0]!;
+			const upstreamOperations = upstreamOperationsForProviderModel(
+				selectedProvider,
+				selectedModel,
+				upstreamProtocol
+			);
+			return {
+				...fd,
+				upstream_protocol: upstreamProtocol,
+				upstream_operation: upstreamOperations[0] ?? fd.upstream_operation,
+			};
 		});
-	}, [showModal, formData.provider_id, selectedProvider, allowedProtocolsForProvider]);
+	}, [
+		showModal,
+		formData.provider_id,
+		selectedProvider,
+		selectedModel,
+		allowedProtocolsForProvider,
+	]);
 
 	useEffect(() => {
 		if (!showModal || !lockOpenaiProtocol) return;
@@ -326,7 +349,7 @@ export function useRoutesPageState() {
 	}, []);
 
 	const handleCreate = useCallback(
-		(presetModelId?: string, preset?: { protocol?: string; group?: string }) => {
+		(presetModelId?: string, preset?: { protocol?: string; operation?: string; group?: string }) => {
 			setEditingRoute(null);
 			setDuplicateSourceRouteId(null);
 			const initial = createInitialRouteForm(models, presetModelId);
@@ -336,6 +359,12 @@ export function useRoutesPageState() {
 					preset?.protocol && UPSTREAM_PROTOCOLS.includes(preset.protocol as UpstreamProtocol)
 						? (preset.protocol as UpstreamProtocol)
 						: initial.upstream_protocol,
+				request_protocol:
+					preset?.protocol && UPSTREAM_PROTOCOLS.includes(preset.protocol as UpstreamProtocol)
+						? (preset.protocol as UpstreamProtocol)
+						: initial.request_protocol,
+				request_operation: preset?.operation ?? initial.request_operation,
+				upstream_operation: preset?.operation ?? initial.upstream_operation,
 				route_group: preset?.group ?? initial.route_group,
 			});
 			setShowModal(true);
@@ -448,14 +477,60 @@ export function useRoutesPageState() {
 			modelTitle: string,
 			protocol: string,
 			protocolLabel: string,
-			group: string
+			group: string,
+			poolId?: string | null,
+			poolStrategy?: string | null,
+			requestOperation?: string
 		) => {
 			const raw = modelMeta.get(modelId)?.route_policy ?? null;
-			setStrategyForm(readRoutePolicyFormFromRaw(raw, protocol, group));
+			const inherited = resolveEffectiveRouteStrategy({
+				routePolicyRaw: raw,
+				protocol,
+				requestOperation,
+				routeGroup: group,
+				globalStrategy: globalRouteStrategy,
+			});
+			const matchingTargets = routes
+				.filter((route) =>
+					poolId
+						? route.route_pool_id === poolId
+						: route.model_id === modelId &&
+							route.upstream_protocol === protocol &&
+							normalizeRouteGroup(route.route_group) === normalizeRouteGroup(group)
+				)
+				.map((route) => ({
+					id: route.id,
+					providerId: route.provider_id,
+					providerName:
+						route.provider_name || providerMeta.get(route.provider_id)?.name || route.provider_id,
+					providerModelName: route.provider_model_name,
+					priority: route.priority,
+					weight: route.weight ?? 1,
+					active:
+						route.status === 'active' &&
+						providerMeta.get(route.provider_id)?.status !== 'disabled',
+				}));
+			setStrategyForm(
+				poolId
+					? { protocolStrategy: poolStrategy ?? '', capabilityStrategies: {} }
+					: readRoutePolicyFormFromRaw(raw, protocol, group)
+			);
 			setStrategyError('');
-			setStrategyDialog({ modelId, modelTitle, protocol, protocolLabel, group });
+			setStrategyDialog({
+				modelId,
+				modelTitle,
+				protocol,
+				protocolLabel,
+				group,
+				poolId,
+				poolStrategy,
+				requestOperation,
+				inheritedStrategy: inherited.strategy,
+				inheritedSource: inherited.source,
+				targets: matchingTargets,
+			});
 		},
-		[modelMeta]
+		[globalRouteStrategy, modelMeta, providerMeta, routes]
 	);
 
 	const handleSaveStrategy = useCallback(async () => {
@@ -463,14 +538,20 @@ export function useRoutesPageState() {
 		setStrategySaving(true);
 		setStrategyError('');
 		try {
-			const raw = modelMeta.get(strategyDialog.modelId)?.route_policy ?? null;
-			const nextPolicy = buildRoutePolicyPatch(
-				raw,
-				strategyDialog.protocol,
-				strategyDialog.group,
-				strategyForm
-			);
-			const result = await patchModelRoutePolicy(strategyDialog.modelId, nextPolicy);
+			const result = strategyDialog.poolId
+				? await patchRoutePoolStrategy(
+						strategyDialog.poolId,
+						strategyForm.protocolStrategy || null
+					)
+				: await patchModelRoutePolicy(
+						strategyDialog.modelId,
+						buildRoutePolicyPatch(
+							modelMeta.get(strategyDialog.modelId)?.route_policy ?? null,
+							strategyDialog.protocol,
+							strategyDialog.group,
+							strategyForm
+						)
+					);
 			if (!result.success) {
 				setStrategyError(result.message);
 				return;
@@ -499,6 +580,7 @@ export function useRoutesPageState() {
 		routes,
 		models,
 		providers,
+		globalRouteStrategy,
 		modelMeta,
 		providerMeta,
 		billingCurrency,

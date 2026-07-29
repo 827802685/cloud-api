@@ -5,17 +5,18 @@ import { useTranslations } from 'next-intl';
 import { ReadOnlyImagePricing } from '@/components/read-only-image-pricing';
 import { ReadOnlyPricingTiersTable } from '@/components/read-only-pricing-tiers-table';
 import {
-	isAudioRouteModel,
 	type CatalogAudioPricingDisplay,
 } from '@/lib/audio-transcriptions';
-import { isImageRouteModel } from '@/lib/image-generations';
 import type { CatalogImagePricingDisplay, CatalogPricingTierDisplayRow } from '@/lib/pricing-ui';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import {
 	UPSTREAM_PROTOCOLS,
-	providerSupportsUpstreamProtocol,
 	type UpstreamProtocol,
 } from '@/lib/upstream-protocol';
+import {
+	requestOperationsForModel,
+	upstreamOperationsForProviderModel,
+} from '../route-utils';
 import type { RouteFormData, RouteListRow } from '../types';
 import { DailyScheduleEditor } from './daily-schedule-editor';
 import { RoutePricePanel } from './route-price-panel';
@@ -59,6 +60,7 @@ export function RouteModal(props: Props) {
 		billingCurrency,
 		models,
 		providers,
+		selectedModel,
 		selectedProvider,
 		catalogStandardTierRows,
 		catalogImagePricingDisplay,
@@ -78,6 +80,31 @@ export function RouteModal(props: Props) {
 	const tModels = useTranslations('models.modal');
 	const tCommon = useTranslations('common');
 	const lockOpenaiProtocol = selectedModelIsImage || selectedModelIsAudio;
+	const requestProtocols = UPSTREAM_PROTOCOLS.filter(
+		(protocol) => requestOperationsForModel(selectedModel, protocol).length > 0
+	);
+	const requestOperations = requestOperationsForModel(
+		selectedModel,
+		formData.request_protocol
+	);
+	const upstreamOperations = upstreamOperationsForProviderModel(
+		selectedProvider,
+		selectedModel,
+		formData.upstream_protocol
+	);
+	const selectableProviders = providers.filter(
+		(provider) =>
+			(Boolean(editingRoute || duplicateSourceRouteId) &&
+				provider.id === formData.provider_id) ||
+			UPSTREAM_PROTOCOLS.some(
+				(protocol) =>
+					upstreamOperationsForProviderModel(provider, selectedModel, protocol).length > 0
+			)
+	);
+	const showCurrentUpstreamOperation =
+		Boolean(editingRoute) &&
+		!upstreamOperations.includes(formData.upstream_operation) &&
+		Boolean(formData.upstream_operation);
 
 	if (!open) return null;
 
@@ -140,13 +167,57 @@ export function RouteModal(props: Props) {
 										onChange={(e) => {
 											const nextModelId = e.target.value;
 											const nextModel = models.find((m) => m.id === nextModelId);
+											const nextRequestProtocols = UPSTREAM_PROTOCOLS.filter(
+												(protocol) =>
+													requestOperationsForModel(nextModel, protocol).length > 0
+											);
+											const requestProtocol = nextRequestProtocols.includes(
+												formData.request_protocol
+											)
+												? formData.request_protocol
+												: nextRequestProtocols[0] ?? formData.request_protocol;
+											const nextRequestOperations = requestOperationsForModel(
+												nextModel,
+												requestProtocol
+											);
+											const requestOperation = nextRequestOperations.includes(
+												formData.request_operation
+											)
+												? formData.request_operation
+												: nextRequestOperations[0] ?? formData.request_operation;
+											const nextUpstreamProtocols = selectedProvider
+												? UPSTREAM_PROTOCOLS.filter(
+														(protocol) =>
+															upstreamOperationsForProviderModel(
+																selectedProvider,
+																nextModel,
+																protocol
+															).length > 0
+													)
+												: [];
+											const upstreamProtocol = nextUpstreamProtocols.includes(
+												formData.upstream_protocol
+											)
+												? formData.upstream_protocol
+												: nextUpstreamProtocols[0] ?? requestProtocol;
+											const nextUpstreamOperations =
+												upstreamOperationsForProviderModel(
+													selectedProvider,
+													nextModel,
+													upstreamProtocol
+												);
+											const upstreamOperation = nextUpstreamOperations.includes(
+												formData.upstream_operation
+											)
+												? formData.upstream_operation
+												: nextUpstreamOperations[0] ?? requestOperation;
 											onFormChange({
 												...formData,
 												model_id: nextModelId,
-												...(nextModel &&
-												(isImageRouteModel(nextModel) || isAudioRouteModel(nextModel))
-													? { upstream_protocol: 'openai' as const }
-													: {}),
+												request_protocol: requestProtocol,
+												request_operation: requestOperation,
+												upstream_protocol: upstreamProtocol,
+												upstream_operation: upstreamOperation,
 											});
 										}}
 										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
@@ -155,9 +226,49 @@ export function RouteModal(props: Props) {
 										<option value="">{t('selectModel')}</option>
 										{models.map((m) => (
 											<option key={m.id} value={m.id}>
-												{m.display_name ? `${m.display_name} (${m.id})` : m.id}
+												{m.display_name || m.id}
 											</option>
 										))}
+									</select>
+								</div>
+								<div>
+									<label className="mb-1 block text-sm font-medium text-gray-700">
+										{t('requestProtocol')}
+									</label>
+									<select
+										value={formData.request_protocol}
+										onChange={(e) => {
+											const requestProtocol = e.target.value as UpstreamProtocol;
+											const requestOperation =
+												requestOperationsForModel(selectedModel, requestProtocol)[0] ??
+												formData.request_operation;
+											onFormChange({
+												...formData,
+												request_protocol: requestProtocol,
+												request_operation: requestOperation,
+											});
+										}}
+										disabled={lockOpenaiProtocol}
+										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:bg-gray-100"
+									>
+										{requestProtocols.map((p) => (
+											<option key={p} value={p}>{p}</option>
+										))}
+									</select>
+								</div>
+								<div>
+									<label className="mb-1 block text-sm font-medium text-gray-700">
+										{t('requestOperation')}
+									</label>
+									<select
+										value={formData.request_operation}
+										onChange={(e) => onFormChange({ ...formData, request_operation: e.target.value })}
+										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+									>
+										{requestOperations.map((operation) => (
+											<option key={operation} value={operation}>{operation}</option>
+										))}
+										{formData.request_operation === '*' ? <option value="*">*</option> : null}
 									</select>
 								</div>
 								<div>
@@ -169,27 +280,44 @@ export function RouteModal(props: Props) {
 											const nextProvider = providers.find((p) => p.id === nextId);
 											const allowed =
 												nextProvider != null
-													? UPSTREAM_PROTOCOLS.filter((proto) =>
-															providerSupportsUpstreamProtocol(proto, nextProvider)
+													? UPSTREAM_PROTOCOLS.filter(
+															(proto) =>
+																upstreamOperationsForProviderModel(
+																	nextProvider,
+																	selectedModel,
+																	proto
+																).length > 0
 														)
 													: [];
 											let nextProto = formData.upstream_protocol;
 											if (allowed.length > 0 && !allowed.includes(nextProto)) {
 												nextProto = allowed[0]!;
 											}
+											const supportedOperations =
+												upstreamOperationsForProviderModel(
+													nextProvider,
+													selectedModel,
+													nextProto
+												);
+											const nextOperation = supportedOperations.includes(
+												formData.upstream_operation
+											)
+												? formData.upstream_operation
+												: supportedOperations[0] ?? formData.upstream_operation;
 											onFormChange({
 												...formData,
 												provider_id: nextId,
 												upstream_protocol: nextProto,
+												upstream_operation: nextOperation,
 											});
 										}}
 										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
 										required
 									>
 										<option value="">{t('selectProvider')}</option>
-										{providers.map((p) => (
+										{selectableProviders.map((p) => (
 											<option key={p.id} value={p.id}>
-												{p.name ? `${p.name} (${p.id})` : p.id}
+												{p.name || p.id}
 											</option>
 										))}
 									</select>
@@ -200,13 +328,20 @@ export function RouteModal(props: Props) {
 									</label>
 									<select
 										value={formData.upstream_protocol}
-										onChange={(e) =>
+										onChange={(e) => {
+											const upstreamProtocol = e.target.value as UpstreamProtocol;
 											onFormChange({
 												...formData,
-												upstream_protocol: e.target.value as UpstreamProtocol,
-											})
-										}
-										disabled={lockOpenaiProtocol}
+												upstream_protocol: upstreamProtocol,
+												upstream_operation:
+													upstreamOperationsForProviderModel(
+														selectedProvider,
+														selectedModel,
+														upstreamProtocol
+													)[0] ?? formData.upstream_operation,
+											});
+										}}
+										disabled={lockOpenaiProtocol || !selectedProvider}
 										title={
 											selectedModelIsAudio
 												? t('protocolHintAudioOpenaiOnly')
@@ -233,6 +368,31 @@ export function RouteModal(props: Props) {
 											{t('protocolHintImageOpenaiOnly')}
 										</p>
 									) : null}
+								</div>
+								<div>
+									<label className="mb-1 block text-sm font-medium text-gray-700">
+										{t('upstreamOperation')}
+									</label>
+									<select
+										value={formData.upstream_operation}
+										onChange={(e) => onFormChange({ ...formData, upstream_operation: e.target.value })}
+										disabled={!selectedProvider || upstreamOperations.length === 0}
+										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-600"
+									>
+										{upstreamOperations.map((operation) => (
+											<option key={operation} value={operation}>{operation}</option>
+										))}
+										{showCurrentUpstreamOperation ? (
+											<option value={formData.upstream_operation}>
+												{formData.upstream_operation} · {t('currentLegacyValue')}
+											</option>
+										) : null}
+									</select>
+									<p className="mt-1 text-[11px] text-gray-500">
+										{selectedProvider
+											? t('upstreamOperationHintConfigured')
+											: t('protocolHintSelectProvider')}
+									</p>
 								</div>
 								<div>
 									<label className="mb-1 block text-sm font-medium text-gray-700">
@@ -265,46 +425,48 @@ export function RouteModal(props: Props) {
 										title={t('routeGroupHint')}
 									/>
 								</div>
-								<div>
-									<label
-										className="mb-1 block text-sm font-medium text-gray-700"
-										title={t('priorityHint')}
-									>
-										{t('priority')}
-									</label>
-									<input
-										type="number"
-										value={formData.priority}
-										onChange={(e) =>
-											onFormChange({
-												...formData,
-												priority: parseInt(e.target.value, 10) || 0,
-											})
-										}
-										title={t('priorityHint')}
-										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-									/>
-								</div>
-								<div>
-									<label
-										className="mb-1 block text-sm font-medium text-gray-700"
-										title={t('weightHint')}
-									>
-										{t('weight')}
-									</label>
-									<input
-										type="number"
-										min={1}
-										value={formData.weight}
-										onChange={(e) =>
-											onFormChange({
-												...formData,
-												weight: Math.max(1, parseInt(e.target.value, 10) || 1),
-											})
-										}
-										title={t('weightHint')}
-										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-									/>
+								<div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2 xl:col-span-3 xl:max-w-[66%]">
+									<div>
+										<label
+											className="mb-1 block text-sm font-medium text-gray-700"
+											title={t('priorityHint')}
+										>
+											{t('priority')}
+										</label>
+										<input
+											type="number"
+											value={formData.priority}
+											onChange={(e) =>
+												onFormChange({
+													...formData,
+													priority: parseInt(e.target.value, 10) || 0,
+												})
+											}
+											title={t('priorityHint')}
+											className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+										/>
+									</div>
+									<div>
+										<label
+											className="mb-1 block text-sm font-medium text-gray-700"
+											title={t('weightHint')}
+										>
+											{t('weight')}
+										</label>
+										<input
+											type="number"
+											min={1}
+											value={formData.weight}
+											onChange={(e) =>
+												onFormChange({
+													...formData,
+													weight: Math.max(1, parseInt(e.target.value, 10) || 1),
+												})
+											}
+											title={t('weightHint')}
+											className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+										/>
+									</div>
 								</div>
 							</div>
 						</section>

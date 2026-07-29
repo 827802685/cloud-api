@@ -130,6 +130,12 @@ export interface ModelRouteRow {
   custom_params: string | null;
   /** `openai` | `anthropic` | `gemini` */
   upstream_protocol: string;
+  /** Owning route pool. Nullable only for databases that have not applied migration 0016 yet. */
+  route_pool_id?: string | null;
+  /** Upstream capability; `*` means use the request operation (legacy compatibility). */
+  upstream_operation?: string;
+  /** Request-to-upstream conversion adapter. First release supports `passthrough`. */
+  adapter?: string;
 }
 
 /** `api_key_request_logs` 表行。 */
@@ -151,8 +157,15 @@ export interface RequestLogRow {
   /** 脱敏后的上游 wire 请求体（路由合并默认参数后；旧行可能为 null） */
   upstream_request_body: string | null;
   request_protocol: string | null;
+  request_operation?: string | null;
   /** 所选路由的上游协议快照（`model_routes.upstream_protocol`） */
   upstream_protocol: string;
+  upstream_operation?: string | null;
+  model_surface_id?: string | null;
+  route_pool_id?: string | null;
+  route_target_id?: string | null;
+  adapter?: string | null;
+  route_trace?: string | null;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;

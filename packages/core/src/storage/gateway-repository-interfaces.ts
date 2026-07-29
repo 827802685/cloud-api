@@ -33,6 +33,7 @@ import type {
 	UserAnalyticsRow,
 	UserTokenTimeseriesRow,
 } from './repository-dtos';
+import type { ResolvedModelSurfaceRow } from '../route-topology';
 
 /** 管理端分析聚合 */
 export interface AdminAnalyticsRepository {
@@ -163,6 +164,13 @@ export interface ModelRoutingRepository {
 	getModelById(id: string): Promise<ModelRow | null>;
 	listModelsWithActiveRoutes(): Promise<ModelRow[]>;
 	getModelRoutesByModelId(modelId: string): Promise<ModelRouteRow[]>;
+	resolveModelSurface(params: {
+		modelId: string;
+		routeGroup: string;
+		requestProtocol: string;
+		requestOperation: string;
+	}): Promise<ResolvedModelSurfaceRow | null>;
+	getModelRoutesByPoolId(poolId: string): Promise<ModelRouteRow[]>;
 }
 
 export interface ModelRoutesRepository {
@@ -179,8 +187,21 @@ export interface ModelRoutesRepository {
 		priceOverride: unknown;
 		customParams: string | null;
 		upstreamProtocol: string;
+		routePoolId: string;
+		upstreamOperation: string;
+		adapter: string;
 	}): Promise<void>;
 	getModelRouteRowById(id: string): Promise<ModelRouteDetailRow | null>;
+	ensureModelSurfacePool(params: {
+		poolId: string;
+		surfaceId: string;
+		modelId: string;
+		routeGroup: string;
+		requestProtocol: string;
+		requestOperation: string;
+		poolName: string;
+	}): Promise<{ poolId: string; surfaceId: string }>;
+	updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number>;
 	updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number>;
 	deleteModelRouteById(id: string): Promise<number>;
 }

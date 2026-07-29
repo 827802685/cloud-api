@@ -78,6 +78,11 @@ type RouteListRow = {
 	price_override: string | null;
 	custom_params: string | null;
 	upstream_protocol: string;
+	upstream_operation?: string | null;
+	adapter?: string | null;
+	route_pool_id?: string | null;
+	pool_name?: string | null;
+	surfaces?: string | null;
 	model_name: string | null;
 	provider_name: string | null;
 };
@@ -102,7 +107,7 @@ const BODY_TEMPLATES: Record<string, string> = {
 function formatRouteLabel(r: RouteListRow): string {
 	const m = r.model_name || r.model_id;
 	const p = r.provider_name || r.provider_id;
-	return `${m} · ${p} · ${r.provider_model_name} · ${r.route_group} · ${r.upstream_protocol}`;
+	return `${m} · ${p} · ${r.provider_model_name} · ${r.route_group} · ${r.upstream_protocol}.${r.upstream_operation ?? '*'}`;
 }
 
 /** 下拉项开头：active → 🟢，否则 🔴（不拼 status 文案，避免与 emoji 重复）。 */
@@ -803,8 +808,13 @@ export default function PlaygroundPage() {
 										<ReadonlyField label={t('providerId')}>{selected.provider_id}</ReadonlyField>
 										<ReadonlyField label={t('providerName')}>{selected.provider_name ?? '—'}</ReadonlyField>
 										<ReadonlyField label={t('upstreamProtocol')}>{selected.upstream_protocol}</ReadonlyField>
+										<ReadonlyField label="Upstream operation">{selected.upstream_operation ?? '*'}</ReadonlyField>
 										<ReadonlyField label={t('providerModel')}>{selected.provider_model_name}</ReadonlyField>
 										<ReadonlyField label={t('routeGroup')}>{selected.route_group}</ReadonlyField>
+										<ReadonlyField label="Routing pool">{selected.pool_name ?? selected.route_pool_id ?? 'legacy'}</ReadonlyField>
+										<ReadonlyField label="Public surfaces">
+											{formatRouteJsonColumn(selected.surfaces)}
+										</ReadonlyField>
 										<ReadonlyField label={t('priorityStatus')}>
 											{selected.priority} /{' '}
 											<span

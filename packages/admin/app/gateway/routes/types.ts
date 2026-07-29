@@ -10,6 +10,11 @@ export type RouteProtocolGroupSection<T> = {
 	key: string;
 	protocol: string;
 	protocolLabel: string;
+	requestOperation: string;
+	surfaceId: string | null;
+	poolId: string | null;
+	poolName: string | null;
+	poolStrategy: string | null;
 	group: string;
 	routes: T[];
 };
@@ -26,7 +31,11 @@ export type RouteFormData = {
 	model_id: string;
 	provider_id: string;
 	provider_model_name: string;
+	request_protocol: UpstreamProtocol;
+	request_operation: string;
 	upstream_protocol: UpstreamProtocol;
+	upstream_operation: string;
+	adapter: string;
 	priority: number;
 	/** Same-priority weight; default 1 */
 	weight: number;
@@ -44,6 +53,30 @@ export type RoutePolicyDialogState = {
 	protocol: string;
 	protocolLabel: string;
 	group: string;
+	poolId?: string | null;
+	poolStrategy?: string | null;
+	requestOperation?: string;
+	inheritedStrategy: string;
+	inheritedSource: RouteStrategySource;
+	targets: RouteStrategyPreviewTarget[];
+};
+
+export type RouteStrategySource =
+	| 'pool'
+	| 'modelOperation'
+	| 'modelProtocol'
+	| 'model'
+	| 'global'
+	| 'default';
+
+export type RouteStrategyPreviewTarget = {
+	id: string;
+	providerId: string;
+	providerName: string;
+	providerModelName: string;
+	priority: number;
+	weight: number;
+	active: boolean;
 };
 
 /** '' = inherit; otherwise a RouteStrategyName */
@@ -56,13 +89,18 @@ export type RoutesPageData = {
 	routes: RouteListRow[];
 	models: GatewayModel[];
 	providers: GatewayProvider[];
+	globalRouteStrategy: string | null;
 };
 
 export const EMPTY_ROUTE_FORM: RouteFormData = {
 	model_id: '',
 	provider_id: '',
 	provider_model_name: '',
+	request_protocol: 'openai',
+	request_operation: 'chat',
 	upstream_protocol: 'openai',
+	upstream_operation: 'chat',
+	adapter: 'passthrough',
 	priority: 0,
 	weight: 1,
 	custom_params_json: '',

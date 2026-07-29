@@ -3,6 +3,7 @@
  */
 import { and, desc, eq } from 'drizzle-orm';
 import type { ModelRow, ModelRouteRow } from '../../types';
+import type { ResolvedModelSurfaceRow } from '../../route-topology';
 import type { MySqlDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutingRepository } from '../../storage/gateway-repository-interfaces';
 import { modelRoutesTable as myModelRoutesTable } from '../../storage/drizzle/schema.mysql';
@@ -20,6 +21,9 @@ function mapMyModelRouteToRow(r: {
 	priceOverride: string | null;
 	customParams: string | null;
 	upstreamProtocol: string;
+	routePoolId: string | null;
+	upstreamOperation: string;
+	adapter: string;
 	createdAt: string;
 }): ModelRouteRow {
 	return {
@@ -34,6 +38,9 @@ function mapMyModelRouteToRow(r: {
 		price_override: r.priceOverride,
 		custom_params: r.customParams,
 		upstream_protocol: r.upstreamProtocol,
+		route_pool_id: r.routePoolId,
+		upstream_operation: r.upstreamOperation,
+		adapter: r.adapter,
 	};
 }
 
@@ -70,6 +77,46 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 				.select()
 				.from(myModelRoutesTable)
 				.where(and(eq(myModelRoutesTable.modelId, modelId), eq(myModelRoutesTable.status, 'active')))
+				.orderBy(desc(myModelRoutesTable.priority));
+			return rows.map(mapMyModelRouteToRow);
+		},
+
+		async resolveModelSurface(params): Promise<ResolvedModelSurfaceRow | null> {
+			const [rows] = await pool.query<ResolvedModelSurfaceRow[]>(
+				`SELECT ms.id, ms.model_id, ms.route_group, ms.request_protocol, ms.request_operation,
+					ms.route_pool_id, ms.status, ms.created_at, ms.updated_at,
+					rp.name AS pool_name, rp.strategy AS pool_strategy, rp.status AS pool_status
+				 FROM model_surfaces ms
+				 JOIN route_pools rp ON rp.id = ms.route_pool_id
+				 WHERE ms.model_id = ?
+				   AND lower(ms.route_group) = lower(?)
+				   AND lower(ms.request_protocol) = lower(?)
+				   AND ms.request_operation IN (?, '*')
+				   AND ms.status = 'active'
+				   AND rp.status = 'active'
+				 ORDER BY CASE WHEN ms.request_operation = ? THEN 0 ELSE 1 END
+				 LIMIT 1`,
+				[
+					params.modelId,
+					params.routeGroup,
+					params.requestProtocol,
+					params.requestOperation,
+					params.requestOperation,
+				]
+			);
+			return rows[0] ?? null;
+		},
+
+		async getModelRoutesByPoolId(poolId: string): Promise<ModelRouteRow[]> {
+			const rows = await drizzle
+				.select()
+				.from(myModelRoutesTable)
+				.where(
+					and(
+						eq(myModelRoutesTable.routePoolId, poolId),
+						eq(myModelRoutesTable.status, 'active')
+					)
+				)
 				.orderBy(desc(myModelRoutesTable.priority));
 			return rows.map(mapMyModelRouteToRow);
 		},

@@ -4,21 +4,35 @@
  * 与 `route-selection` 配合：本模块负责「行 → 可调用对象」，不负责选哪几条 failover。
  * 完整上游 URL 由各 driver 按 capability 调用 `resolveUpstreamEndpoint`。
  */
-import type { GatewayRepositories, ModelRouteRow, ProviderEndpointsMap, UpstreamProtocol } from '@octafuse/core';
+import type {
+	GatewayRepositories,
+	ModelRouteRow,
+	ProviderEndpointsMap,
+	ResolvedModelSurfaceRow,
+	UpstreamProtocol,
+} from '@octafuse/core';
 import {
+	effectiveUpstreamOperation,
 	extractMeteredProfileFromPriceOverrideJson,
 	extractChargedProfileFromPriceOverrideJson,
 	fingerprintProviderApiKey,
 	normalizeUpstreamProtocol,
 	parseProviderEndpoints,
 } from '@octafuse/core';
+import { selectActiveRouteRows } from './route-selection';
 
 export interface RouteResult {
+	/** `model_routes.id`; stable target identity for traces and admin deep links. */
+	targetId: string;
+	modelSurfaceId: string | null;
+	routePoolId: string | null;
 	providerId: string;
 	/** `providers.name` 快照，供 `api_key_request_logs` 等落库 */
 	providerName: string;
 	providerModelName: string;
 	upstreamProtocol: UpstreamProtocol;
+	upstreamOperation: string;
+	adapter: string;
 	/**
 	 * 解析后的 provider endpoints（`providers.endpoints`）。
 	 * Driver 按 capability 调用 `resolveUpstreamEndpoint`。
@@ -78,10 +92,15 @@ async function routeRowToResult(repos: GatewayRepositories, route: ModelRouteRow
 	const routeWeight = typeof route.weight === 'number' && route.weight > 0 ? route.weight : 1;
 
 	return {
+		targetId: route.id,
+		modelSurfaceId: null,
+		routePoolId: route.route_pool_id ?? null,
 		providerId: provider.id,
 		providerName: provider.name,
 		providerModelName: route.provider_model_name,
 		upstreamProtocol: protocol,
+		upstreamOperation: route.upstream_operation ?? '*',
+		adapter: route.adapter ?? 'passthrough',
 		providerEndpoints,
 		providerApiKey: provider.api_key,
 		priceOverrideRaw: route.price_override,
@@ -95,6 +114,62 @@ async function routeRowToResult(repos: GatewayRepositories, route: ModelRouteRow
 		providerKeyLabel: provider.name,
 		providerKeyFingerprint: fingerprintProviderApiKey(provider.api_key),
 	};
+}
+
+export interface SurfaceRouteResolution {
+	surface: ResolvedModelSurfaceRow | null;
+	routes: RouteResult[];
+}
+
+/**
+ * Resolve an ingress surface to its pool targets.
+ *
+ * Exact operation surfaces win; migrated wildcard surfaces are the compatibility fallback.
+ * If migration 0016 has not been applied yet, the legacy model/group/protocol path remains
+ * available so code and schema can be rolled out without a request outage.
+ */
+export async function resolveRoutesForSurface(
+	repos: GatewayRepositories,
+	params: {
+		modelId: string;
+		routeGroup: string;
+		requestProtocol: UpstreamProtocol;
+		requestOperation: string;
+	}
+): Promise<SurfaceRouteResolution> {
+	let surface: ResolvedModelSurfaceRow | null = null;
+	try {
+		surface = await repos.modelRouting.resolveModelSurface(params);
+	} catch (error) {
+		console.warn('[Gateway Router] surface lookup unavailable; using legacy route selection', {
+			modelId: params.modelId,
+			requestProtocol: params.requestProtocol,
+			requestOperation: params.requestOperation,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	const rows = surface
+		? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)
+		: selectActiveRouteRows(
+				await repos.modelRouting.getModelRoutesByModelId(params.modelId),
+				params.routeGroup
+			);
+	const routes = (await resolveRouteResultsFromRows(repos, rows))
+		.filter(
+			(route) =>
+				route.upstreamProtocol === params.requestProtocol &&
+				route.adapter === 'passthrough'
+		)
+		.map((route) => ({
+			...route,
+			modelSurfaceId: surface?.id ?? null,
+			upstreamOperation: effectiveUpstreamOperation(
+				route.upstreamOperation,
+				params.requestOperation
+			),
+		}));
+	return { surface, routes };
 }
 
 /**

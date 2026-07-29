@@ -11,6 +11,10 @@ export type RouteListRow = {
 	status: string;
 	route_group: string;
 	upstream_protocol?: string | null;
+	upstream_operation?: string | null;
+	route_pool_id?: string | null;
+	pool_name?: string | null;
+	surfaces?: string | null;
 	provider_name?: string | null;
 };
 

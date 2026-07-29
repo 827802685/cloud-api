@@ -123,7 +123,13 @@ export async function recordUsage(
 		request_body?: string | null;
 		upstream_request_body?: string | null;
 		request_protocol: 'openai' | 'anthropic' | 'gemini';
+		request_operation?: string | null;
 		upstream_protocol: UpstreamProtocol;
+		upstream_operation?: string | null;
+		model_surface_id?: string | null;
+		route_pool_id?: string | null;
+		route_target_id?: string | null;
+		adapter?: string | null;
 		usage: UsageFromStream;
 		model_pricing_profile?: string | null;
 		route_price_override_json?: string | null;
@@ -254,7 +260,18 @@ export async function recordUsage(
 			requestBody: params.request_body ?? null,
 			upstreamRequestBody: params.upstream_request_body ?? null,
 			requestProtocol: params.request_protocol,
+			requestOperation: params.request_operation ?? null,
 			upstreamProtocol: params.upstream_protocol,
+			upstreamOperation: params.upstream_operation ?? null,
+			modelSurfaceId: params.model_surface_id ?? null,
+			routePoolId: params.route_pool_id ?? null,
+			routeTargetId: params.route_target_id ?? null,
+			adapter: params.adapter ?? null,
+			routeTrace: JSON.stringify({
+				surface: params.model_surface_id ?? null,
+				pool: params.route_pool_id ?? null,
+				target: params.route_target_id ?? null,
+			}),
 			inputTokens: params.usage.input_tokens,
 			outputTokens: params.usage.output_tokens,
 			cacheReadTokens: params.usage.cache_read_tokens,

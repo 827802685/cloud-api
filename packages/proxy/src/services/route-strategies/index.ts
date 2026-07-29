@@ -5,6 +5,7 @@ import type { GatewayRepositories, RouteStrategyName, UpstreamProtocol } from '@
 import {
 	DEFAULT_ROUTE_STRATEGY,
 	getGlobalRouteStrategy,
+	isRouteStrategyName,
 	resolveModelRoutePolicyStrategy,
 } from '@octafuse/core';
 import type { RouteOrderStrategy } from './types';
@@ -23,15 +24,19 @@ export const ROUTE_STRATEGIES: Record<RouteStrategyName, RouteOrderStrategy> = {
 };
 
 /**
- * 五级解析：model capability rule → protocol rule → model strategy → global system_config → DEFAULT。
+ * 六级解析：pool → model capability rule → protocol rule → model strategy → global system_config → DEFAULT。
  */
 export async function resolveRouteStrategy(params: {
 	routePolicyRaw: string | null | undefined;
+	poolStrategy?: string | null;
 	protocol: UpstreamProtocol | string;
 	capability: string;
 	routeGroup: string;
 	repos: GatewayRepositories;
 }): Promise<RouteStrategyName> {
+	if (params.poolStrategy && isRouteStrategyName(params.poolStrategy)) {
+		return params.poolStrategy;
+	}
 	const fromModel = resolveModelRoutePolicyStrategy(
 		params.routePolicyRaw,
 		params.protocol,

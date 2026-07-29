@@ -14,7 +14,6 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
-import { parseModelRoutePolicy, routePolicyRuleKey } from '@octafuse/core/db/model-route-policy';
 import { parseRoutePricingSchedule } from '@octafuse/core/db/pricing-schedule';
 import { useTranslations } from 'next-intl';
 import { UpstreamProtocolBrandIcon } from '@/components/upstream-brand-logo';
@@ -33,11 +32,11 @@ import {
 	formatScheduleWindowsHint,
 	parseModelTagsList,
 	protocolBadgeClass,
+	resolveEffectiveRouteStrategy,
 	splitRoutesByProtocolAndRouteGroup,
 } from '../route-utils';
 import {
 	FACTOR_CHIP_BASE,
-	ROUTE_GROUP_CARD_BADGE_CLASS,
 	type RouteListRow,
 	type RouteProtocolGroupSection,
 } from '../types';
@@ -46,10 +45,11 @@ type Props = {
 	card: RouteModelGroup;
 	meta: GatewayModel | undefined;
 	providerMeta: Map<string, GatewayProvider>;
+	globalRouteStrategy: string | null;
 	copiedModelId: string | null;
 	togglingId: string | null;
 	onCopyModelId: (modelId: string) => void;
-	onCreate: (modelId: string, preset?: { protocol?: string; group?: string }) => void;
+	onCreate: (modelId: string, preset?: { protocol?: string; operation?: string; group?: string }) => void;
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
@@ -58,19 +58,26 @@ type Props = {
 		modelTitle: string,
 		protocol: string,
 		protocolLabel: string,
-		group: string
+		group: string,
+		poolId?: string | null,
+		poolStrategy?: string | null,
+		requestOperation?: string
 	) => void;
 };
 
 function RouteTarget({
 	route,
 	provider,
+	requestProtocol,
+	requestOperation,
 	togglingId,
 	onEdit,
 	onToggleStatus,
 }: {
 	route: RouteListRow;
 	provider: GatewayProvider | undefined;
+	requestProtocol: string;
+	requestOperation: string;
 	togglingId: string | null;
 	onEdit: (route: RouteListRow) => void;
 	onToggleStatus: (route: RouteListRow) => void;
@@ -86,10 +93,17 @@ function RouteTarget({
 		formatScheduleWindowsHint(schedule.charged) || formatScheduleWindowsHint(schedule.metered);
 	const enabled = route.status === 'active';
 	const providerDisabled = provider?.status === 'disabled';
+	const configuredUpstreamOperation = route.upstream_operation ?? '*';
+	const effectiveUpstreamOperation =
+		configuredUpstreamOperation === '*' ? requestOperation : configuredUpstreamOperation;
+	const showUpstreamMapping =
+		route.upstream_protocol !== requestProtocol ||
+		effectiveUpstreamOperation !== requestOperation ||
+		(route.adapter != null && route.adapter !== 'passthrough');
 
 	return (
 		<div
-			className={`min-w-0 rounded-lg border bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md ${
+			className={`w-full min-w-0 rounded-lg border bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md sm:w-72 sm:max-w-full ${
 				enabled ? 'border-gray-200' : 'border-gray-200 bg-gray-50/80 opacity-70'
 			}`}
 		>
@@ -126,6 +140,12 @@ function RouteTarget({
 				</button>
 			</div>
 			<div className="flex flex-wrap items-center gap-1.5 border-t border-gray-100 px-3 py-2">
+				{showUpstreamMapping ? (
+					<span className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${protocolBadgeClass(route.upstream_protocol)}`}>
+						<UpstreamProtocolBrandIcon protocol={route.upstream_protocol} />
+						{route.upstream_protocol}.{effectiveUpstreamOperation}
+					</span>
+				) : null}
 				<span className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
 					{t('weight', { value: route.weight ?? 1 })}
 				</span>
@@ -162,11 +182,168 @@ function RouteTarget({
 	);
 }
 
-function FlowSection({
+function FlowConnector() {
+	return (
+		<>
+			<div className="relative hidden h-5 xl:block" aria-hidden>
+				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" />
+				<ArrowLongRightIcon className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500" />
+			</div>
+			<div className="flex justify-center py-0.5 xl:hidden" aria-hidden>
+				<ArrowDownIcon className="h-4 w-4 text-blue-400" />
+			</div>
+		</>
+	);
+}
+
+function RoutingMatchConnector({
+	modelId,
+	routeGroup,
+}: {
+	modelId: string;
+	routeGroup: string;
+}) {
+	const t = useTranslations('routes.flow');
+	const requestedModelId = routeGroup === 'default' ? modelId : `${modelId}:${routeGroup}`;
+
+	return (
+		<>
+			<div
+				className="relative hidden h-5 min-w-0 xl:block"
+				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
+			>
+				<span
+					className="absolute inset-x-0 top-1/2 h-px bg-blue-300"
+					aria-hidden
+				/>
+				<span className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
+					{t('routeGroup')} · {routeGroup}
+				</span>
+				<ArrowLongRightIcon
+					className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500"
+					aria-hidden
+				/>
+				<p
+					className="absolute left-0 right-0 top-[calc(50%+0.8rem)] truncate text-center font-mono text-[10px] font-medium text-blue-600"
+					title={`model=${requestedModelId}`}
+				>
+					model={requestedModelId}
+				</p>
+			</div>
+			<div
+				className="flex min-w-0 flex-col items-center gap-1 py-0.5 xl:hidden"
+				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
+			>
+				<span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
+					{t('routeGroup')} · {routeGroup}
+				</span>
+				<span className="max-w-full truncate font-mono text-[10px] font-medium text-blue-600">
+					model={requestedModelId}
+				</span>
+				<ArrowDownIcon className="h-4 w-4 text-blue-400" aria-hidden />
+			</div>
+		</>
+	);
+}
+
+function requestSurfacePath(
+	protocol: string,
+	operation: string,
+	modelId: string
+): string {
+	if (protocol === 'openai') {
+		const paths: Record<string, string> = {
+			chat: '/v1/chat/completions',
+			responses: '/v1/responses',
+			'images.generations': '/v1/images/generations',
+			'images.edits': '/v1/images/edits',
+			'audio.transcriptions': '/v1/audio/transcriptions',
+		};
+		return operation === '*' ? '/v1/*' : (paths[operation] ?? `/v1/${operation}`);
+	}
+	if (protocol === 'anthropic') {
+		return operation === '*' ? '/v1/*' : '/v1/messages';
+	}
+	if (protocol === 'gemini') {
+		return `/v1beta/models/${modelId}:${operation}`;
+	}
+	return operation === '*' ? '/*' : `/${operation}`;
+}
+
+type RequestSurfaceGroup = {
+	key: string;
+	protocol: string;
+	protocolLabel: string;
+	requestOperation: string;
+	sections: RouteProtocolGroupSection<RouteListRow>[];
+};
+
+function groupSectionsByRequestSurface(
+	sections: RouteProtocolGroupSection<RouteListRow>[]
+): RequestSurfaceGroup[] {
+	const groups = new Map<string, RequestSurfaceGroup>();
+	for (const section of sections) {
+		const key = `${section.protocol}\u0000${section.requestOperation}`;
+		const group =
+			groups.get(key) ??
+			{
+				key,
+				protocol: section.protocol,
+				protocolLabel: section.protocolLabel,
+				requestOperation: section.requestOperation,
+				sections: [],
+			};
+		group.sections.push(section);
+		groups.set(key, group);
+	}
+	return [...groups.values()];
+}
+
+function RequestSurfaceNode({
+	surface,
+	modelId,
+}: {
+	surface: RequestSurfaceGroup;
+	modelId: string;
+}) {
+	const t = useTranslations('routes.flow');
+	const surfacePath = requestSurfacePath(
+		surface.protocol,
+		surface.requestOperation,
+		modelId
+	);
+
+	return (
+		<div className="w-full min-w-0 rounded-lg border border-blue-200 bg-blue-50/75 px-3 py-2.5 shadow-sm">
+			<div className="flex items-center justify-between gap-2">
+				<span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">
+					{t('requestNode')}
+				</span>
+				<span className={`inline-flex max-w-[68%] items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${protocolBadgeClass(surface.protocol)}`}>
+					<UpstreamProtocolBrandIcon protocol={surface.protocol} />
+					<span className="truncate">{surface.protocolLabel}</span>
+				</span>
+			</div>
+			<div className="mt-1.5 min-w-0">
+				<span
+					className="block min-w-0 truncate font-mono text-[11px] font-semibold text-gray-800"
+					title={surfacePath}
+				>
+					{surfacePath}
+				</span>
+			</div>
+		</div>
+	);
+}
+
+function FlowBranch({
 	section,
 	card,
 	meta,
 	providerMeta,
+	globalRouteStrategy,
+	branchIndex,
+	branchCount,
 	togglingId,
 	onCreate,
 	onEdit,
@@ -177,6 +354,9 @@ function FlowSection({
 	card: RouteModelGroup;
 	meta: GatewayModel | undefined;
 	providerMeta: Map<string, GatewayProvider>;
+	globalRouteStrategy: string | null;
+	branchIndex: number;
+	branchCount: number;
 	togglingId: string | null;
 	onCreate: Props['onCreate'];
 	onEdit: Props['onEdit'];
@@ -184,31 +364,42 @@ function FlowSection({
 	onOpenStrategyDialog: Props['onOpenStrategyDialog'];
 }) {
 	const t = useTranslations('routes.flow');
-	const policy = parseModelRoutePolicy(meta?.route_policy ?? null);
-	const strategy =
-		policy?.rules.get(routePolicyRuleKey(section.protocol, null, section.group))?.strategy ??
-		policy?.strategy ??
-		null;
+	const strategy = resolveEffectiveRouteStrategy({
+		poolStrategy: section.poolStrategy,
+		routePolicyRaw: meta?.route_policy ?? null,
+		protocol: section.protocol,
+		requestOperation: section.requestOperation,
+		routeGroup: section.group,
+		globalStrategy: globalRouteStrategy,
+	});
+	const strategySourceLabel = t(`strategySource.${strategy.source}`);
 	const priorityLayers = [...section.routes.reduce((map, route) => {
 		const layer = map.get(route.priority) ?? [];
 		layer.push(route);
 		map.set(route.priority, layer);
 		return map;
 	}, new Map<number, RouteListRow[]>())].sort(([a], [b]) => b - a);
-	const requestKey = section.group === 'default' ? card.model_id : `${card.model_id}:${section.group}`;
+	const railClass =
+		branchIndex === 0
+			? 'top-1/2 bottom-0'
+			: branchIndex === branchCount - 1
+				? 'top-0 bottom-1/2'
+				: 'inset-y-0';
 
 	return (
-		<div className="bg-slate-50/70 p-3 sm:p-4">
-			<div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(180px,0.8fr)_32px_minmax(210px,0.9fr)_32px_minmax(360px,2fr)] xl:items-center">
-				<div className="min-w-0 rounded-lg border border-blue-200 bg-blue-50/80 p-3 ring-1 ring-inset ring-white">
-					<p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">{t('requestNode')}</p>
-					<p className="mt-1 truncate font-mono text-xs font-semibold text-gray-900" title={requestKey}>
-						{requestKey}
-					</p>
-					<p className="mt-1 text-[11px] text-gray-500">{t('modelGroupResolved')}</p>
-				</div>
-
-				<ArrowLongRightIcon className="mx-auto hidden h-5 w-5 text-blue-300 xl:block" />
+		<div className="relative py-3 xl:pl-4">
+			{branchCount > 1 ? (
+				<span
+					className={`absolute left-0 hidden w-px bg-blue-300 xl:block ${railClass}`}
+					aria-hidden
+				/>
+			) : null}
+			<span
+				className="absolute left-0 top-1/2 hidden h-px w-4 bg-blue-300 xl:block"
+				aria-hidden
+			/>
+			<div className="grid min-w-0 gap-y-2 xl:grid-cols-[minmax(150px,0.8fr)_minmax(190px,240px)_40px_minmax(360px,2.4fr)] xl:items-center">
+				<RoutingMatchConnector modelId={card.model_id} routeGroup={section.group} />
 
 				<button
 					type="button"
@@ -218,49 +409,55 @@ function FlowSection({
 							card.title,
 							section.protocol,
 							section.protocolLabel,
-							section.group
+							section.group,
+							section.poolId,
+							section.poolStrategy,
+							section.requestOperation
 						)
 					}
-					className="min-w-0 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+					className="min-w-0 rounded-lg border border-indigo-200 bg-indigo-50/75 px-3 py-2.5 text-left shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+					title={`${t('effectiveStrategy')}: ${strategy.strategy} · ${strategySourceLabel}`}
 				>
-					<div className="flex min-w-0 flex-wrap items-center gap-1.5">
-						<span className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${protocolBadgeClass(section.protocol)}`}>
-							<UpstreamProtocolBrandIcon protocol={section.protocol} />
-							{section.protocolLabel}
+					<span className="flex items-center justify-between gap-2">
+						<span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">
+							{t('policyNode')}
 						</span>
-						<span className={`max-w-full truncate rounded-md px-2 py-0.5 text-[11px] font-semibold ${ROUTE_GROUP_CARD_BADGE_CLASS}`}>
-							{section.group}
-						</span>
-					</div>
-					<div className="mt-2 flex items-center justify-between gap-2">
-						<div>
-							<p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">{t('policyNode')}</p>
-							<p className="mt-0.5 text-xs font-semibold text-gray-800">
-								{strategy ? t('strategyValue', { strategy }) : t('strategyInherit')}
-							</p>
-						</div>
-						<PencilSquareIcon className="h-4 w-4 shrink-0 text-indigo-400" />
-					</div>
-					<p className="mt-1.5 text-[11px] text-gray-500">{t('priorityHint')}</p>
+						<PencilSquareIcon className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+					</span>
+					<span className="mt-1.5 block truncate text-xs font-semibold text-gray-800">
+						{strategy.inherited ? `${t('inheritShort')} → ${strategy.strategy}` : strategy.strategy}
+					</span>
+					<span className="mt-0.5 block truncate text-[10px] text-indigo-500">
+						{strategySourceLabel}
+					</span>
 				</button>
 
-				<ArrowLongRightIcon className="mx-auto hidden h-5 w-5 text-blue-300 xl:block" />
+				<FlowConnector />
 
-				<div className="min-w-0">
+				<div className="min-w-0 rounded-lg border border-emerald-200/80 bg-emerald-50/20 p-2 shadow-sm">
 					<div className="mb-2 flex items-center justify-between gap-2">
-						<div>
-							<p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">{t('targetsNode')}</p>
-							<p className="text-[11px] text-gray-500">{t('targetCount', { count: section.routes.length })}</p>
+						<div className="min-w-0">
+							<p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+								{t('targetsNode')}
+							</p>
+							<p className="text-[10px] text-gray-500">
+								{t('targetCount', { count: section.routes.length })}
+							</p>
 						</div>
 						<button
 							type="button"
-							onClick={() => onCreate(card.model_id, { protocol: section.protocol, group: section.group })}
+							onClick={() => onCreate(card.model_id, {
+								protocol: section.protocol,
+								operation: section.requestOperation,
+								group: section.group,
+							})}
 							className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
 						>
 							<PlusIcon className="h-3.5 w-3.5" />
 							{t('addToPool')}
 						</button>
 					</div>
+
 					<div className="space-y-2">
 						{priorityLayers.map(([priority, routes], layerIndex) => (
 							<div key={priority}>
@@ -270,31 +467,91 @@ function FlowSection({
 										<span>{t('fallback')}</span>
 									</div>
 								) : null}
-								<div className="rounded-lg border border-gray-200/80 bg-white/60 p-2">
-									<div className="mb-1.5 flex items-center gap-2">
-										<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
-											P{priority}
-										</span>
-										<span className="text-[10px] font-medium text-gray-500">
-											{layerIndex === 0 ? t('firstAttempt') : t('fallbackLayer')}
-										</span>
-									</div>
-									<div className="grid min-w-0 gap-2 2xl:grid-cols-2">
-										{routes.map((route) => (
-											<RouteTarget
-												key={route.id}
-												route={route}
-												provider={providerMeta.get(route.provider_id)}
-												togglingId={togglingId}
-												onEdit={onEdit}
-												onToggleStatus={onToggleStatus}
-											/>
-										))}
-									</div>
+								<div className="mb-1.5 flex items-center gap-2">
+									<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+										P{priority}
+									</span>
+									<span className="text-[10px] font-medium text-gray-500">
+										{layerIndex === 0 ? t('firstAttempt') : t('fallbackLayer')}
+									</span>
+								</div>
+								<div className="flex min-w-0 flex-wrap gap-2">
+									{routes.map((route) => (
+										<RouteTarget
+											key={route.id}
+											route={route}
+											provider={providerMeta.get(route.provider_id)}
+											requestProtocol={section.protocol}
+											requestOperation={section.requestOperation}
+											togglingId={togglingId}
+											onEdit={onEdit}
+											onToggleStatus={onToggleStatus}
+										/>
+									))}
 								</div>
 							</div>
 						))}
 					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function FlowSection({
+	surface,
+	card,
+	meta,
+	providerMeta,
+	globalRouteStrategy,
+	togglingId,
+	onCreate,
+	onEdit,
+	onToggleStatus,
+	onOpenStrategyDialog,
+}: {
+	surface: RequestSurfaceGroup;
+	card: RouteModelGroup;
+	meta: GatewayModel | undefined;
+	providerMeta: Map<string, GatewayProvider>;
+	globalRouteStrategy: string | null;
+	togglingId: string | null;
+	onCreate: Props['onCreate'];
+	onEdit: Props['onEdit'];
+	onToggleStatus: Props['onToggleStatus'];
+	onOpenStrategyDialog: Props['onOpenStrategyDialog'];
+}) {
+	return (
+		<div className="bg-slate-50/70 px-3 sm:px-4">
+			<div className="xl:grid xl:grid-cols-[minmax(180px,240px)_minmax(0,1fr)]">
+				<div className="relative flex min-w-0 flex-col justify-center py-3 xl:pr-4">
+					<RequestSurfaceNode surface={surface} modelId={card.model_id} />
+					<span
+						className="absolute right-0 top-1/2 hidden h-px w-4 bg-blue-300 xl:block"
+						aria-hidden
+					/>
+					<div className="flex justify-center pt-1 xl:hidden" aria-hidden>
+						<ArrowDownIcon className="h-4 w-4 text-blue-400" />
+					</div>
+				</div>
+				<div className="divide-y divide-slate-200/80">
+					{surface.sections.map((section, branchIndex) => (
+						<FlowBranch
+							key={section.key}
+							section={section}
+							card={card}
+							meta={meta}
+							providerMeta={providerMeta}
+							globalRouteStrategy={globalRouteStrategy}
+							branchIndex={branchIndex}
+							branchCount={surface.sections.length}
+							togglingId={togglingId}
+							onCreate={onCreate}
+							onEdit={onEdit}
+							onToggleStatus={onToggleStatus}
+							onOpenStrategyDialog={onOpenStrategyDialog}
+						/>
+					))}
 				</div>
 			</div>
 		</div>
@@ -306,6 +563,7 @@ export function RouteModelFlow(props: Props) {
 		card,
 		meta,
 		providerMeta,
+		globalRouteStrategy,
 		copiedModelId,
 		togglingId,
 		onCopyModelId,
@@ -329,6 +587,7 @@ export function RouteModelFlow(props: Props) {
 			: t('contextLine', { context, max: maxOutput });
 	const tags = parseModelTagsList(meta);
 	const sections = splitRoutesByProtocolAndRouteGroup(card.groupRoutes);
+	const surfaceGroups = groupSectionsByRequestSurface(sections);
 
 	return (
 		<article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -342,9 +601,24 @@ export function RouteModelFlow(props: Props) {
 						>
 							{card.title}
 						</button>
-						<span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${card.activeCount > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-700 ring-red-200'}`}>
-							{t('activeTotalRoutes', { active: card.activeCount, total: card.groupRoutes.length })}
-						</span>
+						<div className="flex shrink-0 items-center gap-0.5">
+							<button
+								type="button"
+								onClick={() => void onCopyModelId(card.model_id)}
+								className={`rounded-md p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${copiedModelId === card.model_id ? 'bg-emerald-50 text-emerald-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}
+								title={copiedModelId === card.model_id ? t('copiedModelId') : t('copyModelId', { id: card.model_id })}
+							>
+								<ClipboardDocumentIcon className="h-4 w-4" />
+							</button>
+							<button
+								type="button"
+								onClick={() => onEditModel(card.model_id)}
+								className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+								title={t('editModel', { title: card.title })}
+							>
+								<PencilSquareIcon className="h-4 w-4" />
+							</button>
+						</div>
 					</div>
 					<div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
 						<span className="font-mono text-[11px] text-gray-500">{card.model_id}</span>
@@ -357,23 +631,7 @@ export function RouteModelFlow(props: Props) {
 						)) : <span className="text-[10px] text-gray-400">{tModelsCard('noTags')}</span>}
 					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => void onCopyModelId(card.model_id)}
-						className={`rounded-md p-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${copiedModelId === card.model_id ? 'bg-emerald-50 text-emerald-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'}`}
-						title={copiedModelId === card.model_id ? t('copiedModelId') : t('copyModelId', { id: card.model_id })}
-					>
-						<ClipboardDocumentIcon className="h-4 w-4" />
-					</button>
-					<button
-						type="button"
-						onClick={() => onEditModel(card.model_id)}
-						className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-						title={t('editModel', { title: card.title })}
-					>
-						<PencilSquareIcon className="h-4 w-4" />
-					</button>
+				<div className="flex shrink-0 flex-col items-end gap-1.5">
 					<button
 						type="button"
 						onClick={() => onCreate(card.model_id)}
@@ -382,17 +640,21 @@ export function RouteModelFlow(props: Props) {
 						<PlusIcon className="h-4 w-4" />
 						{tFlow('addRoute')}
 					</button>
+					<span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${card.activeCount > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-700 ring-red-200'}`}>
+						{t('activeTotalRoutes', { active: card.activeCount, total: card.groupRoutes.length })}
+					</span>
 				</div>
 			</header>
 
-			<div className="space-y-3 bg-slate-100/60 p-3 sm:p-4">
-				{sections.length ? sections.map((section) => (
+			<div className="divide-y divide-slate-200/80 bg-slate-100/60 px-3 sm:px-4">
+				{surfaceGroups.length ? surfaceGroups.map((surface) => (
 					<FlowSection
-						key={section.key}
-						section={section}
+						key={surface.key}
+						surface={surface}
 						card={card}
 						meta={meta}
 						providerMeta={providerMeta}
+						globalRouteStrategy={globalRouteStrategy}
 						togglingId={togglingId}
 						onCreate={onCreate}
 						onEdit={onEdit}

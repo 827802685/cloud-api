@@ -15,10 +15,11 @@ type Props = {
 	vendorGroupIdx: number;
 	modelMeta: Map<string, GatewayModel>;
 	providerMeta: Map<string, GatewayProvider>;
+	globalRouteStrategy: string | null;
 	copiedModelId: string | null;
 	togglingId: string | null;
 	onCopyModelId: (modelId: string) => void;
-	onCreate: (modelId: string, preset?: { protocol?: string; group?: string }) => void;
+	onCreate: (modelId: string, preset?: { protocol?: string; operation?: string; group?: string }) => void;
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
@@ -27,7 +28,10 @@ type Props = {
 		modelTitle: string,
 		protocol: string,
 		protocolLabel: string,
-		group: string
+		group: string,
+		poolId?: string | null,
+		poolStrategy?: string | null,
+		requestOperation?: string
 	) => void;
 };
 
@@ -39,6 +43,7 @@ export function RouteVendorGroup(props: Props) {
 		vendorGroupIdx,
 		modelMeta,
 		providerMeta,
+		globalRouteStrategy,
 		copiedModelId,
 		togglingId,
 		onCopyModelId,
@@ -83,6 +88,7 @@ export function RouteVendorGroup(props: Props) {
 						card={card}
 						meta={modelMeta.get(card.model_id)}
 						providerMeta={providerMeta}
+						globalRouteStrategy={globalRouteStrategy}
 						copiedModelId={copiedModelId}
 						togglingId={togglingId}
 						onCopyModelId={onCopyModelId}

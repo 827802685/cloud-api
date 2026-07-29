@@ -5,7 +5,12 @@ import { and, desc, eq } from 'drizzle-orm';
 import type { PostgresDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutesRepository } from '../../storage/gateway-repository-interfaces';
 import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repository-dtos';
-import { modelRoutesTable as pgMr, modelsTable as pgModels, providersTable as pgProviders } from '../../storage/drizzle/schema.pg';
+import {
+	modelRoutesTable as pgMr,
+	modelsTable as pgModels,
+	providersTable as pgProviders,
+	routePoolsTable as pgPools,
+} from '../../storage/drizzle/schema.pg';
 
 function snakeToCamel(key: string): string {
 	return key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
@@ -13,6 +18,7 @@ function snakeToCamel(key: string): string {
 
 export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient): ModelRoutesRepository {
 	const drizzle = db.drizzle;
+	const pg = db.raw;
 	return {
 		async listModelRoutesWithJoins(filters: { modelId?: string; providerId?: string }): Promise<ModelRouteJoinRow[]> {
 			const conditions = [];
@@ -32,17 +38,41 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 					price_override: pgMr.priceOverride,
 					custom_params: pgMr.customParams,
 					upstream_protocol: pgMr.upstreamProtocol,
+					route_pool_id: pgMr.routePoolId,
+					upstream_operation: pgMr.upstreamOperation,
+					adapter: pgMr.adapter,
+					pool_name: pgPools.name,
+					pool_strategy: pgPools.strategy,
+					pool_status: pgPools.status,
 					model_name: pgModels.displayName,
 					provider_name: pgProviders.name,
 				})
 				.from(pgMr)
 				.leftJoin(pgModels, eq(pgMr.modelId, pgModels.id))
 				.leftJoin(pgProviders, eq(pgMr.providerId, pgProviders.id))
+				.leftJoin(pgPools, eq(pgMr.routePoolId, pgPools.id))
 				.orderBy(pgMr.modelId, desc(pgMr.priority));
 			if (whereExpr) {
 				q = q.where(whereExpr) as typeof q;
 			}
 			const list = await q;
+			const surfacesByPool = new Map<string, string>();
+			const poolIds = [...new Set(list.map((r) => r.route_pool_id).filter((id): id is string => Boolean(id)))];
+			if (poolIds.length > 0) {
+				const surfaceRows = await pg<Array<{ route_pool_id: string; surfaces: string }>>`
+					SELECT route_pool_id,
+						json_agg(json_build_object(
+							'id', id,
+							'request_protocol', request_protocol,
+							'request_operation', request_operation,
+							'status', status
+						) ORDER BY request_protocol, request_operation)::text AS surfaces
+					FROM model_surfaces
+					WHERE route_pool_id = ANY(${poolIds})
+					GROUP BY route_pool_id
+				`;
+				for (const row of surfaceRows) surfacesByPool.set(row.route_pool_id, row.surfaces);
+			}
 			return list.map((r) => ({
 				id: r.id,
 				model_id: r.model_id,
@@ -55,6 +85,13 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				price_override: r.price_override,
 				custom_params: r.custom_params,
 				upstream_protocol: r.upstream_protocol,
+				route_pool_id: r.route_pool_id,
+				upstream_operation: r.upstream_operation,
+				adapter: r.adapter,
+				surfaces: r.route_pool_id ? (surfacesByPool.get(r.route_pool_id) ?? '[]') : '[]',
+				pool_name: r.pool_name,
+				pool_strategy: r.pool_strategy,
+				pool_status: r.pool_status,
 				model_name: r.model_name,
 				provider_name: r.provider_name,
 			}));
@@ -72,6 +109,9 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			priceOverride: unknown;
 			customParams: string | null;
 			upstreamProtocol: string;
+			routePoolId: string;
+			upstreamOperation: string;
+			adapter: string;
 		}): Promise<void> {
 			const now = new Date().toISOString();
 			await drizzle.insert(pgMr).values({
@@ -86,6 +126,9 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				priceOverride: params.priceOverride == null ? null : String(params.priceOverride),
 				customParams: params.customParams,
 				upstreamProtocol: params.upstreamProtocol,
+				routePoolId: params.routePoolId,
+				upstreamOperation: params.upstreamOperation,
+				adapter: params.adapter,
 				createdAt: now,
 			});
 		},
@@ -106,8 +149,57 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				price_override: r.priceOverride,
 				custom_params: r.customParams,
 				upstream_protocol: r.upstreamProtocol,
+				route_pool_id: r.routePoolId,
+				upstream_operation: r.upstreamOperation,
+				adapter: r.adapter,
 				created_at: r.createdAt,
 			};
+		},
+
+		async ensureModelSurfacePool(params): Promise<{ poolId: string; surfaceId: string }> {
+			const existing = await pg<Array<{ id: string; route_pool_id: string }>>`
+				SELECT id, route_pool_id
+				FROM model_surfaces
+				WHERE model_id = ${params.modelId}
+				  AND lower(route_group) = lower(${params.routeGroup})
+				  AND lower(request_protocol) = lower(${params.requestProtocol})
+				  AND request_operation = ${params.requestOperation}
+				LIMIT 1
+			`;
+			if (existing[0]) {
+				return { poolId: existing[0].route_pool_id, surfaceId: existing[0].id };
+			}
+
+			await pg.begin(async (tx) => {
+				await tx`
+					INSERT INTO route_pools
+						(id, model_id, route_group, name, strategy, status, created_at, updated_at)
+					VALUES (
+						${params.poolId}, ${params.modelId}, ${params.routeGroup}, ${params.poolName},
+						NULL, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+					)
+				`;
+				await tx`
+					INSERT INTO model_surfaces
+						(id, model_id, route_group, request_protocol, request_operation, route_pool_id, status, created_at, updated_at)
+					VALUES (
+						${params.surfaceId}, ${params.modelId}, ${params.routeGroup},
+						${params.requestProtocol}, ${params.requestOperation}, ${params.poolId},
+						'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+					)
+				`;
+			});
+			return { poolId: params.poolId, surfaceId: params.surfaceId };
+		},
+
+		async updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number> {
+			const rows = await pg<Array<{ id: string }>>`
+				UPDATE route_pools
+				SET strategy = ${strategy}, updated_at = CURRENT_TIMESTAMP
+				WHERE id = ${poolId}
+				RETURNING id
+			`;
+			return rows.length;
 		},
 
 		async updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number> {

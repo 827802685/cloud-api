@@ -60,6 +60,14 @@ export interface ModelRouteJoinRow {
 	price_override: string | null;
 	custom_params: string | null;
 	upstream_protocol: string;
+	route_pool_id: string | null;
+	upstream_operation: string;
+	adapter: string;
+	/** JSON array of surfaces attached to this target's pool. */
+	surfaces: string | null;
+	pool_name: string | null;
+	pool_strategy: string | null;
+	pool_status: string | null;
 	model_name: string | null;
 	provider_name: string | null;
 }

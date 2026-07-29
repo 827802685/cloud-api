@@ -82,10 +82,15 @@ type DispatchFn = (
 
 function emptyRoute(protocol: UpstreamProtocol): RouteResult {
 	return {
+		targetId: '',
+		modelSurfaceId: null,
+		routePoolId: '',
 		providerId: '',
 		providerName: '',
 		providerModelName: '',
 		upstreamProtocol: protocol,
+		upstreamOperation: '*',
+		adapter: 'passthrough',
 		providerEndpoints: {},
 		providerApiKey: '',
 		priceOverrideRaw: null,
