@@ -30,6 +30,12 @@ import {
 	WEB_DEEP_SEARCH_CATALOG_KEY,
 	WEB_DEEP_SEARCH_PROVIDERS,
 } from '@octafuse/core/lib/web-deep-search-system-config';
+import {
+	DEFAULT_ROUTE_STRATEGY,
+	isRouteStrategyName,
+	ROUTE_STRATEGY_NAMES,
+} from '@octafuse/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
 import { badRequest } from './errors';
 import { clampAnalyticsRange, rangeToDates, resolveStatsDateRange } from './shared';
 import { getBusinessDayWindow, getBusinessTimezone } from '@octafuse/core/lib/business-timezone';
@@ -210,6 +216,15 @@ export async function updateAdminSystemConfigService(repos: GatewayRepositories,
 			throw badRequest('BILLING_CURRENCY must be USD or CNY');
 		}
 		value = parsed;
+	}
+	if (key === ROUTE_STRATEGY_KEY) {
+		const normalized = value.trim().toLowerCase();
+		if (!isRouteStrategyName(normalized)) {
+			throw badRequest(
+				`ROUTE_STRATEGY must be one of: ${ROUTE_STRATEGY_NAMES.join(', ')} (default ${DEFAULT_ROUTE_STRATEGY})`
+			);
+		}
+		value = normalized;
 	}
 	const legacyToolKeys = new Set([
 		WEB_SEARCH_PROVIDER_KEY,

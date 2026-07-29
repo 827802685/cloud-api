@@ -55,22 +55,12 @@ export const providersTable = sqliteTable('providers', {
 	name: text('name').notNull(),
 	/** JSON: `{ openai?: { base?, endpoints? }, … }` */
 	endpoints: text('endpoints'),
+	/** 该上游账号唯一 API Key */
+	apiKey: text('api_key').notNull().default(''),
+	/** `active` | `disabled` */
+	status: text('status').notNull().default('active'),
 	description: text('description'),
 	createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const providerApiKeysTable = sqliteTable('provider_api_keys', {
-	id: text('id').primaryKey(),
-	providerId: text('provider_id').notNull(),
-	label: text('label').notNull(),
-	apiKey: text('api_key').notNull(),
-	status: text('status').notNull().default('active'),
-	weight: integer('weight').notNull().default(1),
-	priority: integer('priority').notNull().default(0),
-	/** 限流配置 JSON；NULL=不限流 */
-	limitConfig: text('limit_config'),
-	createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const modelsTable = sqliteTable('models', {
@@ -87,8 +77,8 @@ export const modelsTable = sqliteTable('models', {
 	inputModalities: text('input_modalities'),
 	outputModalities: text('output_modalities'),
 	releasedAt: text('released_at'),
-	/** 粘性路由配置 JSON；NULL=无粘性 */
-	stickyConfig: text('sticky_config'),
+	/** 路由策略配置 JSON；NULL=使用全局/代码默认 */
+	routePolicy: text('route_policy'),
 	createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -100,6 +90,8 @@ export const modelRoutesTable = sqliteTable('model_routes', {
 	priority: integer('priority').notNull().default(0),
 	status: text('status').notNull().default('active'),
 	routeGroup: text('route_group').notNull().default('default'),
+	/** 同 priority 层内权重 */
+	weight: integer('weight').notNull().default(1),
 	priceOverride: text('price_override'),
 	customParams: text('custom_params'),
 	upstreamProtocol: text('upstream_protocol').notNull().default('openai'),
@@ -188,7 +180,6 @@ export const d1CoreSchema = {
 	usersTable,
 	apiKeysTable,
 	providersTable,
-	providerApiKeysTable,
 	modelsTable,
 	modelRoutesTable,
 	apiKeyRequestLogsTable,

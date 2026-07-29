@@ -1,14 +1,14 @@
 /**
  * 熔断告警元数据：供 `recordUsage` / `fireGatewayErrorWebhooks` 展示熔断措施或抑制重复告警。
  */
-import type { ProviderKeyFailureKind } from './provider-key-circuit-breaker';
+import type { ProviderFailureKind } from './provider-circuit-breaker';
 
-export type ProviderKeyCircuitAlertEvent = {
-	kind: 'provider_key';
-	keyId: string;
-	keyLabel?: string | null;
+export type ProviderCircuitAlertEvent = {
+	kind: 'provider';
+	providerId: string;
+	providerName?: string | null;
 	keyFingerprint?: string | null;
-	failureKind: ProviderKeyFailureKind;
+	failureKind: ProviderFailureKind;
 	openUntil: number;
 	cooldownMs: number;
 	/** 本次失败调用是否打开或延长了熔断窗口 */
@@ -24,4 +24,4 @@ export type UserModelCircuitAlertEvent = {
 	cooldownMs: number;
 };
 
-export type GatewayCircuitAlertEvent = ProviderKeyCircuitAlertEvent | UserModelCircuitAlertEvent;
+export type GatewayCircuitAlertEvent = ProviderCircuitAlertEvent | UserModelCircuitAlertEvent;

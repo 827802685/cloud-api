@@ -88,6 +88,7 @@ flowchart TB
 - 迁移 **`0011_provider_endpoints`**（d1 / postgres / mysql）：`providers` 新增 **`endpoints` TEXT**，并从当时的 `base_url_*` 回填 `{ protocol: { base } }`。
 - 迁移 **`0012_drop_provider_base_url_columns`**：删除 `base_url_openai` / `base_url_anthropic` / `base_url_gemini`；读写仅以 **`endpoints`** 为准（`parseProviderEndpoints` / Admin 写入）。
 - 形状：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。
+- 迁移 **`0015_single_provider_key`**：`providers` 恢复单列 **`api_key`** + **`status`**；删除 **`provider_api_keys`**；`model_routes.weight`；`models.route_policy` 替换 `sticky_config`；种子 **`ROUTE_STRATEGY`**。切换步骤见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
 
 #### Endpoint capability 维护规则
 
@@ -137,23 +138,31 @@ sequenceDiagram
 
 ---
 
-## Key 调度运行时状态（限流 / 粘性 / 熔断）
+## 路由调度运行时状态（策略 / 熔断）
 
-> **完整请求处理路径**（鉴权 → 路由 → 调度 → failover → 记账，含各场景分支表）：见 **[proxy-request-lifecycle.md](./proxy-request-lifecycle.md)**。
+> **完整请求处理路径**（鉴权 → 路由 → 策略 → failover → 记账）：见 **[proxy-request-lifecycle.md](./proxy-request-lifecycle.md)**。  
+> **策略语义与五级解析**：见 **[route-strategies.md](../reference/route-strategies.md)**。  
+> **0015 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。
 
-迁移 **0007** 引入两个 JSON 配置列（三库同语义；`NULL` = 功能关闭）：
+### Schema（迁移 **0015**，三库同语义）
 
-| 列 | 含义 | 解析器（`@octafuse/core`） |
-|----|------|---------------------------|
-| `provider_api_keys.limit_config` | per-key 限流：`{"rpm":500,"tpm":200000,"max_concurrency":32}`，字段均可选 | `db/provider-key-limit-config.ts` |
-| `models.sticky_config` | 粘性 key 路由（opt-in），按 `"{protocol}:{route_group}"` 配 rule，顶层可设 `ttl_seconds` / `short_wait_ms` 缺省 | `db/model-sticky-config.ts` |
+| 对象 | 含义 |
+|------|------|
+| **`providers.api_key`** / **`providers.status`** | 一个 Provider = 一把上游密钥；`status` 为 `active` \| `disabled`。**无** `provider_api_keys` 表 |
+| **`model_routes.priority`** | 硬序分层（**DESC**，数字越大越先试） |
+| **`model_routes.weight`** | 同 priority 层内权重（默认 `1`；策略用） |
+| **`models.route_policy`** | 可选 TEXT JSON：`strategy` + `rules`；`NULL` = 回退全局 |
+| **`system_config.ROUTE_STRATEGY`** | 全局缺省策略（默认 `affinity`；进程内缓存 30s） |
 
-请求调度由 `packages/proxy/src/services/` 下三个**进程内存**组件配合 `failover-dispatch.ts` 完成：
+已移除（待后续重设计）：`provider_api_keys`、`limit_config`（网关 RPM/TPM/并发软限流）、`models.sticky_config`（粘性 key 绑定）。
 
-- **`provider-key-rate-limiter.ts`** — RPM（60s 滑动窗口，请求时计数）、TPM（流结束后按真实 usage 滞后入账）、并发（acquire/release 成对）；并输出 headroom 分数供分配排序。
-- **`sticky-key-binding.ts`** — `userId + baseModelId + routeGroup + protocol → (providerId, keyId)`，空闲 TTL 过期；命中绑定的 key 优先出场，短暂限流时在 `short_wait_ms` 内等待而非换 key（保上游 prompt cache）。
-- **`provider-key-circuit-breaker.ts`** — 替代原固定 60s cooldown：429 优先用上游 `Retry-After`，无头时按连续次数递增退避（**5s→15s→30s→60s 封顶**；同回合不重复升级）；401/403 固定 10min；5xx/网络错误 60s。
-- **`provider-key-scheduler.ts`（`buildKeyAttemptPlan`）** — 按 route priority 分层、同层多 provider 的 key 合并成池，池内按 key priority + headroom 加权随机排序，跳过熔断/限流中的 key。
-- **`failover-dispatch.ts`** — 调度阶段若 `attempts` 为空（全部 key 熔断或网关限流），**直接返回 429** + `Retry-After`（`upstream_capacity_exhausted`），**不再**像旧版那样在 cooldown 中仍回退全试或落到 502；有可试 key 时仍按序打上游，全部失败则返回最后一次上游响应。
+请求日志列 **`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`** 仍保留列名，语义改为 **`providers.id` / `providers.name` / fingerprint(`api_key`)**。
 
-> **一致性注意**：以上状态均为**单实例进程内存**（与敏感内容熔断一致）。Cloudflare Workers 多 isolate 各自计数，为**软限制**——建议把 `limit_config` 配成供应商真实限额的 ~90%；Node 单进程部署则接近精确。粘性绑定跨 isolate 可能落到不同 key，属可接受的缓存命中率损耗。
+### 运行时组件（`packages/proxy/src/services/`）
+
+- **`route-strategies/*`** — 同层排序：`affinity`（加权 Rendezvous）、`weighted_random`、`strict`、`round_robin`。
+- **`route-attempt-planner.ts`（`buildRouteAttemptPlan`）** — priority 硬序 → 层内策略 → 过滤熔断中的 provider。
+- **`provider-circuit-breaker.ts`** — 按 **`providerId`**：429（`Retry-After` 或 5s→60s）、401/403（10min）、普通 5xx（连续 3 次后 10s）；524 / fetch 不跨请求熔断。
+- **`failover-dispatch.ts`** — `attempts` 为空时 **429** + `Retry-After`（`upstream_capacity_exhausted`）；否则按序打上游，全部失败返回最后一次上游响应。
+
+> **一致性注意**：熔断与 round-robin 计数均为**单实例进程内存**。Cloudflare Workers 多 isolate 各自独立，属软状态；Node 单进程更接近精确。默认 **`affinity`** 在协议粒度上稳定首选 provider，以利于上游 prompt cache（affinityKey **不含** capability）。

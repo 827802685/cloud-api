@@ -109,12 +109,22 @@ export async function createModelRouteService(
 	const priceOverride = coerceRoutePriceOverrideInput(body.price_override);
 	assertRoutePriceOverrideFactors(priceOverride);
 
+	const weightRaw = body.weight;
+	const weight =
+		weightRaw === undefined || weightRaw === null || weightRaw === ''
+			? 1
+			: Number(weightRaw);
+	if (!Number.isFinite(weight) || weight < 1) {
+		throw badRequest('weight must be a number >= 1');
+	}
+
 	await repos.routes.insertModelRoute({
 		id,
 		modelId,
 		providerId,
 		providerModelName,
 		priority: Number(body.priority ?? 0),
+		weight: Math.floor(weight),
 		status: String(body.status ?? 'active'),
 		routeGroup,
 		priceOverride,
@@ -152,6 +162,13 @@ export async function updateModelRouteService(
 		const g = String(patch.route_group).trim();
 		if (g === '') throw badRequest('route_group cannot be empty');
 		patch.route_group = g;
+	}
+	if (patch.weight !== undefined) {
+		const weight = Number(patch.weight);
+		if (!Number.isFinite(weight) || weight < 1) {
+			throw badRequest('weight must be a number >= 1');
+		}
+		patch.weight = Math.floor(weight);
 	}
 	if (patch.price_override !== undefined) {
 		const normalized = coerceRoutePriceOverrideInput(patch.price_override);

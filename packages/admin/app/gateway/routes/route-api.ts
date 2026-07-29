@@ -78,14 +78,14 @@ export async function toggleRouteStatus(
 	return { success: false, message: data.message || 'Update failed' };
 }
 
-export async function patchModelStickyConfig(
+export async function patchModelRoutePolicy(
 	modelId: string,
-	stickyConfig: string | null
+	routePolicy: string | null
 ): Promise<{ success: true } | { success: false; message: string }> {
 	const response = await fetch(`/api/admin/models/${encodeURIComponent(modelId)}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ sticky_config: stickyConfig }),
+		body: JSON.stringify({ route_policy: routePolicy }),
 	});
 	const data = await readApiJson(response);
 	if (data.success) return { success: true };

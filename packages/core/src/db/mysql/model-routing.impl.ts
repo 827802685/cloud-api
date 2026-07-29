@@ -16,6 +16,7 @@ function mapMyModelRouteToRow(r: {
 	priority: number;
 	status: string;
 	routeGroup: string;
+	weight: number;
 	priceOverride: string | null;
 	customParams: string | null;
 	upstreamProtocol: string;
@@ -29,6 +30,7 @@ function mapMyModelRouteToRow(r: {
 		priority: r.priority,
 		status: r.status,
 		route_group: r.routeGroup,
+		weight: r.weight,
 		price_override: r.priceOverride,
 		custom_params: r.customParams,
 		upstream_protocol: r.upstreamProtocol,
@@ -43,7 +45,7 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 			const [rows] = await pool.query<ModelRow[]>(
 				`SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 					CAST(COALESCE((SELECT JSON_ARRAYAGG(tag ORDER BY tag) FROM model_tags WHERE model_id = m.id), JSON_ARRAY()) AS CHAR) AS tags,
-					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.sticky_config, m.created_at
+					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.route_policy, m.created_at
 				 FROM models m WHERE m.id = ?`,
 				[id]
 			);

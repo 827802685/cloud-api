@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * 上游供应商：CRUD、各协议 base URL 与 API Key；对应 Worker `/admin/providers`。
+ * 上游供应商：CRUD、各协议 base URL 与单键 API Key；对应 Worker `/admin/providers`。
  */
 import { ArrowDownTrayIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ProviderCard } from './components/provider-card';
 import { ProviderImportModal } from './components/provider-import-modal';
-import { ProviderKeyModal } from './components/provider-key-modal';
 import { ProviderModal } from './components/provider-modal';
 import { ProviderToolbar } from './components/provider-toolbar';
 import { useProvidersPageState } from './use-providers-page-state';
@@ -60,10 +59,7 @@ export default function GatewayProvidersPage() {
 				providerSearch={state.providerSearch}
 				filteredCount={state.filteredProviders.length}
 				totalCount={state.providers.length}
-				isExpandingProviderKeys={state.isExpandingProviderKeys}
 				onSearchChange={state.setProviderSearch}
-				onExpandVisibleKeys={state.handleExpandVisibleProviderKeys}
-				onCollapseVisibleKeys={state.handleCollapseVisibleProviderKeys}
 			/>
 
 			{state.filteredProviders.length === 0 ? (
@@ -77,35 +73,15 @@ export default function GatewayProvidersPage() {
 							key={provider.id}
 							provider={provider}
 							copiedId={state.copiedId}
-							isExpanded={state.expandedProviderIds.has(provider.id)}
-							previewRows={state.providerKeyPreviewById[provider.id] ?? []}
-							previewError={state.keyPreviewErrorById[provider.id]}
-							isPreviewLoading={state.keyPreviewLoadingId === provider.id}
-							providerKeyTogglingId={state.providerKeyTogglingId}
+							statusTogglingId={state.statusTogglingId}
 							onEdit={state.handleEdit}
 							onCopyEndpoint={state.copyToClipboard}
-							onToggleKeyPreview={state.handleToggleProviderKeyPreview}
-							onAddKey={state.openProviderKeyCreator}
-							onEditKey={state.openProviderKeyEditor}
-							onToggleKeyStatus={state.handleToggleProviderKeyStatus}
-							onCopyKey={state.handleCopyProviderKey}
+							onToggleStatus={state.handleToggleStatus}
+							onCopyApiKey={state.handleCopyApiKey}
 						/>
 					))}
 				</div>
 			)}
-
-			<ProviderKeyModal
-				editingProviderKey={state.editingProviderKey}
-				addingProviderKeyFor={state.addingProviderKeyFor}
-				form={state.keyEditForm}
-				error={state.keyEditError}
-				isSaving={state.keyEditSaving}
-				isDeleting={state.keyEditDeleting}
-				onClose={state.closeProviderKeyEditor}
-				onFormChange={state.setKeyEditForm}
-				onSave={state.handleSaveProviderKeyEdit}
-				onDelete={state.handleDeleteProviderKeyFromEditor}
-			/>
 
 			<ProviderImportModal
 				open={state.showImportModal}

@@ -14,7 +14,7 @@ export function createD1ProvidersRepository(db: D1DatabaseClient): ProvidersRepo
 		async listProviders(): Promise<ProviderAdminRow[]> {
 			const rows = await raw
 				.prepare(
-					`SELECT id, name, endpoints, description, created_at
+					`SELECT id, name, endpoints, api_key, status, description, created_at
 			 FROM providers ORDER BY created_at DESC`
 				)
 				.all<ProviderAdminRow>();
@@ -31,13 +31,22 @@ export function createD1ProvidersRepository(db: D1DatabaseClient): ProvidersRepo
 			name: string;
 			endpoints: string | null;
 			description: unknown;
+			apiKey?: string;
+			status?: string;
 		}): Promise<void> {
 			await raw
 				.prepare(
-					`INSERT INTO providers (id, name, endpoints, description)
-			 VALUES (?, ?, ?, ?)`
+					`INSERT INTO providers (id, name, endpoints, api_key, status, description)
+			 VALUES (?, ?, ?, ?, ?, ?)`
 				)
-				.bind(params.id, params.name, params.endpoints, params.description ?? null)
+				.bind(
+					params.id,
+					params.name,
+					params.endpoints,
+					params.apiKey ?? '',
+					params.status ?? 'active',
+					params.description ?? null
+				)
 				.run();
 		},
 
@@ -74,6 +83,14 @@ export function createD1ProvidersRepository(db: D1DatabaseClient): ProvidersRepo
 				.prepare('SELECT id, endpoints FROM providers WHERE id = ?')
 				.bind(providerId)
 				.first<ProviderProtocolBases>();
+		},
+
+		async getProviderApiKeyPlaintext(providerId: string): Promise<{ api_key: string } | null> {
+			const row = await raw
+				.prepare('SELECT api_key FROM providers WHERE id = ?')
+				.bind(providerId)
+				.first<{ api_key: string }>();
+			return row ?? null;
 		},
 	};
 }

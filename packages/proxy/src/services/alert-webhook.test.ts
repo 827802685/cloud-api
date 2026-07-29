@@ -195,9 +195,9 @@ describe('buildGatewayErrorAlertSummary', () => {
 				latencyMs: 200,
 				circuitEvents: [
 					{
-						kind: 'provider_key',
-						keyId: 'key-1',
-						keyLabel: 'solo0625',
+						kind: 'provider',
+						providerId: 'key-1',
+						providerName: 'solo0625',
 						keyFingerprint: '...alVg',
 						failureKind: 'rate_limit',
 						openUntil: Date.parse('2026-03-16T12:35:00.000Z'),
@@ -208,7 +208,9 @@ describe('buildGatewayErrorAlertSummary', () => {
 			})
 		);
 		expect(text).toContain('熔断措施:');
-		expect(text).toContain('provider_key keyId=key-1 label=solo0625 fingerprint=...alVg reason=rate_limit');
+		expect(text).toContain(
+			'provider providerId=key-1 name=solo0625 fingerprint=...alVg reason=rate_limit'
+		);
 		expect(text).toContain('持续 60s');
 		expect(text).toContain('恢复时间');
 	});

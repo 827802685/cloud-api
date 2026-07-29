@@ -7,22 +7,11 @@ type ProviderToolbarProps = {
 	providerSearch: string;
 	filteredCount: number;
 	totalCount: number;
-	isExpandingProviderKeys: boolean;
 	onSearchChange: (value: string) => void;
-	onExpandVisibleKeys: () => void;
-	onCollapseVisibleKeys: () => void;
 };
 
 export function ProviderToolbar(props: ProviderToolbarProps) {
-	const {
-		providerSearch,
-		filteredCount,
-		totalCount,
-		isExpandingProviderKeys,
-		onSearchChange,
-		onExpandVisibleKeys,
-		onCollapseVisibleKeys,
-	} = props;
+	const { providerSearch, filteredCount, totalCount, onSearchChange } = props;
 
 	const t = useTranslations('providers');
 	const tCommon = useTranslations('common');
@@ -55,26 +44,8 @@ export function ProviderToolbar(props: ProviderToolbarProps) {
 						</button>
 					)}
 				</div>
-				<div className="flex shrink-0 flex-wrap items-center gap-2">
-					<button
-						type="button"
-						onClick={() => void onExpandVisibleKeys()}
-						disabled={filteredCount === 0 || isExpandingProviderKeys}
-						className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{isExpandingProviderKeys ? t('loadingKeys') : t('expandKeys')}
-					</button>
-					<button
-						type="button"
-						onClick={onCollapseVisibleKeys}
-						disabled={filteredCount === 0 || isExpandingProviderKeys}
-						className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{t('collapseKeys')}
-					</button>
-					<div className="text-sm text-gray-500">
-						{tCommon('showing', { filtered: filteredCount, total: totalCount })}
-					</div>
+				<div className="text-sm text-gray-500">
+					{tCommon('showing', { filtered: filteredCount, total: totalCount })}
 				</div>
 			</div>
 		</div>

@@ -45,7 +45,7 @@ Authorization: Bearer sk-xxx...
 - 客户端传入 **`baseId:group`** 且 `group` 非空 → 有效组 = 该 `group`（trim，比较时 **忽略大小写**）。
 - 仅传入 **`baseId`**（整串命中 `models.id`）→ 有效组 = **`default`**。
 
-仅保留 **`model_routes.status = active`** 且 **`route_group`**（库内空值在比较时视为 `default`）与有效组（忽略大小写）一致的行，再按 **priority** 做 failover；再按入口协议过滤（如 chat 仅 OpenAI）。该有效组下 **无** 活跃路由 → **400**；有路由但当前协议无可用上游 → **502**（例如 `No OpenAI route in route group "free" for this model`，Anthropic / Gemini 同理）。
+仅保留 **`model_routes.status = active`** 且 **`route_group`**（库内空值在比较时视为 `default`）与有效组（忽略大小写）一致的行；再按入口协议过滤（如 chat 仅 OpenAI），并跳过 **disabled / 无 api_key** 的 Provider。同组内按 **priority（DESC）分层** + **路由策略 + weight** 做 failover。该有效组下 **无** 活跃路由 → **400**；有路由但当前协议无可用上游 → **502**（例如 `No OpenAI route in route group "free" for this model`，Anthropic / Gemini 同理）。
 
 模型 **`tags` 不参与**选组或计费。需要限定某一组时，请使用 **`baseId:your_group`**。
 
@@ -59,7 +59,7 @@ Authorization: Bearer sk-xxx...
 
 ### 4. 用量日志 `api_key_request_logs`
 
-写入的 **`model_id` 为库内基础模型 ID**（不带 `:group` 后缀）；实际选用的 **`route_group`**、**`upstream_protocol`**（所选路由的上游协议快照）、**`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`**（最终上游 key 快照，指纹为脱敏尾号）等会随请求落库（见 D1 表 **`api_key_request_logs`**，基线定义在 `packages/core/migrations-d1/0001_baseline.sql`，key 快照列见 `0004_provider_api_keys.sql`），便于对账与展示（如 Account 用量详情中 free 通道可加 `:free` 说明）。相对目录标准价的倍率请见路由 **`price_override`** 中的 **`charged_factor`** / **`metered_factor`**（及兼容字段 **`provider_factor`**）。**`request_protocol`** 表示客户端调用的 Gateway 入口（`openai` / `anthropic` / `gemini`），与 **`upstream_protocol`** 语义不同。
+写入的 **`model_id` 为库内基础模型 ID**（不带 `:group` 后缀）；实际选用的 **`route_group`**、**`upstream_protocol`**（所选路由的上游协议快照）、**`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`**（列名历史兼容：现为 **`providers.id` / `providers.name` / fingerprint(`providers.api_key`)**）等会随请求落库（见 **`api_key_request_logs`**），便于对账与展示（如 Account 用量详情中 free 通道可加 `:free` 说明）。相对目录标准价的倍率请见路由 **`price_override`** 中的 **`charged_factor`** / **`metered_factor`**（及兼容字段 **`provider_factor`**）。**`request_protocol`** 表示客户端调用的 Gateway 入口（`openai` / `anthropic` / `gemini`），与 **`upstream_protocol`** 语义不同。
 
 ### 5. 输出长度（`max_tokens` / `maxOutputTokens`）
 
@@ -944,27 +944,23 @@ curl http://localhost:8787/v1/me \
 
 ### 提供商故障转移
 
-同一 `route_group` 内支持多路由与 **key pool**（`provider_api_keys` 表）故障转移。调度由 `failoverDispatchWithKeyPool` + `buildKeyAttemptPlan` 完成；**完整分支与场景表**见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md)。
+同一 `route_group` 内支持多条 **model_routes**（每条指向一个 Provider；**一个 Provider = 一把 `api_key`**）。调度由 `failoverDispatch` + `buildRouteAttemptPlan` 完成；**完整分支与场景表**见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md)；策略细节见 [route-strategies.md](../reference/route-strategies.md)。
 
 **排序与 failover**：
 
-- **Route 层**：按 `model_routes.priority` 从高到低分层；**同 priority 层的多个 provider 的 key 合并为一个池**（同层内交叉尝试，而非严格逐 provider 串行）。
-- **Key 层**：池内按 `provider_api_keys.priority` 降序分批；批内按 **限流余量（headroom）** 降序，余量接近（<10%）时按 **weight** 加权随机打散。
-- **跳过**：处于 **key 熔断** 或 **网关侧限流**（`limit_config` 的 RPM/TPM/并发）的 key 不参与本次 attempt 序列。
-- **全部 key 不可用**（均熔断或限流）：网关直接返回 **429**，`code: upstream_capacity_exhausted`，带 `Retry-After`；**不调用上游**。
-- **有可试 key 时**：按序打上游；某 key 失败且可重试则换下一 key（可跨 provider）；全部 attempt 失败则返回**最后一次**上游响应。
+- **层**：按 `model_routes.priority` **降序**（数字越大越先试）。
+- **同层**：按生效策略排序（默认 **`affinity`**：加权 Rendezvous，利于 prompt cache；另有 `weighted_random` / `strict` / `round_robin`），权重为 `model_routes.weight`。
+- **跳过**：`providers.status = disabled`、无 `api_key`，或处于 **provider 熔断** 的候选不参与本次 attempt。
+- **全部不可用**（均熔断）：网关直接返回 **429**，`code: upstream_capacity_exhausted`，带 `Retry-After`；**不调用上游**。
+- **有可试路由时**：按序打上游；可重试失败则换下一 Provider；全部 attempt 失败则返回**最后一次**上游响应。
 
-**可重试并换 key**：上游 `429`、`5xx`、`401`、`403`、网络/`fetch` 失败。失败 key 进入分类熔断（429 优先读 `Retry-After` 或递增退避；401/403 约 10min；5xx/网络约 60s）。
+**可重试并换 Provider**：上游 `429`、`5xx`、`401`、`403`、网络/`fetch` 失败（524 / fetch 仅同次 failover，不跨请求熔断）。熔断按 **`providers.id`**：429 优先读 `Retry-After` 或递增退避；401/403 约 10min；普通 5xx 连续 3 次后约 10s。
 
-**不重试**（立即返回，不换 key）：`400`、`404` 等请求本身错误。
+**不重试**（立即返回）：`400`、`404` 等请求本身错误；Images 客户端取消 / Gateway 超时合成的 504。
 
-**粘性 key（opt-in）**：在 `models.sticky_config` 为对应「协议 × route_group」开启后，同一用户尽量连续命中同一把 provider key（保上游 prompt cache）。绑定 key 可用时置顶；仅因网关限流且预计恢复 ≤ `short_wait_ms`（默认 3s）时网关内短等待；空闲绑定 TTL 默认 **600s**（`ttl_seconds`，成功后刷新）；上游真实 429/5xx/auth 则立即 failover 到其他 key，成功后改绑。
+**策略配置**（运维侧，对客户端透明）：全局 `system_config.ROUTE_STRATEGY`；可选 `models.route_policy` 按协议 / capability × route group 覆盖。解析顺序见 [route-strategies.md](../reference/route-strategies.md)。
 
-**网关侧限流**：`provider_api_keys.limit_config` 可选配置 RPM/TPM/并发（进程内存软限制）；建议设为供应商真实限额约 90%。
-
-用量日志 `api_key_request_logs` 会写入最终选用（或最后失败）key 的 **`provider_key_id`**、**`provider_key_label`**、**`provider_key_fingerprint`**（脱敏尾号，不含明文）。
-
-上游密钥统一存放在 **`provider_api_keys`** 表；迁移 **`0004`** 会从历史 `providers.api_key` 回填 `label = default` 的 pool 行，**`0005`** 在新代码部署后删除 legacy 列。
+用量日志会写入最终选用（或最后失败）的 **`provider_key_id`**（= provider id）、**`provider_key_label`**（= provider name）、**`provider_key_fingerprint`**（密钥指纹，不含明文）。
 
 ### Route 默认参数合并
 

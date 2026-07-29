@@ -30,56 +30,6 @@ export function capabilityDisplayBadges(
 	return badges;
 }
 
-export { PROVIDER_KEY_LABEL_MAX_LENGTH } from '@/lib/provider-key-label';
-
-/** 表单三个限流输入 → limit_config JSON 字符串；全空返回 null（不限流）。 */
-export function buildLimitConfigJson(form: {
-	rpm: string;
-	tpm: string;
-	max_concurrency: string;
-}): string | null {
-	const out: Record<string, number> = {};
-	const rpm = Number(form.rpm);
-	const tpm = Number(form.tpm);
-	const maxConcurrency = Number(form.max_concurrency);
-	if (form.rpm.trim() !== '' && Number.isFinite(rpm) && rpm > 0) out.rpm = Math.floor(rpm);
-	if (form.tpm.trim() !== '' && Number.isFinite(tpm) && tpm > 0) out.tpm = Math.floor(tpm);
-	if (form.max_concurrency.trim() !== '' && Number.isFinite(maxConcurrency) && maxConcurrency > 0) {
-		out.max_concurrency = Math.floor(maxConcurrency);
-	}
-	return Object.keys(out).length > 0 ? JSON.stringify(out) : null;
-}
-
-/** limit_config JSON → 表单字段（编辑既有 key 时预填）。 */
-export function limitConfigToFormFields(raw: string | null): {
-	rpm: string;
-	tpm: string;
-	max_concurrency: string;
-} {
-	const empty = { rpm: '', tpm: '', max_concurrency: '' };
-	if (!raw) return empty;
-	try {
-		const parsed = JSON.parse(raw) as Record<string, unknown>;
-		return {
-			rpm: typeof parsed.rpm === 'number' ? String(parsed.rpm) : '',
-			tpm: typeof parsed.tpm === 'number' ? String(parsed.tpm) : '',
-			max_concurrency: typeof parsed.max_concurrency === 'number' ? String(parsed.max_concurrency) : '',
-		};
-	} catch {
-		return empty;
-	}
-}
-
-/** 表格「Limits」列展示文本。 */
-export function formatLimitConfig(raw: string | null): string {
-	const fields = limitConfigToFormFields(raw);
-	const parts: string[] = [];
-	if (fields.rpm) parts.push(`RPM ${fields.rpm}`);
-	if (fields.tpm) parts.push(`TPM ${fields.tpm}`);
-	if (fields.max_concurrency) parts.push(`Conc ${fields.max_concurrency}`);
-	return parts.length > 0 ? parts.join(' · ') : '—';
-}
-
 function protocolFormFromConfig(cfg: ProtocolEndpointsConfig | undefined): ProtocolEndpointForm {
 	const form: ProtocolEndpointForm = { ...EMPTY_PROTOCOL_FORM };
 	if (!cfg) return form;
@@ -95,14 +45,14 @@ function protocolFormFromConfig(cfg: ProtocolEndpointsConfig | undefined): Proto
 	return form;
 }
 
-/** Provider 行 → 弹窗表单（`endpoints` 列）。 */
-export function providerToFormData(provider: GatewayProvider): Omit<ProviderFormData, 'id' | 'name' | 'description'> & {
-	openai: ProtocolEndpointForm;
-	anthropic: ProtocolEndpointForm;
-	gemini: ProtocolEndpointForm;
-} {
+/** Provider 行 → 弹窗表单（endpoints + status；api_key 留空表示不改）。 */
+export function providerToFormData(
+	provider: GatewayProvider
+): Omit<ProviderFormData, 'id' | 'name' | 'description'> {
 	const map = parseProviderEndpoints(provider);
 	return {
+		api_key: '',
+		status: provider.status === 'disabled' ? 'disabled' : 'active',
 		openai: protocolFormFromConfig(map.openai),
 		anthropic: protocolFormFromConfig(map.anthropic),
 		gemini: protocolFormFromConfig(map.gemini),
@@ -214,14 +164,6 @@ export function suggestDuplicateProviderId(sourceId: string, existingIds: Set<st
 		if (!existingIds.has(candidate)) return candidate;
 	}
 	return '';
-}
-
-export function sortProviderKeyRows<T extends { priority: number; weight: number; label: string }>(
-	rows: T[]
-): T[] {
-	return rows
-		.slice()
-		.sort((a, b) => b.priority - a.priority || b.weight - a.weight || a.label.localeCompare(b.label));
 }
 
 /** 某协议 Advanced 区是否有任意覆盖（用于默认展开）。 */

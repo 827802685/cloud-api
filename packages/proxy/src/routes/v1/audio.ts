@@ -17,7 +17,11 @@ import {
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+	buildAffinityKey,
+	buildTierKeyPrefix,
+	resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyAudioTranscriptions, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
 import {
@@ -305,13 +309,15 @@ audioRoutes.post('/transcriptions', async (c) => {
 		return circuitBlocked;
 	}
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
 		protocol: 'openai',
+		capability: 'audio.transcriptions',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -323,7 +329,7 @@ audioRoutes.post('/transcriptions', async (c) => {
 		routes,
 		transcription,
 		c.req.raw.signal,
-		{ sticky: stickyContext, timing }
+		{ affinityKey, tierKeyPrefix, strategy, timing }
 	);
 
 	return finalizeAudioResponse({

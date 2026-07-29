@@ -3,7 +3,17 @@ import {
 	isImageGenerationModel,
 	isTextLlmModel,
 } from '@octafuse/core/db/model-modalities';
-import { stickyRuleKey } from '@octafuse/core/db/model-sticky-config';
+import {
+	isRouteStrategyName,
+	parseModelRoutePolicy,
+	routePolicyRuleKey,
+} from '@octafuse/core/db/model-route-policy';
+import {
+	ANTHROPIC_ENDPOINT_CAPABILITIES,
+	GEMINI_ENDPOINT_CAPABILITIES,
+	OPENAI_ENDPOINT_CAPABILITIES,
+	type ProviderEndpointCapability,
+} from '@octafuse/core/provider-endpoints';
 import {
 	findDailyWindowOverlap,
 	parseHhMmToMinutes,
@@ -225,6 +235,7 @@ export function buildFormDataFromRoute(route: GatewayModelRoute, _models: Gatewa
 			? route.upstream_protocol
 			: 'openai') as UpstreamProtocol,
 		priority: route.priority,
+		weight: Number(route.weight ?? 1) || 1,
 		custom_params_json: route.custom_params ?? '',
 		route_group: route.route_group ?? 'default',
 		charged_factor: String(factors.chargedFactor),
@@ -270,6 +281,7 @@ export function buildRouteSavePayload(
 		provider_model_name: formData.provider_model_name,
 		upstream_protocol: formData.upstream_protocol,
 		priority: formData.priority,
+		weight: Math.max(1, Math.floor(Number(formData.weight) || 1)),
 		route_group: formData.route_group.trim() || 'default',
 		price_override: JSON.stringify(priceOverride),
 		custom_params: normalizeJsonText(formData.custom_params_json, 'custom_params'),
@@ -280,13 +292,49 @@ export function buildRouteSavePayload(
 	return payload;
 }
 
-export function buildStickyConfigPatch(
+export const CAPABILITIES_BY_PROTOCOL: Record<
+	string,
+	readonly ProviderEndpointCapability[]
+> = {
+	openai: OPENAI_ENDPOINT_CAPABILITIES,
+	anthropic: ANTHROPIC_ENDPOINT_CAPABILITIES,
+	gemini: GEMINI_ENDPOINT_CAPABILITIES,
+};
+
+/** Prompt-cache-sensitive capabilities (affinity preferred). */
+export function isPromptCacheSensitiveCapability(capability: string): boolean {
+	return (
+		capability === 'chat' ||
+		capability === 'messages' ||
+		capability === 'generateContent' ||
+		capability === 'streamGenerateContent'
+	);
+}
+
+export function readRoutePolicyFormFromRaw(
+	existingRaw: string | null | undefined,
+	protocol: string,
+	group: string
+): { protocolStrategy: string; capabilityStrategies: Record<string, string> } {
+	const parsed = parseModelRoutePolicy(existingRaw);
+	const protocolStrategy = parsed?.rules.get(routePolicyRuleKey(protocol, null, group))?.strategy ?? '';
+	const capabilityStrategies: Record<string, string> = {};
+	for (const cap of CAPABILITIES_BY_PROTOCOL[protocol] ?? []) {
+		capabilityStrategies[cap] =
+			parsed?.rules.get(routePolicyRuleKey(protocol, cap, group))?.strategy ?? '';
+	}
+	return { protocolStrategy, capabilityStrategies };
+}
+
+/**
+ * Merge protocol×group (+ capability) strategy edits into models.route_policy JSON.
+ * Empty strategy = remove that rule (inherit). Returns null when no rules/top strategy remain.
+ */
+export function buildRoutePolicyPatch(
 	existingRaw: string | null | undefined,
 	protocol: string,
 	group: string,
-	form: { enabled: boolean; ttl_seconds: string; short_wait_ms: string },
-	ttl: number | null,
-	wait: number | null
+	form: { protocolStrategy: string; capabilityStrategies: Record<string, string> }
 ): string | null {
 	let existing: Record<string, unknown> = {};
 	try {
@@ -294,30 +342,45 @@ export function buildStickyConfigPatch(
 	} catch {
 		existing = {};
 	}
+
 	const existingRules =
 		existing.rules && typeof existing.rules === 'object' && !Array.isArray(existing.rules)
 			? { ...(existing.rules as Record<string, unknown>) }
 			: {};
-	const key = stickyRuleKey(protocol, group);
-	for (const k of Object.keys(existingRules)) {
-		const idx = k.indexOf(':');
-		if (idx > 0 && stickyRuleKey(k.slice(0, idx), k.slice(idx + 1)) === key) {
-			delete existingRules[k];
+
+	const keysToClear = [
+		routePolicyRuleKey(protocol, null, group),
+		...(CAPABILITIES_BY_PROTOCOL[protocol] ?? []).map((cap) =>
+			routePolicyRuleKey(protocol, cap, group)
+		),
+	];
+	for (const k of keysToClear) {
+		delete existingRules[k];
+	}
+
+	const proto = form.protocolStrategy.trim().toLowerCase();
+	if (proto && isRouteStrategyName(proto)) {
+		existingRules[routePolicyRuleKey(protocol, null, group)] = { strategy: proto };
+	}
+	for (const [cap, raw] of Object.entries(form.capabilityStrategies)) {
+		const s = raw.trim().toLowerCase();
+		if (s && isRouteStrategyName(s)) {
+			existingRules[routePolicyRuleKey(protocol, cap, group)] = { strategy: s };
 		}
 	}
-	if (form.enabled) {
-		const rule: Record<string, unknown> = { enabled: true };
-		if (ttl != null) rule.ttl_seconds = ttl;
-		if (wait != null) rule.short_wait_ms = wait;
-		existingRules[key] = rule;
+
+	const topStrategy =
+		typeof existing.strategy === 'string' && isRouteStrategyName(existing.strategy.trim().toLowerCase())
+			? existing.strategy.trim().toLowerCase()
+			: null;
+
+	if (!topStrategy && Object.keys(existingRules).length === 0) {
+		return null;
 	}
-	if (Object.keys(existingRules).length > 0) {
-		const next: Record<string, unknown> = { rules: existingRules };
-		if (typeof existing.ttl_seconds === 'number') next.ttl_seconds = existing.ttl_seconds;
-		if (typeof existing.short_wait_ms === 'number') next.short_wait_ms = existing.short_wait_ms;
-		return JSON.stringify(next);
-	}
-	return null;
+	const next: Record<string, unknown> = {};
+	if (topStrategy) next.strategy = topStrategy;
+	if (Object.keys(existingRules).length > 0) next.rules = existingRules;
+	return JSON.stringify(next);
 }
 
 export type RouteModelGroup = {
@@ -535,6 +598,7 @@ export function createInitialRouteForm(
 		provider_model_name: '',
 		upstream_protocol: 'openai',
 		priority: 0,
+		weight: 1,
 		custom_params_json: '',
 		route_group: 'default',
 		charged_factor: '1',

@@ -28,6 +28,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 					priority: pgMr.priority,
 					status: pgMr.status,
 					route_group: pgMr.routeGroup,
+					weight: pgMr.weight,
 					price_override: pgMr.priceOverride,
 					custom_params: pgMr.customParams,
 					upstream_protocol: pgMr.upstreamProtocol,
@@ -50,6 +51,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				priority: Number(r.priority),
 				status: r.status,
 				route_group: r.route_group,
+				weight: Number(r.weight),
 				price_override: r.price_override,
 				custom_params: r.custom_params,
 				upstream_protocol: r.upstream_protocol,
@@ -66,6 +68,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			priority: number;
 			status: string;
 			routeGroup: string;
+			weight?: number;
 			priceOverride: unknown;
 			customParams: string | null;
 			upstreamProtocol: string;
@@ -79,6 +82,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				priority: params.priority,
 				status: params.status,
 				routeGroup: params.routeGroup,
+				weight: params.weight ?? 1,
 				priceOverride: params.priceOverride == null ? null : String(params.priceOverride),
 				customParams: params.customParams,
 				upstreamProtocol: params.upstreamProtocol,
@@ -98,6 +102,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				priority: r.priority,
 				status: r.status,
 				route_group: r.routeGroup,
+				weight: r.weight,
 				price_override: r.priceOverride,
 				custom_params: r.customParams,
 				upstream_protocol: r.upstreamProtocol,

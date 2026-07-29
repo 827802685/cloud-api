@@ -302,30 +302,22 @@
 	"providers": {
 		"title": "供应商",
 		"subtitle": "{product} 使用的上游 AI 供应商端点",
-		"importHint": "使用「导入」可预填常见供应商端点。仅 LLM 的模板写入 chat URL（非 Base）；具备 Images 的保留 Base URL。导入后请打开行并添加 API Key。",
+		"importHint": "使用「导入」预填常见供应商端点。仅 LLM 的模板写入 chat URL（无 Base）；具备完整 OpenAI 能力的保留 Base URL。导入后请打开条目并填写 API Key。",
 		"emptySearch": "没有匹配该名称的供应商",
 		"empty": "未找到供应商",
 		"searchPlaceholder": "搜索供应商名称",
 		"clearSearch": "清除供应商搜索",
-		"expandKeys": "展开 Keys",
-		"collapseKeys": "收起 Keys",
-		"loadingKeys": "加载 Keys 中…",
 		"card": {
-			"pending": "待处理",
-			"noKey": "无 Key",
+			"pending": "待填密钥",
+			"noKey": "无密钥",
+			"disabled": "已禁用",
 			"noEndpoint": "未配置端点",
-			"keysActive": "Keys · {count} 个活跃",
-			"keysTotal": "共 {count} 个",
-			"keysInactive": "· {count} 个未启用",
-			"addKeyFor": "为 {name} 添加 Key",
-			"noKeysConfigured": "未配置 Key。",
-			"placeholder": "placeholder",
-			"copyKey": "复制 {label}",
-			"copiedKey": "已复制 {label}",
-			"keyEnabled": "Key {label} 已启用（取消勾选以禁用）",
-			"keyDisabled": "Key {label} 已禁用（勾选以启用）",
-			"capabilitiesTitle": "{label}：{caps} · {url}",
-			"capabilitiesSr": "{label} 能力：{caps}",
+			"placeholder": "占位",
+			"copyApiKey": "复制 API Key",
+			"providerEnabled": "供应商已启用（取消勾选以禁用）",
+			"providerDisabled": "供应商已禁用（勾选以启用）",
+			"capabilitiesTitle": "{label}: {caps} · {url}",
+			"capabilitiesSr": "{label} 能力: {caps}",
 			"cap": {
 				"chat": "chat",
 				"images": "images",
@@ -386,26 +378,15 @@
 			"description": "描述",
 			"descriptionHint": "仅供内部参考；不会发送到上游。",
 			"descriptionPlaceholder": "可选的内部描述",
-			"deleteProvider": "删除供应商"
-		},
-		"keys": {
-			"editTitle": "编辑供应商 Key",
-			"newTitle": "新建供应商 Key",
-			"label": "名称",
-			"labelMaxLength": "最多 {max} 个字符",
-			"replaceApiKey": "替换 API Key",
-			"apiKey": "API Key",
-			"leaveBlank": "留空以保留当前 Key",
+			"deleteProvider": "删除供应商",
+			"apiKeyRequired": "API Key *",
+			"apiKeyOptional": "API Key",
 			"apiKeyPlaceholder": "sk-…",
-			"priority": "优先级",
-			"weight": "权重",
-			"rpmLimit": "RPM 限制",
-			"tpmLimit": "TPM 限制",
-			"concurrency": "并发数",
-			"unlimited": "无限制",
-			"deleteKey": "删除 Key",
-			"saveKey": "保存 Key",
-			"createKey": "创建 Key"
+			"apiKeyEditPlaceholder": "留空则保持原密钥",
+			"apiKeyHint": "该供应商的上游凭证。",
+			"apiKeyEditHint": "留空保持当前密钥；填写新值则替换。",
+			"statusEnabled": "启用供应商",
+			"statusHint": "禁用后不会参与路由与 Playground。"
 		}
 	},
 	"models": {
@@ -584,11 +565,11 @@
 			"clickToAdd": "点击 + 添加第一条路由"
 		},
 		"protocol": {
-			"sectionTitle": "upstream_protocol：{protocol} · route_group：{group}",
-			"stickyOn": "粘性 Key 路由已开启 · 空闲 TTL {ttl}s · 短等待 {wait}ms（点击配置）",
-			"stickyOff": "粘性 Key 路由已关闭（点击配置）",
-			"stickyLabel": "粘性 {ttl}s",
-			"stickyOffLabel": "粘性已关闭"
+			"sectionTitle": "upstream_protocol: {protocol} · route_group: {group}",
+			"strategyOn": "路由策略：{strategy}（点击配置）",
+			"strategyInherit": "路由策略：继承（点击配置）",
+			"strategyLabel": "{strategy}",
+			"strategyInheritLabel": "继承"
 		},
 		"listItem": {
 			"routeEnabled": "路由已启用（取消勾选以禁用）",
@@ -601,15 +582,6 @@
 			"scheduleAria": "每日时段：{windows}",
 			"chargedTooltip": "计费系数：{value} · 相对目录价格的客户计费乘数",
 			"meteredTooltip": "计量系数：{value} · 相对目录价格的供应商成本乘数"
-		},
-		"sticky": {
-			"title": "粘性 Key 路由",
-			"enable": "启用粘性 Key 路由",
-			"enableHint": "将每个用户绑定到该协议 × 组的一个供应商 Key，以最大化上游 prompt-cache 命中率。绑定在空闲 TTL 后释放。",
-			"idleTtl": "空闲 TTL（秒）",
-			"shortWait": "短等待（毫秒）",
-			"defaultPlaceholder": "默认 {value}",
-			"shortWaitHint": "短等待：若绑定的 Key 短暂触发速率限制且预计在此窗口内恢复，Gateway 将等待而非切换 Key（保留缓存）。"
 		},
 		"modal": {
 			"editTitle": "编辑路由",
@@ -676,9 +648,25 @@
 			"standardCatalogHintAudio": "该 ASR 模型的目录音频单价（只读）。",
 			"noCatalogAudioPricing": "该模型未配置音频定价。",
 			"audioPricePerSecond": "每秒价格",
-			"audioMinimumSeconds": "最低秒数"
+			"audioMinimumSeconds": "最低秒数",
+			"weight": "权重",
+			"weightHint": "同 priority 层内权重（≥ 1）。加权策略下数值越大流量越多。"
 		},
-		"kindAudio": "音频"
+		"kindAudio": "音频",
+		"strategy": {
+			"title": "路由策略",
+			"protocolLevel": "协议默认",
+			"protocolLevelHint": "该协议 × 分组下，能力未单独配置时生效。空 = 继承模型/全局。",
+			"capabilityLevel": "能力覆盖",
+			"capabilityHint": "空 = 继承协议级策略。",
+			"inherit": "继承",
+			"affinity": "affinity",
+			"weighted_random": "weighted_random",
+			"strict": "strict",
+			"round_robin": "round_robin",
+			"hintCache": "非 affinity 可能降低 prompt cache 命中率。",
+			"hintNoCache": "上游无 prompt cache；建议 weighted_random 或 round_robin。"
+		}
 	},
 	"playground": {
 		"title": "调试台",
@@ -1254,8 +1242,15 @@
 			"useMasterKeySection": "请使用「Admin API Master key」区块配置 MASTER_KEY。",
 			"useWebhooksSection": "请使用「Proxy 错误 Webhook」区块配置 ALERT_WEBHOOK_WECOM_URL / ALERT_WEBHOOK_FEISHU_URL。",
 			"useToolsSection": "请使用 Tools → 配置 管理 WEB_*_ACTIVE / WEB_*_CATALOG（按引擎维护 API Key 与单价）。",
-			"invalidIanaTimezone": "无效的 IANA 时区（例如 Asia/Shanghai、America/New_York）"
-		}
+			"invalidIanaTimezone": "无效的 IANA 时区（例如 Asia/Shanghai、America/New_York）",
+			"useRouteStrategySection": "请使用「全局路由策略」区块配置 ROUTE_STRATEGY。"
+		},
+		"routeStrategy": {
+			"title": "全局路由策略",
+			"description": "模型未配置 route_policy 时的默认策略（system_config.ROUTE_STRATEGY）。",
+			"strategy": "策略"
+		},
+		"saveRouteStrategy": "保存路由策略"
 	},
 	"tools": {
 		"catalog": {

@@ -1,5 +1,5 @@
 /**
- * Provider key 熔断：替代原固定 60s cooldown（`provider-key-scheduler` 已迁移至此）。
+ * Provider 熔断（单键化后按 `providers.id` 维度）。
  *
  * 按失败类别区分冷却策略：
  * - `rate_limit`（上游 429）：优先用上游 `Retry-After`（封顶 15min）；无头时按冷却周期递增退避
@@ -7,14 +7,14 @@
  * - `auth`（401/403）：10min（key 大概率失效，等待人工处理；配合告警日志）。
  * - `server`（普通 5xx）：连续 3 次失败后短熔断 10s；524 / fetch 不写入此类熔断。
  *
- * 熔断中的 key 一律跳过（不再有「全部冷却则回退全试」）；全部不可用时由 dispatch 层返回 429 + Retry-After。
+ * 熔断中的 provider 一律跳过；全部不可用时由 dispatch 层返回 429 + Retry-After。
  * 状态为单实例进程内存。
  */
 
-export type ProviderKeyFailureKind = 'rate_limit' | 'auth' | 'server';
+export type ProviderFailureKind = 'rate_limit' | 'auth' | 'server';
 
-export type ProviderKeyCircuitFailureResult = {
-	failureKind: ProviderKeyFailureKind;
+export type ProviderCircuitFailureResult = {
+	failureKind: ProviderFailureKind;
 	openUntil: number;
 	cooldownMs: number;
 	/** 本次失败是否打开或延长了熔断窗口 */
@@ -34,13 +34,13 @@ type CircuitEntry = {
 	consecutiveServerFailures: number;
 };
 
-const circuitByKey = new Map<string, CircuitEntry>();
+const circuitByProvider = new Map<string, CircuitEntry>();
 
 function purgeIfOverCapacity(now: number): void {
-	if (circuitByKey.size <= MAX_ENTRIES) return;
-	for (const [keyId, entry] of circuitByKey) {
+	if (circuitByProvider.size <= MAX_ENTRIES) return;
+	for (const [providerId, entry] of circuitByProvider) {
 		if (entry.openUntil <= now && entry.consecutiveRateLimit === 0 && entry.consecutiveServerFailures === 0) {
-			circuitByKey.delete(keyId);
+			circuitByProvider.delete(providerId);
 		}
 	}
 }
@@ -66,13 +66,17 @@ export function parseRetryAfterMs(retryAfterHeader: string | null | undefined, n
  * 记录一次失败并打开熔断。
  * @param retryAfterMs 上游建议的恢复时间（仅 `rate_limit` 生效；来自 `parseRetryAfterMs`）
  */
-export function markProviderKeyFailure(
-	keyId: string,
-	kind: ProviderKeyFailureKind,
+export function markProviderFailure(
+	providerId: string,
+	kind: ProviderFailureKind,
 	retryAfterMs?: number | null,
 	now = Date.now()
-): ProviderKeyCircuitFailureResult {
-	const entry = circuitByKey.get(keyId) ?? { openUntil: 0, consecutiveRateLimit: 0, consecutiveServerFailures: 0 };
+): ProviderCircuitFailureResult {
+	const entry = circuitByProvider.get(providerId) ?? {
+		openUntil: 0,
+		consecutiveRateLimit: 0,
+		consecutiveServerFailures: 0,
+	};
 	const previousOpenUntil = entry.openUntil;
 	let appliedCooldownMs = 0;
 
@@ -106,12 +110,11 @@ export function markProviderKeyFailure(
 			entry.openUntil = Math.max(entry.openUntil, now + SERVER_COOLDOWN_MS);
 		}
 	}
-	circuitByKey.set(keyId, entry);
+	circuitByProvider.set(providerId, entry);
 	purgeIfOverCapacity(now);
 
 	const openedOrExtended = entry.openUntil > Math.max(previousOpenUntil, now);
-	const cooldownMs =
-		entry.openUntil > now ? Math.max(0, entry.openUntil - now) : appliedCooldownMs;
+	const cooldownMs = entry.openUntil > now ? Math.max(0, entry.openUntil - now) : appliedCooldownMs;
 
 	return {
 		failureKind: kind,
@@ -122,11 +125,11 @@ export function markProviderKeyFailure(
 }
 
 /** 请求成功：清零连续失败计数（已过期的 openUntil 一并清理）。 */
-export function markProviderKeySuccess(keyId: string, now = Date.now()): void {
-	const entry = circuitByKey.get(keyId);
+export function markProviderSuccess(providerId: string, now = Date.now()): void {
+	const entry = circuitByProvider.get(providerId);
 	if (!entry) return;
 	if (entry.openUntil <= now) {
-		circuitByKey.delete(keyId);
+		circuitByProvider.delete(providerId);
 	} else {
 		entry.consecutiveRateLimit = 0;
 		entry.consecutiveServerFailures = 0;
@@ -134,17 +137,17 @@ export function markProviderKeySuccess(keyId: string, now = Date.now()): void {
 }
 
 /** 熔断剩余毫秒数；未熔断返回 0。 */
-export function getProviderKeyCircuitRemainingMs(keyId: string, now = Date.now()): number {
-	const entry = circuitByKey.get(keyId);
+export function getProviderCircuitRemainingMs(providerId: string, now = Date.now()): number {
+	const entry = circuitByProvider.get(providerId);
 	if (!entry) return 0;
 	return Math.max(0, entry.openUntil - now);
 }
 
-export function isProviderKeyCircuitOpen(keyId: string, now = Date.now()): boolean {
-	return getProviderKeyCircuitRemainingMs(keyId, now) > 0;
+export function isProviderCircuitOpen(providerId: string, now = Date.now()): boolean {
+	return getProviderCircuitRemainingMs(providerId, now) > 0;
 }
 
 /** 测试用：清空熔断状态。 */
-export function resetProviderKeyCircuitStateForTests(): void {
-	circuitByKey.clear();
+export function resetProviderCircuitStateForTests(): void {
+	circuitByProvider.clear();
 }

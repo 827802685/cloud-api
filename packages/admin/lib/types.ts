@@ -123,9 +123,12 @@ export interface GatewayProvider {
   icon_key?: string;
   /** 协议端点 JSON；见 `providers.endpoints` */
   endpoints?: string | null;
+  /** 脱敏预览；明文仅经 `GET /admin/providers/:id/api-key` */
+  api_key?: string;
+  /** `active` | `disabled` */
+  status?: string;
   description: string | null;
   created_at: string;
-  active_key_count?: number;
   has_pending_key?: boolean;
 }
 
@@ -149,8 +152,8 @@ export interface GatewayModel {
   tags: string;
   description: string | null;
   metadata: string | null;
-  /** 粘性 key 路由配置 JSON（`{"rules":{"openai:default":{"ttl_seconds":600,...}}}`）；null=无粘性 */
-  sticky_config?: string | null;
+  /** 路由策略 JSON（`strategy` + `rules`）；null=回退全局 ROUTE_STRATEGY */
+  route_policy?: string | null;
   created_at: string;
   /** Count of active routes associated with this model */
   active_routes_count?: number;
@@ -164,6 +167,8 @@ export interface GatewayModelRoute {
   provider_id: string;
   provider_model_name: string;
   priority: number;
+  /** Same-priority layer weight; default 1 */
+  weight?: number;
   status: string;
   /** Route channel: e.g. default, free (gateway migration 0016) */
   route_group: string;

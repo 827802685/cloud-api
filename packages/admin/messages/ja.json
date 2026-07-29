@@ -302,30 +302,22 @@
 	"providers": {
 		"title": "Provider",
 		"subtitle": "{product} が使用するアップストリーム AI エンドポイント",
-		"importHint": "「インポート」で一般的な Provider エンドポイントを追加できます。LLM 専用テンプレートは Base ではなく chat URL を使用し、OpenAI の全機能に対応するものは Base URL を使用します。インポート後、行を開いて API Key を追加してください。",
+		"importHint": "「インポート」で一般的なプロバイダーエンドポイントを投入できます。LLM 専用テンプレートは chat URL（Base なし）、完全な OpenAI 対応は Base URL を保持します。行を開き API キーを設定してください。",
 		"emptySearch": "この名前に一致する Provider はありません",
 		"empty": "Provider が見つかりません",
 		"searchPlaceholder": "Provider 名を検索",
 		"clearSearch": "Provider 検索をクリア",
-		"expandKeys": "Keys を展開",
-		"collapseKeys": "Keys を折りたたむ",
-		"loadingKeys": "Keys を読み込み中…",
 		"card": {
-			"pending": "保留中",
-			"noKey": "Key なし",
+			"pending": "未設定",
+			"noKey": "キーなし",
+			"disabled": "無効",
 			"noEndpoint": "エンドポイント未設定",
-			"keysActive": "Keys · {count} 件有効",
-			"keysTotal": "全 {count} 件",
-			"keysInactive": "· {count} 件無効",
-			"addKeyFor": "{name} に Key を追加",
-			"noKeysConfigured": "Key が設定されていません。",
-			"placeholder": "placeholder",
-			"copyKey": "{label} をコピー",
-			"copiedKey": "{label} をコピーしました",
-			"keyEnabled": "Key {label} は有効です（チェックを外すと無効化）",
-			"keyDisabled": "Key {label} は無効です（チェックすると有効化）",
-			"capabilitiesTitle": "{label}：{caps} · {url}",
-			"capabilitiesSr": "{label} の機能：{caps}",
+			"placeholder": "プレースホルダ",
+			"copyApiKey": "API キーをコピー",
+			"providerEnabled": "プロバイダー有効（チェックを外すと無効）",
+			"providerDisabled": "プロバイダー無効（チェックで有効）",
+			"capabilitiesTitle": "{label}: {caps} · {url}",
+			"capabilitiesSr": "{label} 能力: {caps}",
 			"cap": {
 				"chat": "chat",
 				"images": "images",
@@ -386,26 +378,15 @@
 			"description": "説明",
 			"descriptionHint": "内部参照専用です。アップストリームには送信されません。",
 			"descriptionPlaceholder": "任意の内部向け説明",
-			"deleteProvider": "Provider を削除"
-		},
-		"keys": {
-			"editTitle": "Provider Key を編集",
-			"newTitle": "新しい Provider Key",
-			"label": "ラベル",
-			"labelMaxLength": "最大 {max} 文字",
-			"replaceApiKey": "API Key を置換",
-			"apiKey": "API Key",
-			"leaveBlank": "現在の Key を保持する場合は空欄",
+			"deleteProvider": "Provider を削除",
+			"apiKeyRequired": "API Key *",
+			"apiKeyOptional": "API Key",
 			"apiKeyPlaceholder": "sk-…",
-			"priority": "優先度",
-			"weight": "重み",
-			"rpmLimit": "RPM 上限",
-			"tpmLimit": "TPM 上限",
-			"concurrency": "同時実行数",
-			"unlimited": "上限なし",
-			"deleteKey": "Key を削除",
-			"saveKey": "Key を保存",
-			"createKey": "Key を作成"
+			"apiKeyEditPlaceholder": "空欄なら現行キーを維持",
+			"apiKeyHint": "このプロバイダーの上流認証情報。",
+			"apiKeyEditHint": "空欄で現行キーを維持。新しい値を入力すると置換します。",
+			"statusEnabled": "プロバイダーを有効化",
+			"statusHint": "無効なプロバイダーはルーティングと Playground から除外されます。"
 		}
 	},
 	"models": {
@@ -584,11 +565,11 @@
 			"clickToAdd": "+ をクリックして最初の Route を追加"
 		},
 		"protocol": {
-			"sectionTitle": "upstream_protocol：{protocol} · route_group：{group}",
-			"stickyOn": "Sticky Key ルーティング有効 · アイドル TTL {ttl}s · 短時間待機 {wait}ms（クリックして設定）",
-			"stickyOff": "Sticky Key ルーティング無効（クリックして設定）",
-			"stickyLabel": "Sticky {ttl}s",
-			"stickyOffLabel": "Sticky 無効"
+			"sectionTitle": "upstream_protocol: {protocol} · route_group: {group}",
+			"strategyOn": "ルート戦略: {strategy}（クリックで設定）",
+			"strategyInherit": "ルート戦略: 継承（クリックで設定）",
+			"strategyLabel": "{strategy}",
+			"strategyInheritLabel": "継承"
 		},
 		"listItem": {
 			"routeEnabled": "Route は有効です（チェックを外すと無効化）",
@@ -601,15 +582,6 @@
 			"scheduleAria": "日次スケジュール：{windows}",
 			"chargedTooltip": "請求係数：{value} · カタログ価格に対する顧客請求倍率",
 			"meteredTooltip": "計量係数：{value} · カタログ価格に対する Provider コスト倍率"
-		},
-		"sticky": {
-			"title": "Sticky Key ルーティング",
-			"enable": "Sticky Key ルーティングを有効化",
-			"enableHint": "アップストリームの prompt-cache ヒット率を最大化するため、このプロトコル × グループで各ユーザーを 1 つの Provider Key に固定します。バインドはアイドル TTL 経過後に解除されます。",
-			"idleTtl": "アイドル TTL（秒）",
-			"shortWait": "短時間待機（ms）",
-			"defaultPlaceholder": "デフォルト {value}",
-			"shortWaitHint": "短時間待機：固定された Key が一時的にレート制限され、この時間内に回復が見込まれる場合、Gateway は Key を切り替えずに待機してキャッシュを維持します。"
 		},
 		"modal": {
 			"editTitle": "Route を編集",
@@ -676,9 +648,25 @@
 			"standardCatalogHintAudio": "この ASR モデルのカタログ音声料金（読み取り専用）。",
 			"noCatalogAudioPricing": "このモデルに音声料金がありません。",
 			"audioPricePerSecond": "1 秒あたりの料金",
-			"audioMinimumSeconds": "最低秒数"
+			"audioMinimumSeconds": "最低秒数",
+			"weight": "重み",
+			"weightHint": "同一 priority 層の重み（≥ 1）。加重戦略では大きいほど流量が増えます。"
 		},
-		"kindAudio": "音声"
+		"kindAudio": "音声",
+		"strategy": {
+			"title": "ルート戦略",
+			"protocolLevel": "プロトコル既定",
+			"protocolLevelHint": "能力に上書きがない場合に適用。空 = モデル/グローバルを継承。",
+			"capabilityLevel": "能力の上書き",
+			"capabilityHint": "空 = プロトコル級を継承。",
+			"inherit": "継承",
+			"affinity": "affinity",
+			"weighted_random": "weighted_random",
+			"strict": "strict",
+			"round_robin": "round_robin",
+			"hintCache": "affinity 以外は prompt cache のヒット率が下がる可能性があります。",
+			"hintNoCache": "上流に prompt cache はありません。weighted_random または round_robin を推奨。"
+		}
 	},
 	"playground": {
 		"title": "Playground",
@@ -1254,8 +1242,15 @@
 			"useMasterKeySection": "MASTER_KEY は「Admin API master key」セクションで設定してください。",
 			"useWebhooksSection": "ALERT_WEBHOOK_WECOM_URL / ALERT_WEBHOOK_FEISHU_URL は「Proxy エラー Webhook」セクションで設定してください。",
 			"useToolsSection": "WEB_*_ACTIVE / WEB_*_CATALOG（Provider ごとの API Key とコスト）は Tools → 設定を使用してください。",
-			"invalidIanaTimezone": "無効な IANA タイムゾーンです（例：Asia/Shanghai、America/New_York）"
-		}
+			"invalidIanaTimezone": "無効な IANA タイムゾーンです（例：Asia/Shanghai、America/New_York）",
+			"useRouteStrategySection": "ROUTE_STRATEGY は「グローバルルート戦略」セクションで設定してください。"
+		},
+		"routeStrategy": {
+			"title": "グローバルルート戦略",
+			"description": "モデルに route_policy がない場合の既定戦略（system_config.ROUTE_STRATEGY）。",
+			"strategy": "戦略"
+		},
+		"saveRouteStrategy": "ルート戦略を保存"
 	},
 	"tools": {
 		"catalog": {

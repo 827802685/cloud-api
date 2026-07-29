@@ -7,7 +7,7 @@ import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repos
 import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
-				mr.route_group, mr.price_override, mr.custom_params, mr.upstream_protocol,
+				mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
 				m.display_name as model_name, p.name as provider_name
 			 FROM model_routes mr
 			 LEFT JOIN models m ON mr.model_id = m.id
@@ -41,14 +41,15 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 			priority: number;
 			status: string;
 			routeGroup: string;
+			weight?: number;
 			priceOverride: unknown;
 			customParams: string | null;
 			upstreamProtocol: string;
 		}): Promise<void> {
 			await raw
 				.prepare(
-					`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, price_override, custom_params, upstream_protocol, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+					`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, price_override, custom_params, upstream_protocol, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
 				)
 				.bind(
 					params.id,
@@ -58,6 +59,7 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 					params.priority,
 					params.status,
 					params.routeGroup,
+					params.weight ?? 1,
 					params.priceOverride ?? null,
 					params.customParams,
 					params.upstreamProtocol

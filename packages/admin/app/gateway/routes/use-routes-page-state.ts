@@ -6,10 +6,6 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
-import {
-	parseModelStickyConfig,
-	stickyRuleKey,
-} from '@octafuse/core/db/model-sticky-config';
 import { useBusinessTimezone } from '@/components/BusinessTimezoneProvider';
 import { getCatalogAudioPricingDisplay, isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
@@ -33,7 +29,7 @@ import { useModelEditModal } from '../models/use-model-edit-modal';
 import {
 	deleteRoute,
 	fetchRoutesPageData,
-	patchModelStickyConfig,
+	patchModelRoutePolicy,
 	saveRoute,
 	toggleRouteStatus,
 } from './route-api';
@@ -41,18 +37,19 @@ import {
 	buildActiveFilterSummary,
 	buildFormDataFromRoute,
 	buildRouteCardVendorGroups,
+	buildRoutePolicyPatch,
 	buildRoutesByModel,
-	buildStickyConfigPatch,
 	buildVendorFilterOptions,
 	createInitialRouteForm,
+	readRoutePolicyFormFromRaw,
 	sortRouteCards,
 } from './route-utils';
 import {
 	EMPTY_ROUTE_FORM,
 	type RouteFormData,
 	type RouteListRow,
-	type StickyDialogState,
-	type StickyFormState,
+	type RoutePolicyDialogState,
+	type RoutePolicyFormState,
 } from './types';
 
 export function useRoutesPageState() {
@@ -75,14 +72,13 @@ export function useRoutesPageState() {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [togglingId, setTogglingId] = useState<string | null>(null);
 	const [copiedModelId, setCopiedModelId] = useState<string | null>(null);
-	const [stickyDialog, setStickyDialog] = useState<StickyDialogState | null>(null);
-	const [stickyForm, setStickyForm] = useState<StickyFormState>({
-		enabled: false,
-		ttl_seconds: '',
-		short_wait_ms: '',
+	const [strategyDialog, setStrategyDialog] = useState<RoutePolicyDialogState | null>(null);
+	const [strategyForm, setStrategyForm] = useState<RoutePolicyFormState>({
+		protocolStrategy: '',
+		capabilityStrategies: {},
 	});
-	const [stickySaving, setStickySaving] = useState(false);
-	const [stickyError, setStickyError] = useState('');
+	const [strategySaving, setStrategySaving] = useState(false);
+	const [strategyError, setStrategyError] = useState('');
 	const { currency: billingCurrency } = useBillingCurrency();
 	const businessTimezone = useBusinessTimezone();
 
@@ -432,7 +428,7 @@ export function useRoutesPageState() {
 		}
 	}, [editingRoute, formData, refreshRoutesPage]);
 
-	const handleOpenStickyDialog = useCallback(
+	const handleOpenStrategyDialog = useCallback(
 		(
 			modelId: string,
 			modelTitle: string,
@@ -440,69 +436,49 @@ export function useRoutesPageState() {
 			protocolLabel: string,
 			group: string
 		) => {
-			const raw = modelMeta.get(modelId)?.sticky_config ?? null;
-			const parsed = parseModelStickyConfig(raw);
-			const rule = parsed?.rules.get(stickyRuleKey(protocol, group)) ?? null;
-			setStickyForm({
-				enabled: Boolean(rule?.enabled),
-				ttl_seconds: rule?.ttlSeconds != null ? String(rule.ttlSeconds) : '',
-				short_wait_ms: rule?.shortWaitMs != null ? String(rule.shortWaitMs) : '',
-			});
-			setStickyError('');
-			setStickyDialog({ modelId, modelTitle, protocol, protocolLabel, group });
+			const raw = modelMeta.get(modelId)?.route_policy ?? null;
+			setStrategyForm(readRoutePolicyFormFromRaw(raw, protocol, group));
+			setStrategyError('');
+			setStrategyDialog({ modelId, modelTitle, protocol, protocolLabel, group });
 		},
 		[modelMeta]
 	);
 
-	const handleSaveSticky = useCallback(async () => {
-		if (!stickyDialog) return;
-		const ttl = stickyForm.ttl_seconds.trim() === '' ? null : parseInt(stickyForm.ttl_seconds, 10);
-		const wait = stickyForm.short_wait_ms.trim() === '' ? null : parseInt(stickyForm.short_wait_ms, 10);
-		if (stickyForm.enabled) {
-			if (ttl != null && (!Number.isFinite(ttl) || ttl <= 0)) {
-				setStickyError('Idle TTL must be a positive integer (seconds)');
-				return;
-			}
-			if (wait != null && (!Number.isFinite(wait) || wait <= 0)) {
-				setStickyError('Short wait must be a positive integer (ms)');
-				return;
-			}
-		}
-		setStickySaving(true);
-		setStickyError('');
+	const handleSaveStrategy = useCallback(async () => {
+		if (!strategyDialog) return;
+		setStrategySaving(true);
+		setStrategyError('');
 		try {
-			const raw = modelMeta.get(stickyDialog.modelId)?.sticky_config ?? null;
-			const nextStickyConfig = buildStickyConfigPatch(
+			const raw = modelMeta.get(strategyDialog.modelId)?.route_policy ?? null;
+			const nextPolicy = buildRoutePolicyPatch(
 				raw,
-				stickyDialog.protocol,
-				stickyDialog.group,
-				stickyForm,
-				ttl,
-				wait
+				strategyDialog.protocol,
+				strategyDialog.group,
+				strategyForm
 			);
-			const result = await patchModelStickyConfig(stickyDialog.modelId, nextStickyConfig);
+			const result = await patchModelRoutePolicy(strategyDialog.modelId, nextPolicy);
 			if (!result.success) {
-				setStickyError(result.message);
+				setStrategyError(result.message);
 				return;
 			}
-			setStickyDialog(null);
+			setStrategyDialog(null);
 			await refreshRoutesPage();
 		} catch (error) {
-			setStickyError(error instanceof Error ? error.message : 'Save failed, please try again');
+			setStrategyError(error instanceof Error ? error.message : 'Save failed, please try again');
 		} finally {
-			setStickySaving(false);
+			setStrategySaving(false);
 		}
-	}, [modelMeta, refreshRoutesPage, stickyDialog, stickyForm]);
+	}, [modelMeta, refreshRoutesPage, strategyDialog, strategyForm]);
 
 	const closeRouteModal = useCallback(() => {
 		if (isSaving || isDeleting) return;
 		setShowModal(false);
 	}, [isDeleting, isSaving]);
 
-	const closeStickyDialog = useCallback(() => {
-		if (stickySaving) return;
-		setStickyDialog(null);
-	}, [stickySaving]);
+	const closeStrategyDialog = useCallback(() => {
+		if (strategySaving) return;
+		setStrategyDialog(null);
+	}, [strategySaving]);
 
 	return {
 		isLoading,
@@ -555,12 +531,12 @@ export function useRoutesPageState() {
 		selectedModelIsAudio,
 		allowedProtocolsForProvider,
 		businessTimezone,
-		stickyDialog,
-		setStickyDialog,
-		stickyForm,
-		setStickyForm,
-		stickySaving,
-		stickyError,
+		strategyDialog,
+		setStrategyDialog,
+		strategyForm,
+		setStrategyForm,
+		strategySaving,
+		strategyError,
 		handleCreate,
 		handleEdit,
 		handleDuplicate,
@@ -568,10 +544,10 @@ export function useRoutesPageState() {
 		handleToggleStatus,
 		copyModelId,
 		handleSave,
-		handleOpenStickyDialog,
-		handleSaveSticky,
+		handleOpenStrategyDialog,
+		handleSaveStrategy,
 		closeRouteModal,
-		closeStickyDialog,
+		closeStrategyDialog,
 		refreshRoutesPage,
 		modelEdit,
 	};

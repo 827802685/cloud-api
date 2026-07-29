@@ -11,7 +11,11 @@ import {
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+  buildAffinityKey,
+  buildTierKeyPrefix,
+  resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyGeminiContent, EMPTY_USAGE, type UsageFromStream } from '../../services/proxy';
 import { buildRouteRequestBody } from '../../services/route-default-params';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
@@ -186,13 +190,15 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
   }
 
   const requestSignal = c.req.raw.signal;
-  const stickyContext = buildStickyDispatchContext({
-    stickyConfigRaw: model.sticky_config ?? null,
-    userId: apiKey.userId,
-    baseModelId,
-    routeGroup: effectiveRouteGroup,
+  const strategy = await resolveRouteStrategy({
+    routePolicyRaw: model.route_policy ?? null,
     protocol: 'gemini',
+    capability: action,
+    routeGroup: effectiveRouteGroup,
+    repos,
   });
+  const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'gemini');
+  const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'gemini');
   timing.markGatewayComplete();
   const proxyResult = await proxyGeminiContent(
     repos,
@@ -201,7 +207,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
     body,
     c.req.url.includes('?') ? c.req.url.slice(c.req.url.indexOf('?')) : '',
     requestSignal,
-    { sticky: stickyContext, timing }
+    { affinityKey, tierKeyPrefix, strategy, timing }
   );
   const { usagePromise, chosenRoute, upstreamRequestId, circuitEvents, suppressErrorAlert } = proxyResult;
   const { response, errorBodyText } = await materializeNonOkResponse(proxyResult.response);

@@ -10,7 +10,7 @@ import { ModelModal } from '../models/components/model-modal';
 import { useRoutesPageState } from './use-routes-page-state';
 import { RouteFilterSidebar } from './components/route-filter-sidebar';
 import { RouteModal } from './components/route-modal';
-import { RouteStickyDialog } from './components/route-sticky-dialog';
+import { RoutePolicyDialog } from './components/route-policy-dialog';
 import { RouteVendorGroup } from './components/route-vendor-group';
 import { RouteWorkspaceHeader } from './components/route-workspace-header';
 
@@ -101,7 +101,7 @@ function RoutesContent() {
 											onEdit={state.handleEdit}
 											onEditModel={(modelId) => void state.modelEdit.openEditById(modelId)}
 											onToggleStatus={state.handleToggleStatus}
-											onOpenStickyDialog={state.handleOpenStickyDialog}
+											onOpenStrategyDialog={state.handleOpenStrategyDialog}
 										/>
 									))}
 								</div>
@@ -167,15 +167,15 @@ function RoutesContent() {
 				onDelete={(id) => void state.modelEdit.handleDelete(id)}
 			/>
 
-			{state.stickyDialog && (
-				<RouteStickyDialog
-					dialog={state.stickyDialog}
-					form={state.stickyForm}
-					error={state.stickyError}
-					saving={state.stickySaving}
-					onClose={state.closeStickyDialog}
-					onFormChange={state.setStickyForm}
-					onSave={() => void state.handleSaveSticky()}
+			{state.strategyDialog && (
+				<RoutePolicyDialog
+					dialog={state.strategyDialog}
+					form={state.strategyForm}
+					error={state.strategyError}
+					saving={state.strategySaving}
+					onClose={state.closeStrategyDialog}
+					onFormChange={state.setStrategyForm}
+					onSave={() => void state.handleSaveStrategy()}
 				/>
 			)}
 		</div>

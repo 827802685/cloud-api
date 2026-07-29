@@ -53,9 +53,12 @@ export function RouteListItem(props: Props) {
 				>
 					<div className="flex min-w-0 flex-col gap-0.5 text-xs leading-snug">
 						<div className="flex min-w-0 items-center gap-2">
-							<div className="flex shrink-0 items-center" title={t('priorityTitle')}>
+							<div className="flex shrink-0 items-center gap-1.5" title={t('priorityTitle')}>
 								<span className="text-[11px] font-semibold tabular-nums text-gray-600">
-									{route.priority}
+									P{route.priority}
+								</span>
+								<span className="text-[11px] font-semibold tabular-nums text-gray-500">
+									W{route.weight ?? 1}
 								</span>
 							</div>
 							<span

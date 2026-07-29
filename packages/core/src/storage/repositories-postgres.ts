@@ -6,7 +6,6 @@ import { createPostgresModelRoutesRepository } from '../db/postgres/model-routes
 import { createPostgresModelRoutingRepository } from '../db/postgres/model-routing.impl';
 import { createPostgresModelsRepository } from '../db/postgres/models.impl';
 import { createPostgresProvidersRepository } from '../db/postgres/providers.impl';
-import { createPostgresProviderApiKeysRepository } from '../db/postgres/provider-api-keys.impl';
 import { createPostgresRequestLogsRepository } from '../db/postgres/request-logs.impl';
 import { createPostgresSystemConfigRepository } from '../db/postgres/system-config.impl';
 import { createPostgresUserAuditLogsRepository } from '../db/postgres/user-audit-logs.impl';
@@ -22,7 +21,6 @@ export function createPostgresRepositories(client: GatewayDatabaseClient): Gatew
 		apiKeys: createPostgresApiKeysRepository(client),
 		requestLogs: createPostgresRequestLogsRepository(client),
 		providers: createPostgresProvidersRepository(client),
-		providerKeys: createPostgresProviderApiKeysRepository(client),
 		models: createPostgresModelsRepository(client),
 		routes: createPostgresModelRoutesRepository(client),
 		systemConfig: createPostgresSystemConfigRepository(client),

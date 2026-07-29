@@ -11,18 +11,17 @@ import {
 	getProviderService,
 	importProvidersFromStaticPresetsService,
 	listProvidersService,
+	revealProviderApiKeyService,
 	updateProviderService,
 } from '@/lib/services/admin/providers-service';
-import {
-	createProviderKeyService,
-	deleteProviderKeyService,
-	listProviderKeysService,
-	revealProviderKeyService,
-	updateProviderKeyService,
-} from '@/lib/services/admin/provider-api-keys-service';
-import type { AdminProviderMutationInput, AdminProviderKeyMutationInput, AdminProvidersImportBody, AdminProvidersImportOutput } from '@/lib/services/admin/types';
+import type {
+	AdminProviderMutationInput,
+	AdminProvidersImportBody,
+	AdminProvidersImportOutput,
+} from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
 import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+
 export const adminProvidersRoutes = new Hono<AdminEnv>();
 
 adminProvidersRoutes.use('*', requireMasterKey);
@@ -38,7 +37,7 @@ adminProvidersRoutes.get('/', async (c) => {
 	}
 });
 
-/** body 含各协议 base_url、api_key 等。 */
+/** body 含各协议 base_url、api_key、status 等。 */
 adminProvidersRoutes.post('/', async (c) => {
 	let body: AdminProviderMutationInput;
 	try {
@@ -95,74 +94,15 @@ adminProvidersRoutes.post('/import', async (c) => {
 	}
 });
 
-/** `:id` 为 D1 行 id。 */
-adminProvidersRoutes.get('/:id/keys', async (c) => {
+/** 揭示供应商明文 API Key。须注册在 `/:id` 之前。 */
+adminProvidersRoutes.get('/:id/api-key', async (c) => {
 	const providerId = c.req.param('id');
 	try {
 		const repos = c.get('repositories');
-		const data = await listProviderKeysService(repos, providerId);
-		return c.json(normalizeApiTimeFields({ success: true, data, count: data.length }));
-	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to list provider keys');
-	}
-});
-
-adminProvidersRoutes.post('/:id/keys', async (c) => {
-	const providerId = c.req.param('id');
-	let body: AdminProviderKeyMutationInput;
-	try {
-		body = await c.req.json();
-	} catch {
-		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
-	}
-	try {
-		const repos = c.get('repositories');
-		const data = await createProviderKeyService(repos, providerId, body);
-		return c.json(normalizeApiTimeFields({ success: true, message: 'Provider key created successfully', data }));
-	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to create provider key');
-	}
-});
-
-adminProvidersRoutes.get('/:id/keys/:keyId', async (c) => {
-	const providerId = c.req.param('id');
-	const keyId = c.req.param('keyId');
-	try {
-		const repos = c.get('repositories');
-		const data = await revealProviderKeyService(repos, providerId, keyId);
+		const data = await revealProviderApiKeyService(repos, providerId);
 		return c.json({ success: true, data });
 	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to reveal provider key');
-	}
-});
-
-adminProvidersRoutes.patch('/:id/keys/:keyId', async (c) => {
-	const providerId = c.req.param('id');
-	const keyId = c.req.param('keyId');
-	let body: AdminProviderKeyMutationInput;
-	try {
-		body = await c.req.json();
-	} catch {
-		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
-	}
-	try {
-		const repos = c.get('repositories');
-		await updateProviderKeyService(repos, providerId, keyId, body);
-		return c.json({ success: true, message: 'Provider key updated successfully' });
-	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to update provider key');
-	}
-});
-
-adminProvidersRoutes.delete('/:id/keys/:keyId', async (c) => {
-	const providerId = c.req.param('id');
-	const keyId = c.req.param('keyId');
-	try {
-		const repos = c.get('repositories');
-		await deleteProviderKeyService(repos, providerId, keyId);
-		return c.json({ success: true, message: 'Provider key deleted successfully' });
-	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to delete provider key');
+		return handleAdminRouteError(c, error, 'Failed to reveal provider API key');
 	}
 });
 

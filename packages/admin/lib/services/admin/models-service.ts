@@ -2,7 +2,7 @@
  * 管理后台 `models` + `model_tags`：列表/详情（含路由计数）、创建、部分更新、级联删除、静态目录导入。
  */
 import type { GatewayRepositories } from '@octafuse/core';
-import { normalizeModelStickyConfigInput } from '@octafuse/core/db/model-sticky-config';
+import { normalizeModelRoutePolicyInput } from '@octafuse/core/db/model-route-policy';
 import {
 	coerceModelInputModalitiesInput,
 	coerceModelOutputModalitiesInput,
@@ -268,13 +268,13 @@ export async function updateModelService(repos: GatewayRepositories, id: string,
 	if ('pricing_profile' in rest && rest.pricing_profile !== undefined) {
 		rest.pricing_profile = coerceModelPricingProfileInput(rest.pricing_profile);
 	}
-	if ('sticky_config' in rest && rest.sticky_config !== undefined) {
+	if ('route_policy' in rest && rest.route_policy !== undefined) {
 		try {
-			rest.sticky_config = normalizeModelStickyConfigInput(
-				rest.sticky_config == null ? null : String(rest.sticky_config)
+			rest.route_policy = normalizeModelRoutePolicyInput(
+				rest.route_policy == null ? null : String(rest.route_policy)
 			);
 		} catch (err) {
-			throw badRequest(err instanceof Error ? err.message : 'Invalid sticky_config');
+			throw badRequest(err instanceof Error ? err.message : 'Invalid route_policy');
 		}
 	}
 	const coerced = applyModelMutationCoercion(rest);

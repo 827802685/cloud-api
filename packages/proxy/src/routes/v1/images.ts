@@ -18,7 +18,11 @@ import {
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+	buildAffinityKey,
+	buildTierKeyPrefix,
+	resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyImageEdits, proxyImageGenerations, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
 import {
@@ -538,13 +542,15 @@ imageRoutes.post('/generations', async (c) => {
 	// Seedream 等兼容扩展：用户显式传入时透传；亦可由 route `custom_params` 注入默认值
 	applyOpenAiImageGenerationExtras(upstreamBody, body);
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
 		protocol: 'openai',
+		capability: 'images.generations',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -552,7 +558,9 @@ imageRoutes.post('/generations', async (c) => {
 	);
 
 	const proxyResult = await proxyImageGenerations(repos, routes, upstreamBody, c.req.raw.signal, {
-		sticky: stickyContext,
+		affinityKey,
+		tierKeyPrefix,
+		strategy,
 		timing,
 	});
 
@@ -657,13 +665,15 @@ imageRoutes.post('/edits', async (c) => {
 		return circuitBlocked;
 	}
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
 		protocol: 'openai',
+		capability: 'images.edits',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -671,7 +681,9 @@ imageRoutes.post('/edits', async (c) => {
 	);
 
 	const proxyResult = await proxyImageEdits(repos, routes, edit, c.req.raw.signal, {
-		sticky: stickyContext,
+		affinityKey,
+		tierKeyPrefix,
+		strategy,
 		timing,
 	});
 

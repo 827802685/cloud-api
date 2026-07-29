@@ -18,6 +18,8 @@ function mapPgProviderRow(r: {
 	id: string;
 	name: string;
 	endpoints: string | null;
+	apiKey: string;
+	status: string;
 	description: string | null;
 	createdAt: string;
 }): ProviderRow {
@@ -25,6 +27,8 @@ function mapPgProviderRow(r: {
 		id: r.id,
 		name: r.name,
 		endpoints: r.endpoints,
+		api_key: r.apiKey,
+		status: r.status,
 		description: r.description,
 		created_at: r.createdAt,
 	};
@@ -34,6 +38,8 @@ function providerRecordFromPg(r: {
 	id: string;
 	name: string;
 	endpoints: string | null;
+	apiKey: string;
+	status: string;
 	description: string | null;
 	createdAt: string;
 }): ProviderAdminRow {
@@ -41,6 +47,8 @@ function providerRecordFromPg(r: {
 		id: r.id,
 		name: r.name,
 		endpoints: r.endpoints,
+		api_key: r.apiKey,
+		status: r.status,
 		description: r.description,
 		created_at: r.createdAt,
 	};
@@ -64,12 +72,16 @@ export function createPostgresProvidersRepository(db: PostgresDatabaseClient): P
 			name: string;
 			endpoints: string | null;
 			description: unknown;
+			apiKey?: string;
+			status?: string;
 		}): Promise<void> {
 			const now = new Date().toISOString();
 			await drizzle.insert(pgProvidersTable).values({
 				id: params.id,
 				name: params.name,
 				endpoints: params.endpoints,
+				apiKey: params.apiKey ?? '',
+				status: params.status ?? 'active',
 				description: params.description == null ? null : String(params.description),
 				createdAt: now,
 			});
@@ -113,6 +125,15 @@ export function createPostgresProvidersRepository(db: PostgresDatabaseClient): P
 					id: pgProvidersTable.id,
 					endpoints: pgProvidersTable.endpoints,
 				})
+				.from(pgProvidersTable)
+				.where(eq(pgProvidersTable.id, providerId))
+				.limit(1);
+			return rows[0] ?? null;
+		},
+
+		async getProviderApiKeyPlaintext(providerId: string): Promise<{ api_key: string } | null> {
+			const rows = await drizzle
+				.select({ api_key: pgProvidersTable.apiKey })
 				.from(pgProvidersTable)
 				.where(eq(pgProvidersTable.id, providerId))
 				.limit(1);

@@ -11,7 +11,11 @@ import {
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+  buildAffinityKey,
+  buildTierKeyPrefix,
+  resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyAnthropicMessages, EMPTY_USAGE, type UsageFromStream } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
 import { summarizeAnthropicToolsForLog } from '../../services/request-log-tools-summary';
@@ -148,16 +152,20 @@ messagesRoutes.post('/', async (c) => {
   }
 
   const requestSignal = c.req.raw.signal;
-  const stickyContext = buildStickyDispatchContext({
-    stickyConfigRaw: model.sticky_config ?? null,
-    userId: apiKey.userId,
-    baseModelId,
-    routeGroup: effectiveRouteGroup,
+  const strategy = await resolveRouteStrategy({
+    routePolicyRaw: model.route_policy ?? null,
     protocol: 'anthropic',
+    capability: 'messages',
+    routeGroup: effectiveRouteGroup,
+    repos,
   });
+  const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'anthropic');
+  const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'anthropic');
   timing.markGatewayComplete();
   const proxyResult = await proxyAnthropicMessages(repos, routes, body, requestSignal, {
-    sticky: stickyContext,
+    affinityKey,
+    tierKeyPrefix,
+    strategy,
     timing,
   });
   const { usagePromise, chosenRoute, upstreamRequestId, circuitEvents, suppressErrorAlert } = proxyResult;

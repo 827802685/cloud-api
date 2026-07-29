@@ -294,10 +294,10 @@ function formatCircuitDurationSeconds(cooldownMs: number): string {
 function formatCircuitEventLine(event: GatewayCircuitAlertEvent): string {
 	const recoverAt = formatOccurredAt(new Date(event.openUntil).toISOString());
 	const duration = formatCircuitDurationSeconds(event.cooldownMs);
-	if (event.kind === 'provider_key') {
-		const label = (event.keyLabel ?? '').trim() || '(未记录)';
+	if (event.kind === 'provider') {
+		const name = (event.providerName ?? '').trim() || '(未记录)';
 		const fingerprint = (event.keyFingerprint ?? '').trim() || '(未记录)';
-		return `provider_key keyId=${event.keyId} label=${label} fingerprint=${fingerprint} reason=${formatCircuitFailureKind(event.failureKind)}，持续 ${duration}，恢复时间 ${recoverAt}`;
+		return `provider providerId=${event.providerId} name=${name} fingerprint=${fingerprint} reason=${formatCircuitFailureKind(event.failureKind)}，持续 ${duration}，恢复时间 ${recoverAt}`;
 	}
 	return `user_model user=${event.userId} model=${event.modelId} reason=${event.reason}，持续 ${duration}，恢复时间 ${recoverAt}`;
 }

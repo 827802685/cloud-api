@@ -99,20 +99,12 @@ export type AdminProviderMutationInput = {
 	name?: unknown;
 	/** `{ openai?: { base?, endpoints? }, … }` 对象或 JSON 字符串 */
 	endpoints?: unknown;
+	/** 创建必填；PATCH 时空串/省略 = 不改 */
 	api_key?: unknown;
+	/** `active` | `disabled` */
+	status?: unknown;
 	description?: unknown;
 	[key: string]: unknown;
-};
-
-/** ---------- `/admin/providers/:id/keys` 请求体 ---------- */
-export type AdminProviderKeyMutationInput = {
-	label?: unknown;
-	api_key?: unknown;
-	status?: 'active' | 'disabled';
-	weight?: unknown;
-	priority?: unknown;
-	/** 限流配置 JSON 字符串（`{"rpm":…,"tpm":…,"max_concurrency":…}`）；null/空串清空 */
-	limit_config?: unknown;
 };
 
 /** `GET /admin/providers/import/catalog`：内置 Provider 模板摘要（无密钥）。`id` 为 catalog 行键（数组下标），非入库 provider id。 */
@@ -169,6 +161,8 @@ export type AdminModelRouteMutationInput = {
 	provider_id?: unknown;
 	provider_model_name?: unknown;
 	priority?: unknown;
+	/** 同 priority 层内权重；默认 1 */
+	weight?: unknown;
 	status?: unknown;
 	route_group?: unknown;
 	/** JSON string or object; canonical `charged_factor` / `metered_factor` / optional `schedule`; nested `metered`/`charged` tiers stripped on write. Normalized by `coerceRoutePriceOverrideInput`. */
@@ -239,9 +233,12 @@ export type AdminProviderRow = {
 	/** 由内置 Provider 预设动态推导的产品级图标，不持久化。 */
 	icon_key?: string;
 	endpoints: string | null;
+	/** 列表/详情为脱敏预览；明文仅经 `GET /:id/api-key` */
+	api_key?: string;
+	/** `active` | `disabled` */
+	status?: string;
 	description: string | null;
 	created_at: string;
-	active_key_count?: number;
 	has_pending_key?: boolean;
 	[key: string]: unknown;
 };
@@ -258,8 +255,8 @@ export type AdminModelRow = {
 	released_at: string | null;
 	description: string | null;
 	metadata: string | null;
-	/** 粘性 key 路由配置 JSON；null=无粘性 */
-	sticky_config?: string | null;
+	/** 路由策略 JSON（`strategy` + `rules`）；null=回退全局 ROUTE_STRATEGY */
+	route_policy?: string | null;
 	created_at: string;
 	routes_count?: number;
 	active_routes_count?: number;

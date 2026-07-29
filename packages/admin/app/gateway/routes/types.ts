@@ -28,6 +28,8 @@ export type RouteFormData = {
 	provider_model_name: string;
 	upstream_protocol: UpstreamProtocol;
 	priority: number;
+	/** Same-priority weight; default 1 */
+	weight: number;
 	custom_params_json: string;
 	route_group: string;
 	charged_factor: string;
@@ -36,7 +38,7 @@ export type RouteFormData = {
 	schedule_metered: RouteScheduleFormSide;
 };
 
-export type StickyDialogState = {
+export type RoutePolicyDialogState = {
 	modelId: string;
 	modelTitle: string;
 	protocol: string;
@@ -44,10 +46,10 @@ export type StickyDialogState = {
 	group: string;
 };
 
-export type StickyFormState = {
-	enabled: boolean;
-	ttl_seconds: string;
-	short_wait_ms: string;
+/** '' = inherit; otherwise a RouteStrategyName */
+export type RoutePolicyFormState = {
+	protocolStrategy: string;
+	capabilityStrategies: Record<string, string>;
 };
 
 export type RoutesPageData = {
@@ -62,6 +64,7 @@ export const EMPTY_ROUTE_FORM: RouteFormData = {
 	provider_model_name: '',
 	upstream_protocol: 'openai',
 	priority: 0,
+	weight: 1,
 	custom_params_json: '',
 	route_group: 'default',
 	charged_factor: '1',

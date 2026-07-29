@@ -21,7 +21,7 @@ type Props = {
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
-	onOpenStickyDialog: (
+	onOpenStrategyDialog: (
 		modelId: string,
 		modelTitle: string,
 		protocol: string,
@@ -44,7 +44,7 @@ export function RouteVendorGroup(props: Props) {
 		onEdit,
 		onEditModel,
 		onToggleStatus,
-		onOpenStickyDialog,
+		onOpenStrategyDialog,
 	} = props;
 
 	const t = useTranslations('routes.vendor');
@@ -87,7 +87,7 @@ export function RouteVendorGroup(props: Props) {
 						onEdit={onEdit}
 						onEditModel={onEditModel}
 						onToggleStatus={onToggleStatus}
-						onOpenStickyDialog={onOpenStickyDialog}
+						onOpenStrategyDialog={onOpenStrategyDialog}
 					/>
 				))}
 			</div>

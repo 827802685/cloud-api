@@ -9,7 +9,7 @@ import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
 import { asMySqlPool } from './mysql2-compat';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
-		mr.route_group, mr.price_override, mr.custom_params, mr.upstream_protocol,
+		mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
 		m.display_name as model_name, p.name as provider_name
 	 FROM model_routes mr
 	 LEFT JOIN models m ON mr.model_id = m.id
@@ -43,14 +43,15 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 			priority: number;
 			status: string;
 			routeGroup: string;
+			weight?: number;
 			priceOverride: unknown;
 			customParams: string | null;
 			upstreamProtocol: string;
 		}): Promise<void> {
 			const now = new Date().toISOString();
 			await pool.execute(
-				`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, price_override, custom_params, upstream_protocol, created_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, price_override, custom_params, upstream_protocol, created_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				[
 					params.id,
 					params.modelId,
@@ -59,6 +60,7 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 					params.priority,
 					params.status,
 					params.routeGroup,
+					params.weight ?? 1,
 					params.priceOverride ?? null,
 					params.customParams,
 					params.upstreamProtocol,

@@ -2,7 +2,7 @@
 
 /**
  * `system_config`：`MASTER_KEY`（置顶）、`BUSINESS_TIMEZONE`、`BILLING_CURRENCY`、
- * 错误 Webhook 与 Add 均为卡片；敏感字段支持 Show/Hide。
+ * `ROUTE_STRATEGY`、错误 Webhook 与 Add 均为卡片；敏感字段支持 Show/Hide。
  * 产品工具配置见 `/gateway/tools`。
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -20,6 +20,12 @@ import {
 	BUSINESS_TIMEZONE_VALUES,
 	getBusinessTimezoneOptions,
 } from '@/lib/business-timezone-options';
+import {
+	DEFAULT_ROUTE_STRATEGY,
+	ROUTE_STRATEGY_NAMES,
+	isRouteStrategyName,
+} from '@octafuse/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
 import {
 	ALERT_WEBHOOK_FEISHU_URL_KEY,
 	ALERT_WEBHOOK_WECOM_URL_KEY,
@@ -57,6 +63,12 @@ function syncBillingCurrencyUi(rows: SystemConfigRow[], setSelect: (v: string) =
 	const v = row?.value?.trim().toUpperCase() || 'USD';
 	/** 历史非法或非白名单值在 UI 上归一为 USD，保存时需用户显式选 CNY 再写入。 */
 	setSelect(v === 'CNY' ? 'CNY' : 'USD');
+}
+
+function syncRouteStrategyUi(rows: SystemConfigRow[], setSelect: (v: string) => void) {
+	const row = rows.find((r) => r.key === ROUTE_STRATEGY_KEY);
+	const v = (row?.value ?? '').trim().toLowerCase();
+	setSelect(isRouteStrategyName(v) ? v : DEFAULT_ROUTE_STRATEGY);
 }
 
 
@@ -181,6 +193,8 @@ export default function GatewayConfigPage() {
   const [bizSaving, setBizSaving] = useState(false);
   const [billSelectValue, setBillSelectValue] = useState('USD');
   const [billSaving, setBillSaving] = useState(false);
+  const [routeStrategyValue, setRouteStrategyValue] = useState<string>(DEFAULT_ROUTE_STRATEGY);
+  const [routeStrategySaving, setRouteStrategySaving] = useState(false);
   const [masterKeyDraft, setMasterKeyDraft] = useState('');
   const [masterKeyVisible, setMasterKeyVisible] = useState(false);
   const [masterSaving, setMasterSaving] = useState(false);
@@ -200,6 +214,7 @@ export default function GatewayConfigPage() {
         setConfig(data.data);
         syncBusinessTimezoneUi(data.data, setBizSelectValue, setBizOtherValue);
         syncBillingCurrencyUi(data.data, setBillSelectValue);
+        syncRouteStrategyUi(data.data, setRouteStrategyValue);
         const masterRow = data.data.find((r) => r.key === MASTER_KEY_KEY);
         setMasterKeyDraft(masterRow?.value ?? '');
         const wecomRow = data.data.find((r) => r.key === ALERT_WEBHOOK_WECOM_URL_KEY);
@@ -258,6 +273,11 @@ export default function GatewayConfigPage() {
     if (k === BILLING_CURRENCY_KEY) {
       clearSaveSuccess();
       setSaveError(t('errors.useBillingCurrencySection'));
+      return;
+    }
+    if (k === ROUTE_STRATEGY_KEY) {
+      clearSaveSuccess();
+      setSaveError(t('errors.useRouteStrategySection'));
       return;
     }
     if (k === MASTER_KEY_KEY) {
@@ -366,6 +386,51 @@ export default function GatewayConfigPage() {
       setSaveError(tCommon('requestFailed'));
     } finally {
       setBillSaving(false);
+    }
+  };
+
+  const handleSaveRouteStrategy = async () => {
+    const raw = routeStrategyValue.trim().toLowerCase();
+    if (!isRouteStrategyName(raw)) {
+      clearSaveSuccess();
+      setSaveError(`ROUTE_STRATEGY must be one of: ${ROUTE_STRATEGY_NAMES.join(', ')}`);
+      return;
+    }
+    setSaveError('');
+    clearSaveSuccess();
+    setRouteStrategySaving(true);
+    try {
+      const response = await fetch('/api/admin/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: ROUTE_STRATEGY_KEY, value: raw }),
+      });
+      const data = await readApiJson(response);
+      if (data.success) {
+        flashSaveSuccess(data.message);
+        setConfig((prev) => {
+          const idx = prev.findIndex((r) => r.key === ROUTE_STRATEGY_KEY);
+          const desc =
+            prev[idx]?.description ??
+            'Global model route strategy when models.route_policy does not override.';
+          const nextRow: SystemConfigRow = { key: ROUTE_STRATEGY_KEY, value: raw, description: desc };
+          if (idx >= 0) {
+            const copy = [...prev];
+            copy[idx] = nextRow;
+            return copy;
+          }
+          return [...prev, nextRow];
+        });
+        setRouteStrategyValue(raw);
+      } else {
+        clearSaveSuccess();
+        setSaveError(data.message || tCommon('saveFailed'));
+      }
+    } catch {
+      clearSaveSuccess();
+      setSaveError(tCommon('requestFailed'));
+    } finally {
+      setRouteStrategySaving(false);
     }
   };
 
@@ -692,6 +757,38 @@ export default function GatewayConfigPage() {
             className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {billSaving ? tCommon('saving') : t('saveCurrency')}
+          </button>
+        </div>
+      </ConfigCardShell>
+
+      <ConfigCardShell
+        title={t('routeStrategy.title')}
+        description={t('routeStrategy.description')}
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              {t('routeStrategy.strategy')}
+            </label>
+            <select
+              value={routeStrategyValue}
+              onChange={(e) => setRouteStrategyValue(e.target.value)}
+              className="min-w-[16rem] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm"
+            >
+              {ROUTE_STRATEGY_NAMES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSaveRouteStrategy()}
+            disabled={routeStrategySaving}
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {routeStrategySaving ? tCommon('saving') : t('saveRouteStrategy')}
           </button>
         </div>
       </ConfigCardShell>

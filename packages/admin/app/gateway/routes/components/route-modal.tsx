@@ -285,6 +285,27 @@ export function RouteModal(props: Props) {
 										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
 									/>
 								</div>
+								<div>
+									<label
+										className="mb-1 block text-sm font-medium text-gray-700"
+										title={t('weightHint')}
+									>
+										{t('weight')}
+									</label>
+									<input
+										type="number"
+										min={1}
+										value={formData.weight}
+										onChange={(e) =>
+											onFormChange({
+												...formData,
+												weight: Math.max(1, parseInt(e.target.value, 10) || 1),
+											})
+										}
+										title={t('weightHint')}
+										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm tabular-nums focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+									/>
+								</div>
 							</div>
 						</section>
 
