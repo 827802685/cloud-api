@@ -132,6 +132,12 @@ export function useRoutesPageState() {
 		return map;
 	}, [models]);
 
+	const providerMeta = useMemo(() => {
+		const map = new Map<string, GatewayProvider>();
+		for (const provider of providers) map.set(provider.id, provider);
+		return map;
+	}, [providers]);
+
 	const distinctRouteGroups = useMemo(() => {
 		const set = new Set<string>();
 		for (const r of routes) {
@@ -320,10 +326,18 @@ export function useRoutesPageState() {
 	}, []);
 
 	const handleCreate = useCallback(
-		(presetModelId?: string) => {
+		(presetModelId?: string, preset?: { protocol?: string; group?: string }) => {
 			setEditingRoute(null);
 			setDuplicateSourceRouteId(null);
-			setFormData(createInitialRouteForm(models, presetModelId));
+			const initial = createInitialRouteForm(models, presetModelId);
+			setFormData({
+				...initial,
+				upstream_protocol:
+					preset?.protocol && UPSTREAM_PROTOCOLS.includes(preset.protocol as UpstreamProtocol)
+						? (preset.protocol as UpstreamProtocol)
+						: initial.upstream_protocol,
+				route_group: preset?.group ?? initial.route_group,
+			});
 			setShowModal(true);
 			setSaveError('');
 		},
@@ -486,6 +500,7 @@ export function useRoutesPageState() {
 		models,
 		providers,
 		modelMeta,
+		providerMeta,
 		billingCurrency,
 		filterVendor,
 		setFilterVendor,

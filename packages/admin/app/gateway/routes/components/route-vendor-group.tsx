@@ -3,10 +3,10 @@
 import { ModelVendorIcon } from '@/components/model-vendor-icon';
 import { getModelVendorLabel } from '@/lib/model-vendor';
 import { useTranslations } from 'next-intl';
-import type { GatewayModel } from '@/lib/types';
+import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import type { RouteListRow } from '../types';
 import type { RouteModelGroup } from '../route-utils';
-import { RouteModelCard } from './route-model-card';
+import { RouteModelFlow } from './route-model-flow';
 
 type Props = {
 	vendor: string;
@@ -14,10 +14,11 @@ type Props = {
 	showHeader: boolean;
 	vendorGroupIdx: number;
 	modelMeta: Map<string, GatewayModel>;
+	providerMeta: Map<string, GatewayProvider>;
 	copiedModelId: string | null;
 	togglingId: string | null;
 	onCopyModelId: (modelId: string) => void;
-	onCreate: (modelId: string) => void;
+	onCreate: (modelId: string, preset?: { protocol?: string; group?: string }) => void;
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
@@ -37,6 +38,7 @@ export function RouteVendorGroup(props: Props) {
 		showHeader,
 		vendorGroupIdx,
 		modelMeta,
+		providerMeta,
 		copiedModelId,
 		togglingId,
 		onCopyModelId,
@@ -74,12 +76,13 @@ export function RouteVendorGroup(props: Props) {
 					</span>
 				</div>
 			) : null}
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 xl:grid-cols-3 xl:gap-6 2xl:grid-cols-4">
+			<div className="space-y-4">
 				{cards.map((card) => (
-					<RouteModelCard
+					<RouteModelFlow
 						key={card.model_id}
 						card={card}
 						meta={modelMeta.get(card.model_id)}
+						providerMeta={providerMeta}
 						copiedModelId={copiedModelId}
 						togglingId={togglingId}
 						onCopyModelId={onCopyModelId}

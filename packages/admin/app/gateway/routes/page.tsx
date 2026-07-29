@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { ModelModal } from '../models/components/model-modal';
 import { useRoutesPageState } from './use-routes-page-state';
 import { RouteFilterSidebar } from './components/route-filter-sidebar';
+import { RouteFlowOverview } from './components/route-flow-overview';
 import { RouteModal } from './components/route-modal';
 import { RoutePolicyDialog } from './components/route-policy-dialog';
 import { RouteVendorGroup } from './components/route-vendor-group';
@@ -85,25 +86,33 @@ function RoutesContent() {
 									) : null}
 								</div>
 							) : (
-								<div className={state.filterVendor ? '' : 'space-y-8'}>
-									{state.routeCardVendorGroups.map(({ vendor, cards, showHeader }, vendorGroupIdx) => (
-										<RouteVendorGroup
-											key={vendor}
-											vendor={vendor}
-											cards={cards}
-											showHeader={showHeader}
-											vendorGroupIdx={vendorGroupIdx}
-											modelMeta={state.modelMeta}
-											copiedModelId={state.copiedModelId}
-											togglingId={state.togglingId}
-											onCopyModelId={state.copyModelId}
-											onCreate={state.handleCreate}
-											onEdit={state.handleEdit}
-											onEditModel={(modelId) => void state.modelEdit.openEditById(modelId)}
-											onToggleStatus={state.handleToggleStatus}
-											onOpenStrategyDialog={state.handleOpenStrategyDialog}
-										/>
-									))}
+								<div>
+									<RouteFlowOverview />
+									<div className={state.filterVendor ? '' : 'space-y-8'}>
+										{state.routeCardVendorGroups.map(
+											({ vendor, cards, showHeader }, vendorGroupIdx) => (
+												<RouteVendorGroup
+													key={vendor}
+													vendor={vendor}
+													cards={cards}
+													showHeader={showHeader}
+													vendorGroupIdx={vendorGroupIdx}
+													modelMeta={state.modelMeta}
+													providerMeta={state.providerMeta}
+													copiedModelId={state.copiedModelId}
+													togglingId={state.togglingId}
+													onCopyModelId={state.copyModelId}
+													onCreate={state.handleCreate}
+													onEdit={state.handleEdit}
+													onEditModel={(modelId) =>
+														void state.modelEdit.openEditById(modelId)
+													}
+													onToggleStatus={state.handleToggleStatus}
+													onOpenStrategyDialog={state.handleOpenStrategyDialog}
+												/>
+											)
+										)}
+									</div>
 								</div>
 							)}
 						</div>
