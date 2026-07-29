@@ -571,6 +571,8 @@
 			"targetCount": "{count} 个目标",
 			"addToPool": "添加目标",
 			"addProvider": "添加供应商",
+			"enabledShort": "已启用",
+			"disabledShort": "未启用",
 			"addRoute": "添加路由",
 			"firstAttempt": "首选层",
 			"fallback": "失败后继续",

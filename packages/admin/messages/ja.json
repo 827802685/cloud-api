@@ -571,6 +571,8 @@
 			"targetCount": "{count} ターゲット",
 			"addToPool": "ターゲットを追加",
 			"addProvider": "プロバイダーを追加",
+			"enabledShort": "有効",
+			"disabledShort": "無効",
 			"addRoute": "ルートを追加",
 			"firstAttempt": "最初の試行レイヤー",
 			"fallback": "失敗時に続行",

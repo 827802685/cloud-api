@@ -571,6 +571,8 @@
 			"targetCount": "대상 {count}개",
 			"addToPool": "대상 추가",
 			"addProvider": "공급자 추가",
+			"enabledShort": "활성",
+			"disabledShort": "비활성",
 			"addRoute": "라우트 추가",
 			"firstAttempt": "첫 시도 계층",
 			"fallback": "실패 시 계속",

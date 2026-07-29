@@ -571,6 +571,8 @@
 			"targetCount": "{count} target(s)",
 			"addToPool": "Add target",
 			"addProvider": "Add provider",
+			"enabledShort": "Enabled",
+			"disabledShort": "Disabled",
 			"addRoute": "Add route",
 			"firstAttempt": "First attempt layer",
 			"fallback": "On failure, continue",
