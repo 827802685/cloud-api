@@ -2,11 +2,13 @@ import type { GatewayProvider } from '@/lib/types';
 import {
 	listConfiguredCapabilities,
 	parseProviderEndpoints,
+	resolveUpstreamEndpoint,
 	serializeProviderEndpoints,
 	type ProviderEndpointCapability,
 	type ProviderEndpointsMap,
 	type ProtocolEndpointsConfig,
 } from '@octafuse/core/provider-endpoints';
+import type { UpstreamProtocol } from '@octafuse/core/upstream-protocol';
 import type {
 	ProtocolEndpointForm,
 	ProviderCapabilityBadge,
@@ -106,53 +108,45 @@ export function formDataToEndpointsJson(form: ProviderFormData): string | null {
 export function getProviderProtocolSummaries(provider: GatewayProvider): ProviderProtocolSummary[] {
 	const map = parseProviderEndpoints(provider);
 	const rows: ProviderProtocolSummary[] = [];
-	if (map.openai) {
-		const url = map.openai.base || map.openai.endpoints?.chat || Object.values(map.openai.endpoints ?? {})[0] || '';
-		if (url) {
-			const capabilities = listConfiguredCapabilities(map, 'openai');
-			rows.push({
-				key: 'openai',
-				label: 'OpenAI',
-				url,
-				capabilities,
-				badges: capabilityDisplayBadges(capabilities),
-			});
-		}
-	}
-	if (map.anthropic) {
-		const url =
-			map.anthropic.base ||
-			map.anthropic.endpoints?.messages ||
-			Object.values(map.anthropic.endpoints ?? {})[0] ||
-			'';
-		if (url) {
-			const capabilities = listConfiguredCapabilities(map, 'anthropic');
-			rows.push({
-				key: 'anthropic',
-				label: 'Anthropic',
-				url,
-				capabilities,
-				badges: capabilityDisplayBadges(capabilities),
-			});
-		}
-	}
-	if (map.gemini) {
-		const url =
-			map.gemini.base ||
-			map.gemini.endpoints?.generateContent ||
-			Object.values(map.gemini.endpoints ?? {})[0] ||
-			'';
-		if (url) {
-			const capabilities = listConfiguredCapabilities(map, 'gemini');
-			rows.push({
-				key: 'gemini',
-				label: 'Gemini',
-				url,
-				capabilities,
-				badges: capabilityDisplayBadges(capabilities),
-			});
-		}
-	}
+
+	const appendProtocol = (
+		key: UpstreamProtocol,
+		label: string
+	) => {
+		const config = map[key];
+		if (!config) return;
+		const capabilities = listConfiguredCapabilities(map, key);
+		if (capabilities.length === 0) return;
+		const endpoints = capabilities.flatMap((capability) => {
+			try {
+				const resolved = resolveUpstreamEndpoint(key, capability, map, {
+					model: '{model}',
+					providerId: provider.id,
+				}).replace(/%7Bmodel%7D/gi, '{model}');
+				return [{
+					capability,
+					url: resolved,
+					source: config.endpoints?.[capability] ? 'override' as const : 'base' as const,
+				}];
+			} catch {
+				return [];
+			}
+		});
+		if (endpoints.length === 0) return;
+		rows.push({
+			key,
+			label,
+			baseUrl: config.base ?? null,
+			overrideCount: Object.keys(config.endpoints ?? {}).length,
+			capabilities,
+			badges: capabilityDisplayBadges(capabilities),
+			endpoints,
+		});
+	};
+
+	appendProtocol('openai', 'OpenAI');
+	appendProtocol('anthropic', 'Anthropic');
+	appendProtocol('gemini', 'Gemini');
 	return rows;
 }
 

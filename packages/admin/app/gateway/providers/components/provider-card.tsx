@@ -2,12 +2,14 @@
 
 import {
 	CheckIcon,
+	ChevronDownIcon,
 	ClipboardDocumentIcon,
 	ExclamationTriangleIcon,
 	PencilSquareIcon,
 	PowerIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { VendorIcon } from '@/components/model-vendor-icon';
 import type { GatewayProvider } from '../types';
 import { getProviderProtocolSummaries } from '../provider-utils';
@@ -51,6 +53,7 @@ export function ProviderCard(props: ProviderCardProps) {
 			: noKey
 				? 'border-l-red-400'
 				: 'border-l-emerald-400';
+	const [expandedProtocols, setExpandedProtocols] = useState<Record<string, boolean>>({});
 
 	return (
 		<article
@@ -107,81 +110,160 @@ export function ProviderCard(props: ProviderCardProps) {
 				{protocols.length > 0 ? (
 					<div className="grid min-w-0 gap-1.5">
 						{protocols.map((protocol) => {
-							const feedbackId = `endpoint:${provider.id}:${protocol.key}`;
 							const badgeLabels = protocol.badges.map((badge) => t(`cap.${badge}`));
-							const capabilitiesTitle =
-								protocol.capabilities.length > 0
-									? t('capabilitiesTitle', {
-											label: protocol.label,
-											caps: protocol.capabilities.join(', '),
-											url: protocol.url,
-										})
-									: tUpstream('endpointCopyTitle', { label: protocol.label, url: protocol.url });
+							const expanded = Boolean(expandedProtocols[protocol.key]);
+							const summaryUrl =
+								protocol.baseUrl && protocol.overrideCount === 0
+									? protocol.baseUrl
+									: !protocol.baseUrl && protocol.endpoints.length === 1
+										? protocol.endpoints[0]?.url ?? null
+										: null;
+							const summary = summaryUrl
+								? summaryUrl
+								: protocol.baseUrl
+									? t('baseWithOverrides', { count: protocol.overrideCount })
+									: t('endpointCount', { count: protocol.endpoints.length });
 
 							return (
 								<div
 									key={protocol.key}
-									className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
-									title={capabilitiesTitle}
+									className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white"
 								>
-									<span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200">
-										<ProviderProtocolIcon protocol={protocol.key} />
-									</span>
-									<div className="min-w-0 flex-1">
-										<div className="flex min-w-0 items-center gap-2">
-											<span className="shrink-0 text-[11px] font-semibold text-gray-800">
-												{protocol.label}
-											</span>
-											<span className="min-w-0 truncate font-mono text-[10px] text-gray-500">
-												{protocol.url}
-											</span>
-										</div>
-										{protocol.badges.length > 0 ? (
-											<div className="mt-1 flex min-w-0 flex-wrap gap-1">
-												{protocol.badges.map((badge) => (
-													<span
-														key={badge}
-														className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium leading-3 text-blue-700 ring-1 ring-inset ring-blue-100"
-													>
-														{t(`cap.${badge}`)}
-													</span>
-												))}
-												<span className="sr-only">
-													{t('capabilitiesSr', {
-														label: protocol.label,
-														caps: badgeLabels.join(', '),
-													})}
+									<div className="flex min-w-0 items-center gap-2 px-2.5 py-1.5">
+										<span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200">
+											<ProviderProtocolIcon protocol={protocol.key} />
+										</span>
+										<div className="min-w-0 flex-1">
+											<div className="flex min-w-0 items-center gap-2">
+												<span className="shrink-0 text-[11px] font-semibold text-gray-800">
+													{protocol.label}
+												</span>
+												<span className="min-w-0 truncate font-mono text-[10px] text-gray-500" title={summary}>
+													{summary}
 												</span>
 											</div>
+											{protocol.badges.length > 0 ? (
+												<div className="mt-1 flex min-w-0 flex-wrap gap-1">
+													{protocol.badges.map((badge) => (
+														<span
+															key={badge}
+															className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium leading-3 text-blue-700 ring-1 ring-inset ring-blue-100"
+														>
+															{t(`cap.${badge}`)}
+														</span>
+													))}
+													<span className="sr-only">
+														{t('capabilitiesSr', {
+															label: protocol.label,
+															caps: badgeLabels.join(', '),
+														})}
+													</span>
+												</div>
+											) : null}
+										</div>
+										{summaryUrl ? (
+											<button
+												type="button"
+												onClick={() =>
+													void onCopyEndpoint(
+														summaryUrl,
+														`endpoint-summary:${provider.id}:${protocol.key}`
+													)
+												}
+												className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+												title={tUpstream('endpointCopyTitle', {
+													label: protocol.label,
+													url: summaryUrl,
+												})}
+												aria-label={tUpstream('endpointCopyTitle', {
+													label: protocol.label,
+													url: summaryUrl,
+												})}
+											>
+												{copiedId === `endpoint-summary:${provider.id}:${protocol.key}` ? (
+													<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden />
+												) : (
+													<ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
+												)}
+											</button>
 										) : null}
+										<button
+											type="button"
+											onClick={() =>
+												setExpandedProtocols((current) => ({
+													...current,
+													[protocol.key]: !current[protocol.key],
+												}))
+											}
+											className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-slate-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+											title={expanded ? t('hideEndpointDetails') : t('showEndpointDetails')}
+											aria-label={expanded ? t('hideEndpointDetails') : t('showEndpointDetails')}
+											aria-expanded={expanded}
+										>
+											<ChevronDownIcon
+												className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+												aria-hidden
+											/>
+										</button>
 									</div>
-									<button
-										type="button"
-										onClick={() => void onCopyEndpoint(protocol.url, feedbackId)}
-										className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-										title={
-											copiedId === feedbackId
-												? tCommon('copied')
-												: tUpstream('endpointCopyTitle', {
-														label: protocol.label,
-														url: protocol.url,
-													})
-										}
-										aria-label={
-											copiedId === feedbackId
-												? tCommon('copied')
-												: tUpstream('endpointCopyTitle', {
-														label: protocol.label,
-														url: protocol.url,
-													})
-										}
-									>
-										{copiedId === feedbackId ? (
-											<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden />
-										) : (
-											<ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
-										)}
-									</button>
+									{expanded ? (
+										<div className="divide-y divide-slate-100 border-t border-slate-200 bg-slate-50/60">
+											{protocol.endpoints.map((endpoint) => {
+												const feedbackId = `endpoint:${provider.id}:${protocol.key}:${endpoint.capability}`;
+												return (
+													<div
+														key={endpoint.capability}
+														className="grid min-w-0 grid-cols-[minmax(105px,auto)_minmax(0,1fr)_auto] items-center gap-2 px-2.5 py-1.5"
+													>
+														<div className="flex min-w-0 items-center gap-1">
+															<span className="truncate font-mono text-[10px] font-semibold text-slate-700" title={endpoint.capability}>
+																{endpoint.capability}
+															</span>
+															<span
+																className={`shrink-0 rounded px-1 py-0.5 text-[8px] font-medium leading-3 ${
+																	endpoint.source === 'override'
+																		? 'bg-violet-100 text-violet-700'
+																		: 'bg-slate-200 text-slate-600'
+																}`}
+															>
+																{endpoint.source === 'override' ? t('override') : t('derived')}
+															</span>
+														</div>
+														<span className="min-w-0 truncate font-mono text-[9px] text-slate-500" title={endpoint.url}>
+															{endpoint.url}
+														</span>
+														<button
+															type="button"
+															onClick={() => void onCopyEndpoint(endpoint.url, feedbackId)}
+															className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-white hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+															title={
+																copiedId === feedbackId
+																	? tCommon('copied')
+																	: tUpstream('endpointCopyTitle', {
+																			label: endpoint.capability,
+																			url: endpoint.url,
+																		})
+															}
+															aria-label={
+																copiedId === feedbackId
+																	? tCommon('copied')
+																	: tUpstream('endpointCopyTitle', {
+																			label: endpoint.capability,
+																			url: endpoint.url,
+																		})
+															}
+														>
+															{copiedId === feedbackId ? (
+																<CheckIcon className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+															) : (
+																<ClipboardDocumentIcon className="h-3.5 w-3.5" aria-hidden />
+															)}
+														</button>
+													</div>
+												);
+											})}
+										</div>
+									) : null}
 								</div>
 							);
 						})}

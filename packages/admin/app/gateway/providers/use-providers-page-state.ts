@@ -47,8 +47,9 @@ export function useProvidersPageState() {
 			const endpointSearch = getProviderProtocolSummaries(provider)
 				.flatMap((protocol) => [
 					protocol.label,
-					protocol.url,
+					protocol.baseUrl ?? '',
 					...protocol.capabilities,
+					...protocol.endpoints.map((endpoint) => endpoint.url),
 				])
 				.join(' ');
 			return [

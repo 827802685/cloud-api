@@ -28,11 +28,17 @@ export type ProviderImportCatalogRow = {
 export type ProviderProtocolSummary = {
 	key: 'openai' | 'anthropic' | 'gemini';
 	label: string;
-	url: string;
+	baseUrl: string | null;
+	overrideCount: number;
 	/** 与 runtime 一致的已配置 capability（完整 key）。 */
 	capabilities: ProviderEndpointCapability[];
 	/** 卡片紧凑标签（images.* → images）。 */
 	badges: ProviderCapabilityBadge[];
+	endpoints: Array<{
+		capability: ProviderEndpointCapability;
+		url: string;
+		source: 'base' | 'override';
+	}>;
 };
 
 /** 单协议表单：base + Advanced capability 覆盖 */
