@@ -305,7 +305,7 @@
 		"importHint": "使用「导入」预填常见供应商端点。仅 LLM 的模板写入 chat URL（无 Base）；具备完整 OpenAI 能力的保留 Base URL。导入后请打开条目并填写 API Key。",
 		"emptySearch": "没有匹配该名称的供应商",
 		"empty": "未找到供应商",
-		"searchPlaceholder": "搜索供应商名称",
+		"searchPlaceholder": "搜索供应商、ID、端点或能力",
 		"clearSearch": "清除供应商搜索",
 		"card": {
 			"pending": "待填密钥",
@@ -314,6 +314,9 @@
 			"noEndpoint": "未配置端点",
 			"placeholder": "占位",
 			"copyApiKey": "复制 API Key",
+			"apiKey": "API Key",
+			"supportedEndpoints": "支持的端点",
+			"editProvider": "编辑供应商",
 			"providerEnabled": "供应商已启用（取消勾选以禁用）",
 			"providerDisabled": "供应商已禁用（勾选以启用）",
 			"capabilitiesTitle": "{label}: {caps} · {url}",

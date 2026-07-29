@@ -305,7 +305,7 @@
 		"importHint": "가져오기로 일반 공급자 엔드포인트를 채웁니다. LLM 전용 템플릿은 chat URL(Base 없음), 전체 OpenAI 호환은 Base URL을 유지합니다. 행을 열어 API 키를 설정하세요.",
 		"emptySearch": "이 이름과 일치하는 Provider가 없습니다",
 		"empty": "Provider가 없습니다",
-		"searchPlaceholder": "Provider 이름 검색",
+		"searchPlaceholder": "Provider, ID, 엔드포인트 또는 기능 검색",
 		"clearSearch": "Provider 검색 초기화",
 		"card": {
 			"pending": "대기",
@@ -314,6 +314,9 @@
 			"noEndpoint": "엔드포인트 없음",
 			"placeholder": "플레이스홀더",
 			"copyApiKey": "API 키 복사",
+			"apiKey": "API 키",
+			"supportedEndpoints": "지원 엔드포인트",
+			"editProvider": "Provider 편집",
 			"providerEnabled": "공급자 활성(체크 해제 시 비활성)",
 			"providerDisabled": "공급자 비활성(체크 시 활성)",
 			"capabilitiesTitle": "{label}: {caps} · {url}",

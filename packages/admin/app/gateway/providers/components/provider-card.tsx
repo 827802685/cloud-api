@@ -4,6 +4,8 @@ import {
 	CheckIcon,
 	ClipboardDocumentIcon,
 	ExclamationTriangleIcon,
+	PencilSquareIcon,
+	PowerIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { VendorIcon } from '@/components/model-vendor-icon';
@@ -41,117 +43,105 @@ export function ProviderCard(props: ProviderCardProps) {
 	const isActive = provider.status !== 'disabled';
 	const maskedKey = provider.api_key?.trim() || '';
 	const noKey = !maskedKey || maskedKey === '(empty)' || pendingKey;
+	const apiKeyFeedbackId = `provider-api-key:${provider.id}`;
+	const rowAccent = pendingKey
+		? 'border-l-amber-400'
+		: !isActive
+			? 'border-l-slate-300'
+			: noKey
+				? 'border-l-red-400'
+				: 'border-l-emerald-400';
 
 	return (
 		<article
-			role="button"
-			tabIndex={0}
-			onClick={() => onEdit(provider)}
-			onKeyDown={(e) => {
-				if (e.target !== e.currentTarget) return;
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault();
-					onEdit(provider);
-				}
-			}}
-			className={
-				'relative cursor-pointer overflow-hidden rounded-xl border bg-white shadow-md shadow-slate-200/70 ring-1 ring-black/[0.03] transition-all duration-200 ease-out hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-xl hover:shadow-blue-100/80 hover:ring-1 hover:ring-blue-200 focus:outline-none focus-visible:border-blue-400 focus-visible:bg-blue-50/30 focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-blue-500 active:translate-y-0 ' +
-				(pendingKey
-					? 'border-amber-300 ring-amber-100'
-					: !isActive
-						? 'border-slate-300 ring-slate-100'
-						: noKey
-							? 'border-red-300 ring-red-100'
-							: 'border-slate-200')
-			}
+			className={`grid min-w-0 grid-cols-1 gap-3 border-l-2 px-4 py-3 transition-colors hover:bg-slate-50/80 lg:grid-cols-[minmax(210px,0.9fr)_minmax(340px,1.7fr)_minmax(180px,0.72fr)_auto] lg:items-center lg:gap-5 ${rowAccent}`}
 		>
-			<div
-				aria-hidden
-				className={
-					'h-1 w-full ' +
-					(pendingKey
-						? 'bg-amber-300'
-						: !isActive
-							? 'bg-slate-300'
-							: noKey
-								? 'bg-red-300'
-								: 'bg-slate-200')
-				}
-			/>
-			<div className="flex min-h-[5.75rem] flex-col p-3">
-				<div className="min-h-[2.75rem] min-w-0">
-					<div className="flex min-w-0 items-start gap-2">
-						<VendorIcon vendor={provider.vendor_key} iconKey={provider.icon_key} size="compact" />
-						<div className="min-w-0 flex-1">
-							<h2 className="truncate text-base font-semibold leading-6 text-gray-900" title={provider.name}>
-								{provider.name}
-							</h2>
-							<div className="mt-0.5 flex min-w-0 items-center gap-2">
-								<span className="truncate font-mono text-[11px] leading-4 text-gray-500" title={provider.id}>
-									{provider.id}
-								</span>
-							</div>
-						</div>
-						<div className="flex shrink-0 flex-wrap justify-end gap-1">
-							{pendingKey && (
-								<span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">
-									<ExclamationTriangleIcon className="h-3.5 w-3.5" aria-hidden />
-									{t('pending')}
-								</span>
-							)}
-							{!isActive && (
-								<span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
-									{t('disabled')}
-								</span>
-							)}
-							{isActive && noKey && !pendingKey && (
-								<span className="inline-flex items-center gap-1 rounded-md bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-800">
-									<ExclamationTriangleIcon className="h-3.5 w-3.5" aria-hidden />
-									{t('noKey')}
-								</span>
-							)}
-						</div>
+			<div className="flex min-w-0 items-start gap-3">
+				<VendorIcon vendor={provider.vendor_key} iconKey={provider.icon_key} size="compact" />
+				<div className="min-w-0 flex-1">
+					<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+						<h2 className="min-w-0 truncate text-sm font-semibold text-gray-900" title={provider.name}>
+							{provider.name}
+						</h2>
+						<span
+							className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+								isActive
+									? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
+									: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200'
+							}`}
+						>
+							<span
+								aria-hidden
+								className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
+							/>
+							{isActive ? tCommon('active') : t('disabled')}
+						</span>
+						{pendingKey ? (
+							<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
+								<ExclamationTriangleIcon className="h-3 w-3" aria-hidden />
+								{t('pending')}
+							</span>
+						) : null}
+						{isActive && noKey && !pendingKey ? (
+							<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-200">
+								<ExclamationTriangleIcon className="h-3 w-3" aria-hidden />
+								{t('noKey')}
+							</span>
+						) : null}
 					</div>
+					<p className="mt-0.5 truncate font-mono text-[10px] text-gray-500" title={provider.id}>
+						{provider.id}
+					</p>
+					{provider.description ? (
+						<p className="mt-1 line-clamp-2 text-xs leading-4 text-gray-500" title={provider.description}>
+							{provider.description}
+						</p>
+					) : null}
 				</div>
+			</div>
 
-				<div className="mt-2 flex min-h-[2rem] items-start">
-					{protocols.length > 0 ? (
-						<div className="flex w-full flex-wrap items-start gap-2">
-							{protocols.map((protocol) => {
-								const feedbackId = `endpoint:${provider.id}:${protocol.key}`;
-								const badgeLabels = protocol.badges.map((badge) => t(`cap.${badge}`));
-								const capabilitiesTitle =
-									protocol.capabilities.length > 0
-										? t('capabilitiesTitle', {
-												label: protocol.label,
-												caps: protocol.capabilities.join(', '),
-												url: protocol.url,
-											})
-										: tUpstream('endpointCopyTitle', { label: protocol.label, url: protocol.url });
-								return (
-									<div key={protocol.key} className="inline-flex max-w-full items-center gap-1">
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												void onCopyEndpoint(protocol.url, feedbackId);
-											}}
-											className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-											title={capabilitiesTitle}
-										>
-											{copiedId === feedbackId ? (
-												<CheckIcon className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
-											) : (
-												<ProviderProtocolIcon protocol={protocol.key} />
-											)}
-											<span className="sr-only">{protocol.label}</span>
-										</button>
-										{protocol.badges.length > 0 && (
-											<div className="flex min-w-0 flex-wrap gap-0.5" title={capabilitiesTitle}>
+			<div className="min-w-0">
+				<p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 lg:hidden">
+					{t('supportedEndpoints')}
+				</p>
+				{protocols.length > 0 ? (
+					<div className="grid min-w-0 gap-1.5">
+						{protocols.map((protocol) => {
+							const feedbackId = `endpoint:${provider.id}:${protocol.key}`;
+							const badgeLabels = protocol.badges.map((badge) => t(`cap.${badge}`));
+							const capabilitiesTitle =
+								protocol.capabilities.length > 0
+									? t('capabilitiesTitle', {
+											label: protocol.label,
+											caps: protocol.capabilities.join(', '),
+											url: protocol.url,
+										})
+									: tUpstream('endpointCopyTitle', { label: protocol.label, url: protocol.url });
+
+							return (
+								<div
+									key={protocol.key}
+									className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5"
+									title={capabilitiesTitle}
+								>
+									<span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-200">
+										<ProviderProtocolIcon protocol={protocol.key} />
+									</span>
+									<div className="min-w-0 flex-1">
+										<div className="flex min-w-0 items-center gap-2">
+											<span className="shrink-0 text-[11px] font-semibold text-gray-800">
+												{protocol.label}
+											</span>
+											<span className="min-w-0 truncate font-mono text-[10px] text-gray-500">
+												{protocol.url}
+											</span>
+										</div>
+										{protocol.badges.length > 0 ? (
+											<div className="mt-1 flex min-w-0 flex-wrap gap-1">
 												{protocol.badges.map((badge) => (
 													<span
 														key={badge}
-														className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium leading-3 text-slate-600"
+														className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium leading-3 text-blue-700 ring-1 ring-inset ring-blue-100"
 													>
 														{t(`cap.${badge}`)}
 													</span>
@@ -163,64 +153,108 @@ export function ProviderCard(props: ProviderCardProps) {
 													})}
 												</span>
 											</div>
-										)}
+										) : null}
 									</div>
-								);
-							})}
-						</div>
-					) : (
-						<div className="rounded-md border border-dashed border-gray-200 px-2 py-1.5 text-xs text-gray-400">
-							{t('noEndpoint')}
-						</div>
-					)}
-				</div>
+									<button
+										type="button"
+										onClick={() => void onCopyEndpoint(protocol.url, feedbackId)}
+										className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+										title={
+											copiedId === feedbackId
+												? tCommon('copied')
+												: tUpstream('endpointCopyTitle', {
+														label: protocol.label,
+														url: protocol.url,
+													})
+										}
+										aria-label={
+											copiedId === feedbackId
+												? tCommon('copied')
+												: tUpstream('endpointCopyTitle', {
+														label: protocol.label,
+														url: protocol.url,
+													})
+										}
+									>
+										{copiedId === feedbackId ? (
+											<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden />
+										) : (
+											<ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
+										)}
+									</button>
+								</div>
+							);
+						})}
+					</div>
+				) : (
+					<div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-2 text-xs text-gray-400">
+						{t('noEndpoint')}
+					</div>
+				)}
 			</div>
 
-			<div className="border-t border-gray-100 bg-gray-50/70 px-3 py-2" onClick={(e) => e.stopPropagation()}>
-				<div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-					<input
-						type="checkbox"
-						checked={isActive}
-						disabled={statusTogglingId === provider.id}
-						onChange={() => void onToggleStatus(provider)}
-						className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
-						aria-label={isActive ? t('providerEnabled') : t('providerDisabled')}
-					/>
-					<div className="flex min-w-0 items-center gap-1.5">
-						<span
-							className="min-w-0 truncate font-mono text-[11px] leading-4 text-gray-600"
-							title={maskedKey || t('noKey')}
-						>
+			<div className="min-w-0">
+				<p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 lg:hidden">
+					{t('apiKey')}
+				</p>
+				<div
+					className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-2 ${
+						pendingKey
+							? 'border-amber-200 bg-amber-50/60'
+							: noKey
+								? 'border-red-200 bg-red-50/50'
+								: 'border-slate-200 bg-white'
+					}`}
+				>
+					<div className="min-w-0 flex-1">
+						<p className="truncate font-mono text-[11px] text-gray-700" title={maskedKey || t('noKey')}>
 							{maskedKey || t('noKey')}
-						</span>
-						{pendingKey && (
-							<span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900">
-								{t('placeholder')}
-							</span>
-						)}
+						</p>
+						{pendingKey ? (
+							<p className="mt-0.5 text-[10px] text-amber-700">{t('placeholder')}</p>
+						) : null}
 					</div>
 					<button
 						type="button"
 						onClick={() => void onCopyApiKey(provider)}
-						className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-white hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-						title={
-							copiedId === `provider-api-key:${provider.id}`
-								? tCommon('copied')
-								: t('copyApiKey')
-						}
-						aria-label={
-							copiedId === `provider-api-key:${provider.id}`
-								? tCommon('copied')
-								: t('copyApiKey')
-						}
+						disabled={noKey}
+						className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-slate-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-35"
+						title={copiedId === apiKeyFeedbackId ? tCommon('copied') : t('copyApiKey')}
+						aria-label={copiedId === apiKeyFeedbackId ? tCommon('copied') : t('copyApiKey')}
 					>
-						{copiedId === `provider-api-key:${provider.id}` ? (
-							<CheckIcon className="h-4 w-4 text-green-600" aria-hidden />
+						{copiedId === apiKeyFeedbackId ? (
+							<CheckIcon className="h-4 w-4 text-emerald-600" aria-hidden />
 						) : (
 							<ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
 						)}
 					</button>
 				</div>
+			</div>
+
+			<div className="flex items-center justify-end gap-1.5">
+				<button
+					type="button"
+					disabled={statusTogglingId === provider.id}
+					onClick={() => void onToggleStatus(provider)}
+					className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset transition focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
+						isActive
+							? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
+							: 'bg-slate-100 text-slate-500 ring-slate-200 hover:bg-slate-200'
+					}`}
+					title={isActive ? t('providerEnabled') : t('providerDisabled')}
+					aria-label={isActive ? t('providerEnabled') : t('providerDisabled')}
+				>
+					<PowerIcon className="h-4 w-4" aria-hidden />
+				</button>
+				<button
+					type="button"
+					onClick={() => onEdit(provider)}
+					className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+					title={t('editProvider')}
+					aria-label={t('editProvider')}
+				>
+					<PencilSquareIcon className="h-4 w-4" aria-hidden />
+				</button>
 			</div>
 		</article>
 	);

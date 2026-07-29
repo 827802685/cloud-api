@@ -10,7 +10,11 @@ import {
 	saveProvider,
 	toggleProviderStatus,
 } from './provider-api';
-import { providerToFormData, suggestDuplicateProviderId } from './provider-utils';
+import {
+	getProviderProtocolSummaries,
+	providerToFormData,
+	suggestDuplicateProviderId,
+} from './provider-utils';
 import type { GatewayProvider, ProviderFormData, ProviderImportCatalogRow } from './types';
 import { EMPTY_PROTOCOL_FORM, EMPTY_PROVIDER_FORM } from './types';
 
@@ -39,7 +43,25 @@ export function useProvidersPageState() {
 	const filteredProviders = useMemo(() => {
 		const query = providerSearch.trim().toLowerCase();
 		if (!query) return providers;
-		return providers.filter((provider) => provider.name.toLowerCase().includes(query));
+		return providers.filter((provider) => {
+			const endpointSearch = getProviderProtocolSummaries(provider)
+				.flatMap((protocol) => [
+					protocol.label,
+					protocol.url,
+					...protocol.capabilities,
+				])
+				.join(' ');
+			return [
+				provider.name,
+				provider.id,
+				provider.description ?? '',
+				provider.status ?? '',
+				endpointSearch,
+			]
+				.join(' ')
+				.toLowerCase()
+				.includes(query);
+		});
 	}, [providerSearch, providers]);
 	const importSelectedCount = useMemo(
 		() => Object.values(importSelected).filter(Boolean).length,

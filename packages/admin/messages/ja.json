@@ -305,7 +305,7 @@
 		"importHint": "「インポート」で一般的なプロバイダーエンドポイントを投入できます。LLM 専用テンプレートは chat URL（Base なし）、完全な OpenAI 対応は Base URL を保持します。行を開き API キーを設定してください。",
 		"emptySearch": "この名前に一致する Provider はありません",
 		"empty": "Provider が見つかりません",
-		"searchPlaceholder": "Provider 名を検索",
+		"searchPlaceholder": "Provider、ID、エンドポイント、機能を検索",
 		"clearSearch": "Provider 検索をクリア",
 		"card": {
 			"pending": "未設定",
@@ -314,6 +314,9 @@
 			"noEndpoint": "エンドポイント未設定",
 			"placeholder": "プレースホルダ",
 			"copyApiKey": "API キーをコピー",
+			"apiKey": "API キー",
+			"supportedEndpoints": "対応エンドポイント",
+			"editProvider": "Provider を編集",
 			"providerEnabled": "プロバイダー有効（チェックを外すと無効）",
 			"providerDisabled": "プロバイダー無効（チェックで有効）",
 			"capabilitiesTitle": "{label}: {caps} · {url}",
