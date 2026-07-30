@@ -2,6 +2,7 @@
  * Shared helpers for Cloudflare bootstrap / instance deploy CLIs.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -15,8 +16,55 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = join(__dirname, "../..");
 export const CF_WORKER_DIR = join(REPO_ROOT, "cloudflare-worker");
-const NPM_COMMAND = platform === "win32" ? "npm.cmd" : "npm";
-const NPX_COMMAND = platform === "win32" ? "npx.cmd" : "npx";
+const require = createRequire(import.meta.url);
+const WRANGLER_CLI = require.resolve("wrangler");
+
+/**
+ * Run npm without directly spawning npm.cmd on Windows. npm_execpath is set
+ * when these deploy scripts are launched through npm run. The cmd.exe fallback
+ * keeps the documented direct `node scripts/deploy/*.mjs` entry points working.
+ *
+ * @param {string[]} args
+ * @param {import("node:child_process").SpawnSyncOptions} options
+ */
+function spawnNpm(args, options) {
+	const npmExecPath = process.env.npm_execpath;
+	if (npmExecPath && existsSync(npmExecPath)) {
+		return spawnSync(process.execPath, [npmExecPath, ...args], options);
+	}
+	if (platform === "win32") {
+		return spawnSync(
+			process.env.ComSpec || "cmd.exe",
+			["/d", "/s", "/c", "npm.cmd", ...args],
+			options,
+		);
+	}
+	return spawnSync("npm", args, options);
+}
+
+/**
+ * @param {ReturnType<typeof spawnSync>} result
+ * @param {string} command
+ */
+function commandFailure(result, command) {
+	const details = [];
+	if (result.error) {
+		const code =
+			"code" in result.error && result.error.code
+				? `${result.error.code}: `
+				: "";
+		details.push(`${code}${result.error.message}`);
+	}
+	const output = (result.stderr || result.stdout || "").toString().trim();
+	if (output) {
+		details.push(output);
+	}
+	const status =
+		result.status === null ? "could not start" : `exit ${result.status}`;
+	return new Error(
+		`${command} failed (${status})${details.length ? `\n${details.join("\n")}` : ""}`,
+	);
+}
 
 export function log(msg) {
 	console.log(`[cf-deploy] ${msg}`);
@@ -65,13 +113,13 @@ export function runNpmWithEnv(vars, extraArgs) {
 	const env = { ...process.env, ...vars };
 	const args = ["npm", "run", ...extraArgs];
 	log(`>>> ${args.join(" ")}`);
-	const result = spawnSync(NPM_COMMAND, args.slice(1), {
+	const result = spawnNpm(args.slice(1), {
 		cwd: REPO_ROOT,
 		env,
 		stdio: "inherit",
 	});
 	if ((result.status ?? 1) !== 0) {
-		throw new Error(`command failed (${result.status}): ${args.join(" ")}`);
+		throw commandFailure(result, args.join(" "));
 	}
 }
 
@@ -87,21 +135,22 @@ export function runWrangler(wranglerArgs, opts = {}) {
 			? ["pipe", "inherit", "inherit"]
 			: "inherit";
 	log(`>>> npx wrangler ${wranglerArgs.join(" ")}`);
-	const result = spawnSync(NPX_COMMAND, ["wrangler", ...wranglerArgs], {
-		cwd: REPO_ROOT,
-		env,
-		stdio,
-		input: opts.input,
-		encoding: opts.capture ? "utf8" : undefined,
-	});
+	const result = spawnSync(
+		process.execPath,
+		["--no-warnings", WRANGLER_CLI, ...wranglerArgs],
+		{
+			cwd: REPO_ROOT,
+			env,
+			stdio,
+			input: opts.input,
+			encoding: opts.capture ? "utf8" : undefined,
+		},
+	);
 	if ((result.status ?? 1) !== 0) {
-		if (opts.capture) {
-			const err = (result.stderr || result.stdout || "").toString().trim();
-			throw new Error(
-				`wrangler failed (${result.status}): ${wranglerArgs.join(" ")}${err ? `\n${err}` : ""}`,
-			);
-		}
-		throw new Error(`wrangler failed (${result.status}): ${wranglerArgs.join(" ")}`);
+		throw commandFailure(
+			result,
+			`npx wrangler ${wranglerArgs.join(" ")}`,
+		);
 	}
 	if (opts.capture) {
 		return {
@@ -115,8 +164,10 @@ export function runWrangler(wranglerArgs, opts = {}) {
 export function assertWranglerLoggedIn() {
 	try {
 		runWrangler(["whoami"], { capture: true });
-	} catch {
-		logError("Not logged in to Cloudflare. Run: npx wrangler login");
+	} catch (err) {
+		logError("Cloudflare authentication check failed.");
+		logError(err instanceof Error ? err.message : String(err));
+		logError("If Wrangler is not logged in, run: npx wrangler login");
 		process.exit(1);
 	}
 	log("Cloudflare auth OK (wrangler whoami)");
@@ -277,50 +328,44 @@ export function putAdminPasswordSecret(adminWorkerName, password) {
  * @param {Record<string, string>} vars
  */
 export function fetchRemoteMasterKey(vars) {
-	const env = { ...process.env, ...vars };
-	// Ensure generated config matches instance
-	const gen = spawnSync(
-		NPM_COMMAND,
-		["run", "gen:wrangler", "--", "--remote"],
-		{ cwd: REPO_ROOT, env, stdio: "pipe", encoding: "utf8" },
-	);
-	if ((gen.status ?? 1) !== 0) {
-		return null;
-	}
-	const result = spawnSync(
-		NPX_COMMAND,
-		[
-			"wrangler",
-			"d1",
-			"execute",
-			vars.D1_DATABASE_NAME,
-			"--remote",
-			"--config",
-			"./packages/core/wrangler.d1.jsonc",
-			"--json",
-			"--command",
-			"SELECT value FROM system_config WHERE key = 'MASTER_KEY' LIMIT 1",
-		],
-		{ cwd: REPO_ROOT, env, stdio: "pipe", encoding: "utf8" },
-	);
-	if ((result.status ?? 1) !== 0) {
-		return null;
-	}
-	const out = (result.stdout || "").trim();
 	try {
-		const parsed = JSON.parse(out);
-		const results = Array.isArray(parsed) ? parsed : [parsed];
-		for (const block of results) {
-			const rows = block?.results || block?.result?.[0]?.results;
-			if (Array.isArray(rows) && rows[0]?.value) {
-				return String(rows[0].value);
+		runNpmWithEnv(vars, ["gen:wrangler", "--", "--remote"]);
+	} catch {
+		return null;
+	}
+	try {
+		const { stdout } = runWrangler(
+			[
+				"d1",
+				"execute",
+				vars.D1_DATABASE_NAME,
+				"--remote",
+				"--config",
+				"./packages/core/wrangler.d1.jsonc",
+				"--json",
+				"--command",
+				"SELECT value FROM system_config WHERE key = 'MASTER_KEY' LIMIT 1",
+			],
+			{ env: vars, capture: true },
+		);
+		const out = stdout.trim();
+		try {
+			const parsed = JSON.parse(out);
+			const results = Array.isArray(parsed) ? parsed : [parsed];
+			for (const block of results) {
+				const rows = block?.results || block?.result?.[0]?.results;
+				if (Array.isArray(rows) && rows[0]?.value) {
+					return String(rows[0].value);
+				}
+			}
+		} catch {
+			const m = out.match(/sk-[^\s"']+/);
+			if (m) {
+				return m[0];
 			}
 		}
 	} catch {
-		const m = out.match(/sk-[^\s"']+/);
-		if (m) {
-			return m[0];
-		}
+		return null;
 	}
 	return null;
 }
