@@ -17,6 +17,7 @@ function route(overrides: Partial<RouteResult> = {}): RouteResult {
 		customParams: null,
 		routeGroup: 'default',
 		routePriority: 0,
+		routeWeight: 1,
 		providerKeyId: 'key-a',
 		providerKeyLabel: 'primary',
 		providerKeyFingerprint: 'fp-a',

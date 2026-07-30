@@ -72,6 +72,32 @@ describe('simulator-utils', () => {
 		);
 	});
 
+	it('filterMatchingActiveRoutes resolves exact and migrated wildcard surfaces', () => {
+		const makeRoute = (id: string, operation: string): RouteListRow => ({
+			id,
+			model_id: 'm1',
+			provider_id: id,
+			priority: 1,
+			status: 'active',
+			route_group: 'default',
+			surfaces: JSON.stringify([
+				{
+					request_protocol: 'openai',
+					request_operation: operation,
+					status: 'active',
+				},
+			]),
+		});
+		const matched = filterMatchingActiveRoutes(
+			[makeRoute('chat', 'chat'), makeRoute('responses', 'responses'), makeRoute('legacy', '*')],
+			'm1',
+			'default',
+			'openai',
+			'chat'
+		);
+		assert.deepEqual(matched.map((route) => route.id), ['chat', 'legacy']);
+	});
+
 	it('redactAuthHeader masks sk keys', () => {
 		assert.match(redactAuthHeader('Bearer sk-abcdefghijklmnop1234'), /^Bearer sk-abcdefghi…1234$/);
 	});

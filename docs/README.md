@@ -36,6 +36,8 @@
 | Docker / PG / MySQL 自托管 | [operators/deployment/docker.md](./operators/deployment/docker.md) |
 | 下游集成 env | [developers/integration.md](./developers/integration.md) |
 | 文生图模型（gpt-image-2 / Seedream） | [developers/reference/image-models.md](./developers/reference/image-models.md) |
+| 路由策略（affinity / weighted_random / …） | [developers/reference/route-strategies.md](./developers/reference/route-strategies.md) |
+| 单键 Provider 迁移（0015） | [operators/migrations/single-provider-key-cutover.md](./operators/migrations/single-provider-key-cutover.md) |
 | 文档规范 | [CONVENTIONS.md](./CONVENTIONS.md) |
 
 ## 文档规范

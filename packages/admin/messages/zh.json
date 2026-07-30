@@ -302,30 +302,31 @@
 	"providers": {
 		"title": "供应商",
 		"subtitle": "{product} 使用的上游 AI 供应商端点",
-		"importHint": "使用「导入」可预填常见供应商端点。仅 LLM 的模板写入 chat URL（非 Base）；具备 Images 的保留 Base URL。导入后请打开行并添加 API Key。",
+		"importHint": "使用「导入」预填常见供应商端点。仅 LLM 的模板写入 chat URL（无 Base）；具备完整 OpenAI 能力的保留 Base URL。导入后请打开条目并填写 API Key。",
 		"emptySearch": "没有匹配该名称的供应商",
 		"empty": "未找到供应商",
-		"searchPlaceholder": "搜索供应商名称",
+		"searchPlaceholder": "搜索供应商、ID、端点或能力",
 		"clearSearch": "清除供应商搜索",
-		"expandKeys": "展开 Keys",
-		"collapseKeys": "收起 Keys",
-		"loadingKeys": "加载 Keys 中…",
 		"card": {
-			"pending": "待处理",
-			"noKey": "无 Key",
+			"pending": "待填密钥",
+			"noKey": "无密钥",
+			"disabled": "已禁用",
 			"noEndpoint": "未配置端点",
-			"keysActive": "Keys · {count} 个活跃",
-			"keysTotal": "共 {count} 个",
-			"keysInactive": "· {count} 个未启用",
-			"addKeyFor": "为 {name} 添加 Key",
-			"noKeysConfigured": "未配置 Key。",
-			"placeholder": "placeholder",
-			"copyKey": "复制 {label}",
-			"copiedKey": "已复制 {label}",
-			"keyEnabled": "Key {label} 已启用（取消勾选以禁用）",
-			"keyDisabled": "Key {label} 已禁用（勾选以启用）",
-			"capabilitiesTitle": "{label}：{caps} · {url}",
-			"capabilitiesSr": "{label} 能力：{caps}",
+			"placeholder": "占位",
+			"copyApiKey": "复制 API Key",
+			"apiKey": "API Key",
+			"supportedEndpoints": "支持的端点",
+			"editProvider": "编辑供应商",
+			"baseWithOverrides": "公共 Base + {count} 个覆盖",
+			"endpointCount": "{count} 个独立端点",
+			"showEndpointDetails": "展开端点详情",
+			"hideEndpointDetails": "收起端点详情",
+			"derived": "派生",
+			"override": "覆盖",
+			"providerEnabled": "供应商已启用（取消勾选以禁用）",
+			"providerDisabled": "供应商已禁用（勾选以启用）",
+			"capabilitiesTitle": "{label}: {caps} · {url}",
+			"capabilitiesSr": "{label} 能力: {caps}",
 			"cap": {
 				"chat": "chat",
 				"images": "images",
@@ -386,26 +387,15 @@
 			"description": "描述",
 			"descriptionHint": "仅供内部参考；不会发送到上游。",
 			"descriptionPlaceholder": "可选的内部描述",
-			"deleteProvider": "删除供应商"
-		},
-		"keys": {
-			"editTitle": "编辑供应商 Key",
-			"newTitle": "新建供应商 Key",
-			"label": "名称",
-			"labelMaxLength": "最多 {max} 个字符",
-			"replaceApiKey": "替换 API Key",
-			"apiKey": "API Key",
-			"leaveBlank": "留空以保留当前 Key",
+			"deleteProvider": "删除供应商",
+			"apiKeyRequired": "API Key *",
+			"apiKeyOptional": "API Key",
 			"apiKeyPlaceholder": "sk-…",
-			"priority": "优先级",
-			"weight": "权重",
-			"rpmLimit": "RPM 限制",
-			"tpmLimit": "TPM 限制",
-			"concurrency": "并发数",
-			"unlimited": "无限制",
-			"deleteKey": "删除 Key",
-			"saveKey": "保存 Key",
-			"createKey": "创建 Key"
+			"apiKeyEditPlaceholder": "留空则保持原密钥",
+			"apiKeyHint": "该供应商的上游凭证。",
+			"apiKeyEditHint": "留空保持当前密钥；填写新值则替换。",
+			"statusEnabled": "启用供应商",
+			"statusHint": "禁用后不会参与路由与 Playground。"
 		}
 	},
 	"models": {
@@ -560,6 +550,50 @@
 			"allModelsRoutes": "全部模型与路由",
 			"newRoute": "新建路由"
 		},
+		"flow": {
+			"overviewTitle": "请求处理流程",
+			"overviewHint": "从左到右查看每个模型的完整流转，可配置项显示在实际生效的环节中。",
+			"step": "步骤 {number}",
+			"requestStep": "客户端请求",
+			"lookupStep": "匹配模型",
+			"policyStep": "策略与故障转移",
+			"providerStep": "上游供应商",
+			"requestNode": "请求入口",
+			"modelGroupResolved": "按模型 ID 与路由组匹配",
+			"routeGroup": "路由组",
+			"routeMatchAria": "路由组 {group}，请求传入 model={model}",
+			"policyNode": "策略",
+			"strategyValue": "策略：{strategy}",
+			"strategyInherit": "策略：继承",
+			"inheritShort": "继承",
+			"effectiveStrategy": "实际生效策略",
+			"strategySource": {
+				"pool": "当前路由池",
+				"modelOperation": "继承自模型端点规则",
+				"modelProtocol": "继承自模型协议规则",
+				"model": "继承自模型默认",
+				"global": "继承自全局配置",
+				"default": "继承自系统默认"
+			},
+			"priorityHint": "优先级越高越先尝试；点击可编辑策略。",
+			"targetsNode": "上游目标",
+			"targetCount": "{count} 个目标",
+			"addToPool": "添加目标",
+			"addProvider": "添加供应商",
+			"enabledShort": "已启用",
+			"disabledShort": "未启用",
+			"addRoute": "添加路由",
+			"firstAttempt": "首选层",
+			"fallback": "失败后继续",
+			"fallbackLayer": "回退层",
+			"weight": "权重 {value}",
+			"chargedShort": "计费",
+			"meteredShort": "成本",
+			"scheduled": "时段",
+			"defaults": "默认参数",
+			"providerDisabled": "供应商停用",
+			"editRoute": "编辑此路由"
+		},
 		"vendor": {
 			"label": "模型厂商",
 			"modelCount": "{count} 个模型",
@@ -584,11 +618,11 @@
 			"clickToAdd": "点击 + 添加第一条路由"
 		},
 		"protocol": {
-			"sectionTitle": "upstream_protocol：{protocol} · route_group：{group}",
-			"stickyOn": "粘性 Key 路由已开启 · 空闲 TTL {ttl}s · 短等待 {wait}ms（点击配置）",
-			"stickyOff": "粘性 Key 路由已关闭（点击配置）",
-			"stickyLabel": "粘性 {ttl}s",
-			"stickyOffLabel": "粘性已关闭"
+			"sectionTitle": "upstream_protocol: {protocol} · route_group: {group}",
+			"strategyOn": "路由策略：{strategy}（点击配置）",
+			"strategyInherit": "路由策略：继承（点击配置）",
+			"strategyLabel": "{strategy}",
+			"strategyInheritLabel": "继承"
 		},
 		"listItem": {
 			"routeEnabled": "路由已启用（取消勾选以禁用）",
@@ -602,15 +636,6 @@
 			"chargedTooltip": "计费系数：{value} · 相对目录价格的客户计费乘数",
 			"meteredTooltip": "计量系数：{value} · 相对目录价格的供应商成本乘数"
 		},
-		"sticky": {
-			"title": "粘性 Key 路由",
-			"enable": "启用粘性 Key 路由",
-			"enableHint": "将每个用户绑定到该协议 × 组的一个供应商 Key，以最大化上游 prompt-cache 命中率。绑定在空闲 TTL 后释放。",
-			"idleTtl": "空闲 TTL（秒）",
-			"shortWait": "短等待（毫秒）",
-			"defaultPlaceholder": "默认 {value}",
-			"shortWaitHint": "短等待：若绑定的 Key 短暂触发速率限制且预计在此窗口内恢复，Gateway 将等待而非切换 Key（保留缓存）。"
-		},
 		"modal": {
 			"editTitle": "编辑路由",
 			"newTitle": "新建路由",
@@ -620,9 +645,15 @@
 			"selectModel": "选择模型",
 			"providerRequired": "供应商 *",
 			"selectProvider": "选择供应商",
+			"requestProtocol": "对外协议",
+			"requestOperation": "对外端点",
 			"upstreamProtocol": "上游协议",
-			"protocolHintConfigured": "仅显示该供应商已配置基础 URL 的协议。",
+			"upstreamOperation": "上游能力",
+			"passthroughHint": "当前版本仅支持透传，对外协议与上游协议需保持一致。",
+			"protocolHintConfigured": "仅显示该供应商已配置且适用于当前模型的协议。",
 			"protocolHintSelectProvider": "请先选择供应商。",
+			"upstreamOperationHintConfigured": "仅显示可由供应商端点配置处理且适用于当前模型的能力。",
+			"currentLegacyValue": "当前历史值",
 			"providerModelName": "供应商模型名称 *",
 			"providerModelPlaceholder": "例如 gpt-4o-2024-11-20",
 			"routeGroup": "路由组",
@@ -676,9 +707,75 @@
 			"standardCatalogHintAudio": "该 ASR 模型的目录音频单价（只读）。",
 			"noCatalogAudioPricing": "该模型未配置音频定价。",
 			"audioPricePerSecond": "每秒价格",
-			"audioMinimumSeconds": "最低秒数"
+			"audioMinimumSeconds": "最低秒数",
+			"weight": "权重",
+			"weightHint": "同 priority 层内权重（≥ 1）。加权策略下数值越大流量越多。"
 		},
-		"kindAudio": "音频"
+		"kindAudio": "音频",
+		"strategy": {
+			"title": "路由策略",
+			"protocolLevel": "当前路由池策略",
+			"protocolLevelHint": "留空会沿继承链查找模型端点、模型协议、模型默认、全局配置，最后回退到系统默认。",
+			"capabilityLevel": "能力覆盖",
+			"capabilityHint": "空 = 继承协议级策略。",
+			"inherit": "继承",
+			"inheritedResult": "当前实际继承",
+			"effective": "当前效果",
+			"guideTitle": "策略说明",
+			"guideHint": "点击策略卡片即可选择；保存前可在下方预览当前 Target 的处理方式。",
+			"bestFor": "适合",
+			"tradeoff": "取舍",
+			"source": {
+				"pool": "当前路由池",
+				"modelOperation": "模型端点规则",
+				"modelProtocol": "模型协议规则",
+				"model": "模型默认",
+				"global": "全局配置",
+				"default": "系统默认"
+			},
+			"affinity": "affinity",
+			"weighted_random": "weighted_random",
+			"strict": "strict",
+			"round_robin": "round_robin",
+			"description": {
+				"affinity": {
+					"summary": "按用户与模型生成稳定偏好，同一类请求通常命中同一 Provider；权重影响整体分布。",
+					"bestFor": "Prompt Cache、会话连续性",
+					"tradeoff": "短时间流量不一定完全均匀"
+				},
+				"weighted_random": {
+					"summary": "每次请求按权重随机选择，并为失败后的重试生成无重复候选顺序。",
+					"bestFor": "按比例分流、A/B 或成本分配",
+					"tradeoff": "同一用户可能频繁切换 Provider"
+				},
+				"strict": {
+					"summary": "同优先级内按权重从高到低固定排序，权重相同时按 Provider ID 排序。",
+					"bestFor": "明确主备、结果可预测",
+					"tradeoff": "首选 Provider 会承担大部分流量"
+				},
+				"round_robin": {
+					"summary": "按权重展开轮询序列，让请求依次落到不同 Provider。",
+					"bestFor": "均匀轮转、容量分摊",
+					"tradeoff": "计数器按运行实例维护，并非跨实例全局同步"
+				}
+			},
+			"effectTitle": "策略效果预览",
+			"effectHint": "基于当前启用的 Target 解释选择顺序，不会发送真实请求。",
+			"effect": {
+				"affinity": "同一用户、模型、分组和协议会得到稳定的首选 Target；失败时继续尝试该层其余 Target。",
+				"weighted_random": "每次请求按权重随机决定首选 Target；百分比是该优先级内首次命中的近似占比。",
+				"strict": "数字表示同优先级内的固定尝试顺序：权重越高越靠前。",
+				"round_robin": "同优先级内按权重轮流成为首选 Target；实际起点随当前运行实例的计数器变化。"
+			},
+			"priorityFirst": "Priority 始终先于策略：只有最高优先级全部失败后，才进入下一回退层。",
+			"runtimeHealthHint": "实际请求还会先排除熔断中的 Provider，因此运行时顺序可能随健康状态变化。",
+			"singleTargetEffect": "当前有 {count} 个可用 Target；少于 2 个时，各策略的首选结果相同。",
+			"firstAttemptLayer": "首选层",
+			"fallbackLayer": "回退层",
+			"inactiveExcluded": "停用的 Route 或 Provider 已从预览中排除。",
+			"hintCache": "非 affinity 可能降低 prompt cache 命中率。",
+			"hintNoCache": "上游无 prompt cache；建议 weighted_random 或 round_robin。"
+		}
 	},
 	"playground": {
 		"title": "调试台",
@@ -1025,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway 模型名称、协议与路由组",
 			"route": "供应商、上游模型与供应商 Key",
-			"cost": "标准价（第 1 行）、计费相对标准价倍率（第 2 行）、计量相对标准价倍率（第 3 行）",
+			"cost": "计费（C）与供应成本（M）；标准目录价可在详情中查看",
 			"profit": "计费 − 计量（单请求）",
 			"rowDetail": "点击显示或隐藏定价审计、请求体与用量报文",
 			"inputOutputTokens": "输入 / 输出 Token",
@@ -1044,7 +1141,16 @@
 			"pricingAudit": "定价审计",
 			"entryRequestBody": "入口请求体（已脱敏）",
 			"upstreamRequestBody": "上游请求体（已脱敏）",
-			"upstreamUsageRaw": "上游用量（原始）"
+			"upstreamUsageRaw": "上游用量（原始）",
+			"requestId": "请求 ID",
+			"identity": "用户 · API Key",
+			"modelId": "模型 ID",
+			"routeGroup": "路由组",
+			"providerRoute": "供应商 · 上游模型",
+			"protocolMapping": "协议映射",
+			"providerKey": "供应商 Key",
+			"routeTarget": "路由目标",
+			"error": "错误信息"
 		},
 		"timing": {
 			"helpTitle": "Timing 指标",
@@ -1254,8 +1360,15 @@
 			"useMasterKeySection": "请使用「Admin API Master key」区块配置 MASTER_KEY。",
 			"useWebhooksSection": "请使用「Proxy 错误 Webhook」区块配置 ALERT_WEBHOOK_WECOM_URL / ALERT_WEBHOOK_FEISHU_URL。",
 			"useToolsSection": "请使用 Tools → 配置 管理 WEB_*_ACTIVE / WEB_*_CATALOG（按引擎维护 API Key 与单价）。",
-			"invalidIanaTimezone": "无效的 IANA 时区（例如 Asia/Shanghai、America/New_York）"
-		}
+			"invalidIanaTimezone": "无效的 IANA 时区（例如 Asia/Shanghai、America/New_York）",
+			"useRouteStrategySection": "请使用「全局路由策略」区块配置 ROUTE_STRATEGY。"
+		},
+		"routeStrategy": {
+			"title": "全局路由策略",
+			"description": "模型未配置 route_policy 时的默认策略（system_config.ROUTE_STRATEGY）。",
+			"strategy": "策略"
+		},
+		"saveRouteStrategy": "保存路由策略"
 	},
 	"tools": {
 		"catalog": {

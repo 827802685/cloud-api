@@ -11,7 +11,7 @@
 		"build": "npm run build:migrate && npm run build:node-index",
 		"build:migrate": "tsc -p tsconfig.build.migrate.json",
 		"build:node-index": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --packages=external --log-level=warning",
-		"test:unit": "tsx --test src/db/image-token-usage.test.ts src/db/audio-token-usage.test.ts src/db/image-per-image-usage.test.ts src/db/pricing-profile.test.ts src/db/pricing-schedule.test.ts src/db/model-modalities.test.ts src/lib/business-timezone.test.ts src/services/budget-transition-service.test.ts src/upstream-protocol-images-url.test.ts src/provider-endpoints.test.ts"
+		"test:unit": "tsx --test src/db/image-token-usage.test.ts src/db/audio-token-usage.test.ts src/db/image-per-image-usage.test.ts src/db/pricing-profile.test.ts src/db/pricing-schedule.test.ts src/db/model-modalities.test.ts src/db/model-route-policy.test.ts src/lib/business-timezone.test.ts src/services/budget-transition-service.test.ts src/upstream-protocol-images-url.test.ts src/provider-endpoints.test.ts src/route-topology.test.ts"
 	},
 	"files": [
 		"dist",
@@ -32,8 +32,8 @@
 		"./db/audio-token-usage": "./src/db/audio-token-usage.ts",
 		"./db/pricing-schedule": "./src/db/pricing-schedule.ts",
 		"./db/model-modalities": "./src/db/model-modalities.ts",
-		"./db/model-sticky-config": "./src/db/model-sticky-config.ts",
-		"./db/provider-key-limit-config": "./src/db/provider-key-limit-config.ts",
+		"./db/model-route-policy": "./src/db/model-route-policy.ts",
+		"./db/provider-key-utils": "./src/db/provider-key-utils.ts",
 		"./db/request-log-status-filter": "./src/db/request-log-status-filter.ts",
 		"./db/user-audit-catalog": "./src/db/user-audit-catalog.ts",
 		"./db/user-budget-audit-params": "./src/db/user-budget-audit-params.ts",
@@ -49,6 +49,7 @@
 		"./lib/web-search-system-config": "./src/lib/web-search-system-config.ts",
 		"./lib/web-fetch-system-config": "./src/lib/web-fetch-system-config.ts",
 		"./lib/web-deep-search-system-config": "./src/lib/web-deep-search-system-config.ts",
+		"./lib/route-strategy-system-config": "./src/lib/route-strategy-system-config.ts",
 		"./lib/money-precision": "./src/lib/money-precision.ts",
 		"./lib/string-utils": "./src/lib/string-utils.ts",
 		"./lib/time-format": "./src/lib/time-format.ts",
@@ -61,6 +62,7 @@
 		"./storage/context": "./src/storage/context.ts",
 		"./upstream-protocol": "./src/upstream-protocol.ts",
 		"./provider-endpoints": "./src/provider-endpoints.ts",
+		"./route-topology": "./src/route-topology.ts",
 		"./gemini-upstream-url": "./src/gemini-upstream-url.ts"
 	},
 	"dependencies": {

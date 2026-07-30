@@ -6,10 +6,6 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
-import {
-	parseModelStickyConfig,
-	stickyRuleKey,
-} from '@octafuse/core/db/model-sticky-config';
 import { useBusinessTimezone } from '@/components/BusinessTimezoneProvider';
 import { getCatalogAudioPricingDisplay, isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
@@ -33,7 +29,8 @@ import { useModelEditModal } from '../models/use-model-edit-modal';
 import {
 	deleteRoute,
 	fetchRoutesPageData,
-	patchModelStickyConfig,
+	patchModelRoutePolicy,
+	patchRoutePoolStrategy,
 	saveRoute,
 	toggleRouteStatus,
 } from './route-api';
@@ -41,18 +38,21 @@ import {
 	buildActiveFilterSummary,
 	buildFormDataFromRoute,
 	buildRouteCardVendorGroups,
+	buildRoutePolicyPatch,
 	buildRoutesByModel,
-	buildStickyConfigPatch,
 	buildVendorFilterOptions,
 	createInitialRouteForm,
+	readRoutePolicyFormFromRaw,
+	resolveEffectiveRouteStrategy,
 	sortRouteCards,
+	upstreamOperationsForProviderModel,
 } from './route-utils';
 import {
 	EMPTY_ROUTE_FORM,
 	type RouteFormData,
 	type RouteListRow,
-	type StickyDialogState,
-	type StickyFormState,
+	type RoutePolicyDialogState,
+	type RoutePolicyFormState,
 } from './types';
 
 export function useRoutesPageState() {
@@ -60,6 +60,7 @@ export function useRoutesPageState() {
 	const [routes, setRoutes] = useState<RouteListRow[]>([]);
 	const [models, setModels] = useState<GatewayModel[]>([]);
 	const [providers, setProviders] = useState<GatewayProvider[]>([]);
+	const [globalRouteStrategy, setGlobalRouteStrategy] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [showModal, setShowModal] = useState(false);
 	const [editingRoute, setEditingRoute] = useState<RouteListRow | null>(null);
@@ -75,14 +76,13 @@ export function useRoutesPageState() {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [togglingId, setTogglingId] = useState<string | null>(null);
 	const [copiedModelId, setCopiedModelId] = useState<string | null>(null);
-	const [stickyDialog, setStickyDialog] = useState<StickyDialogState | null>(null);
-	const [stickyForm, setStickyForm] = useState<StickyFormState>({
-		enabled: false,
-		ttl_seconds: '',
-		short_wait_ms: '',
+	const [strategyDialog, setStrategyDialog] = useState<RoutePolicyDialogState | null>(null);
+	const [strategyForm, setStrategyForm] = useState<RoutePolicyFormState>({
+		protocolStrategy: '',
+		capabilityStrategies: {},
 	});
-	const [stickySaving, setStickySaving] = useState(false);
-	const [stickyError, setStickyError] = useState('');
+	const [strategySaving, setStrategySaving] = useState(false);
+	const [strategyError, setStrategyError] = useState('');
 	const { currency: billingCurrency } = useBillingCurrency();
 	const businessTimezone = useBusinessTimezone();
 
@@ -115,6 +115,7 @@ export function useRoutesPageState() {
 			setRoutes(data.routes);
 			setModels(data.models);
 			setProviders(data.providers);
+			setGlobalRouteStrategy(data.globalRouteStrategy);
 		} catch (error) {
 			console.error('Fetch data error:', error);
 		} finally {
@@ -135,6 +136,12 @@ export function useRoutesPageState() {
 		}
 		return map;
 	}, [models]);
+
+	const providerMeta = useMemo(() => {
+		const map = new Map<string, GatewayProvider>();
+		for (const provider of providers) map.set(provider.id, provider);
+		return map;
+	}, [providers]);
 
 	const distinctRouteGroups = useMemo(() => {
 		const set = new Set<string>();
@@ -292,22 +299,40 @@ export function useRoutesPageState() {
 
 	const allowedProtocolsForProvider = useMemo((): UpstreamProtocol[] => {
 		if (!selectedProvider) return [];
-		const supported = UPSTREAM_PROTOCOLS.filter((proto) =>
-			providerSupportsUpstreamProtocol(proto, selectedProvider)
+		const supported = UPSTREAM_PROTOCOLS.filter(
+			(proto) =>
+				providerSupportsUpstreamProtocol(proto, selectedProvider) &&
+				upstreamOperationsForProviderModel(selectedProvider, selectedModel, proto).length > 0
 		);
 		if (lockOpenaiProtocol) {
 			return supported.includes('openai') ? ['openai'] : [];
 		}
 		return supported;
-	}, [selectedProvider, lockOpenaiProtocol]);
+	}, [selectedProvider, selectedModel, lockOpenaiProtocol]);
 
 	useEffect(() => {
 		if (!showModal || !selectedProvider || allowedProtocolsForProvider.length === 0) return;
 		setFormData((fd) => {
 			if (allowedProtocolsForProvider.includes(fd.upstream_protocol)) return fd;
-			return { ...fd, upstream_protocol: allowedProtocolsForProvider[0]! };
+			const upstreamProtocol = allowedProtocolsForProvider[0]!;
+			const upstreamOperations = upstreamOperationsForProviderModel(
+				selectedProvider,
+				selectedModel,
+				upstreamProtocol
+			);
+			return {
+				...fd,
+				upstream_protocol: upstreamProtocol,
+				upstream_operation: upstreamOperations[0] ?? fd.upstream_operation,
+			};
 		});
-	}, [showModal, formData.provider_id, selectedProvider, allowedProtocolsForProvider]);
+	}, [
+		showModal,
+		formData.provider_id,
+		selectedProvider,
+		selectedModel,
+		allowedProtocolsForProvider,
+	]);
 
 	useEffect(() => {
 		if (!showModal || !lockOpenaiProtocol) return;
@@ -324,10 +349,24 @@ export function useRoutesPageState() {
 	}, []);
 
 	const handleCreate = useCallback(
-		(presetModelId?: string) => {
+		(presetModelId?: string, preset?: { protocol?: string; operation?: string; group?: string }) => {
 			setEditingRoute(null);
 			setDuplicateSourceRouteId(null);
-			setFormData(createInitialRouteForm(models, presetModelId));
+			const initial = createInitialRouteForm(models, presetModelId);
+			setFormData({
+				...initial,
+				upstream_protocol:
+					preset?.protocol && UPSTREAM_PROTOCOLS.includes(preset.protocol as UpstreamProtocol)
+						? (preset.protocol as UpstreamProtocol)
+						: initial.upstream_protocol,
+				request_protocol:
+					preset?.protocol && UPSTREAM_PROTOCOLS.includes(preset.protocol as UpstreamProtocol)
+						? (preset.protocol as UpstreamProtocol)
+						: initial.request_protocol,
+				request_operation: preset?.operation ?? initial.request_operation,
+				upstream_operation: preset?.operation ?? initial.upstream_operation,
+				route_group: preset?.group ?? initial.route_group,
+			});
 			setShowModal(true);
 			setSaveError('');
 		},
@@ -432,84 +471,118 @@ export function useRoutesPageState() {
 		}
 	}, [editingRoute, formData, refreshRoutesPage]);
 
-	const handleOpenStickyDialog = useCallback(
+	const handleOpenStrategyDialog = useCallback(
 		(
 			modelId: string,
 			modelTitle: string,
 			protocol: string,
 			protocolLabel: string,
-			group: string
+			group: string,
+			poolId?: string | null,
+			poolStrategy?: string | null,
+			requestOperation?: string
 		) => {
-			const raw = modelMeta.get(modelId)?.sticky_config ?? null;
-			const parsed = parseModelStickyConfig(raw);
-			const rule = parsed?.rules.get(stickyRuleKey(protocol, group)) ?? null;
-			setStickyForm({
-				enabled: Boolean(rule?.enabled),
-				ttl_seconds: rule?.ttlSeconds != null ? String(rule.ttlSeconds) : '',
-				short_wait_ms: rule?.shortWaitMs != null ? String(rule.shortWaitMs) : '',
+			const raw = modelMeta.get(modelId)?.route_policy ?? null;
+			const inherited = resolveEffectiveRouteStrategy({
+				routePolicyRaw: raw,
+				protocol,
+				requestOperation,
+				routeGroup: group,
+				globalStrategy: globalRouteStrategy,
 			});
-			setStickyError('');
-			setStickyDialog({ modelId, modelTitle, protocol, protocolLabel, group });
+			const matchingTargets = routes
+				.filter((route) =>
+					poolId
+						? route.route_pool_id === poolId
+						: route.model_id === modelId &&
+							route.upstream_protocol === protocol &&
+							normalizeRouteGroup(route.route_group) === normalizeRouteGroup(group)
+				)
+				.map((route) => ({
+					id: route.id,
+					providerId: route.provider_id,
+					providerName:
+						route.provider_name || providerMeta.get(route.provider_id)?.name || route.provider_id,
+					providerModelName: route.provider_model_name,
+					priority: route.priority,
+					weight: route.weight ?? 1,
+					active:
+						route.status === 'active' &&
+						providerMeta.get(route.provider_id)?.status !== 'disabled',
+				}));
+			setStrategyForm(
+				poolId
+					? { protocolStrategy: poolStrategy ?? '', capabilityStrategies: {} }
+					: readRoutePolicyFormFromRaw(raw, protocol, group)
+			);
+			setStrategyError('');
+			setStrategyDialog({
+				modelId,
+				modelTitle,
+				protocol,
+				protocolLabel,
+				group,
+				poolId,
+				poolStrategy,
+				requestOperation,
+				inheritedStrategy: inherited.strategy,
+				inheritedSource: inherited.source,
+				targets: matchingTargets,
+			});
 		},
-		[modelMeta]
+		[globalRouteStrategy, modelMeta, providerMeta, routes]
 	);
 
-	const handleSaveSticky = useCallback(async () => {
-		if (!stickyDialog) return;
-		const ttl = stickyForm.ttl_seconds.trim() === '' ? null : parseInt(stickyForm.ttl_seconds, 10);
-		const wait = stickyForm.short_wait_ms.trim() === '' ? null : parseInt(stickyForm.short_wait_ms, 10);
-		if (stickyForm.enabled) {
-			if (ttl != null && (!Number.isFinite(ttl) || ttl <= 0)) {
-				setStickyError('Idle TTL must be a positive integer (seconds)');
-				return;
-			}
-			if (wait != null && (!Number.isFinite(wait) || wait <= 0)) {
-				setStickyError('Short wait must be a positive integer (ms)');
-				return;
-			}
-		}
-		setStickySaving(true);
-		setStickyError('');
+	const handleSaveStrategy = useCallback(async () => {
+		if (!strategyDialog) return;
+		setStrategySaving(true);
+		setStrategyError('');
 		try {
-			const raw = modelMeta.get(stickyDialog.modelId)?.sticky_config ?? null;
-			const nextStickyConfig = buildStickyConfigPatch(
-				raw,
-				stickyDialog.protocol,
-				stickyDialog.group,
-				stickyForm,
-				ttl,
-				wait
-			);
-			const result = await patchModelStickyConfig(stickyDialog.modelId, nextStickyConfig);
+			const result = strategyDialog.poolId
+				? await patchRoutePoolStrategy(
+						strategyDialog.poolId,
+						strategyForm.protocolStrategy || null
+					)
+				: await patchModelRoutePolicy(
+						strategyDialog.modelId,
+						buildRoutePolicyPatch(
+							modelMeta.get(strategyDialog.modelId)?.route_policy ?? null,
+							strategyDialog.protocol,
+							strategyDialog.group,
+							strategyForm
+						)
+					);
 			if (!result.success) {
-				setStickyError(result.message);
+				setStrategyError(result.message);
 				return;
 			}
-			setStickyDialog(null);
+			setStrategyDialog(null);
 			await refreshRoutesPage();
 		} catch (error) {
-			setStickyError(error instanceof Error ? error.message : 'Save failed, please try again');
+			setStrategyError(error instanceof Error ? error.message : 'Save failed, please try again');
 		} finally {
-			setStickySaving(false);
+			setStrategySaving(false);
 		}
-	}, [modelMeta, refreshRoutesPage, stickyDialog, stickyForm]);
+	}, [modelMeta, refreshRoutesPage, strategyDialog, strategyForm]);
 
 	const closeRouteModal = useCallback(() => {
 		if (isSaving || isDeleting) return;
 		setShowModal(false);
 	}, [isDeleting, isSaving]);
 
-	const closeStickyDialog = useCallback(() => {
-		if (stickySaving) return;
-		setStickyDialog(null);
-	}, [stickySaving]);
+	const closeStrategyDialog = useCallback(() => {
+		if (strategySaving) return;
+		setStrategyDialog(null);
+	}, [strategySaving]);
 
 	return {
 		isLoading,
 		routes,
 		models,
 		providers,
+		globalRouteStrategy,
 		modelMeta,
+		providerMeta,
 		billingCurrency,
 		filterVendor,
 		setFilterVendor,
@@ -555,12 +628,12 @@ export function useRoutesPageState() {
 		selectedModelIsAudio,
 		allowedProtocolsForProvider,
 		businessTimezone,
-		stickyDialog,
-		setStickyDialog,
-		stickyForm,
-		setStickyForm,
-		stickySaving,
-		stickyError,
+		strategyDialog,
+		setStrategyDialog,
+		strategyForm,
+		setStrategyForm,
+		strategySaving,
+		strategyError,
 		handleCreate,
 		handleEdit,
 		handleDuplicate,
@@ -568,10 +641,10 @@ export function useRoutesPageState() {
 		handleToggleStatus,
 		copyModelId,
 		handleSave,
-		handleOpenStickyDialog,
-		handleSaveSticky,
+		handleOpenStrategyDialog,
+		handleSaveStrategy,
 		closeRouteModal,
-		closeStickyDialog,
+		closeStrategyDialog,
 		refreshRoutesPage,
 		modelEdit,
 	};

@@ -24,7 +24,7 @@ type Props = {
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
-	onOpenStickyDialog: (
+	onOpenStrategyDialog: (
 		modelId: string,
 		modelTitle: string,
 		protocol: string,
@@ -44,7 +44,7 @@ export function RouteModelCard(props: Props) {
 		onEdit,
 		onEditModel,
 		onToggleStatus,
-		onOpenStickyDialog,
+		onOpenStrategyDialog,
 	} = props;
 	const t = useTranslations('routes.card');
 	const tModelsCard = useTranslations('models.card');
@@ -175,11 +175,11 @@ export function RouteModelCard(props: Props) {
 						groupRoutes={groupRoutes}
 						modelId={model_id}
 						modelTitle={title}
-						stickyConfig={meta?.sticky_config}
+						routePolicy={meta?.route_policy}
 						togglingId={togglingId}
 						onEdit={onEdit}
 						onToggleStatus={onToggleStatus}
-						onOpenStickyDialog={onOpenStickyDialog}
+						onOpenStrategyDialog={onOpenStrategyDialog}
 					/>
 				</div>
 			)}

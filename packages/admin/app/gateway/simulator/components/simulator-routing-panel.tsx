@@ -177,9 +177,17 @@ export function SimulatorRoutingPanel({
 								</div>
 								{(r.provider_model_name || r.upstream_protocol) && (
 									<div className="mt-0.5 text-gray-500 truncate">
-										{[r.provider_model_name, r.upstream_protocol].filter(Boolean).join(' · ')}
+										{[
+											r.provider_model_name,
+											r.upstream_protocol
+												? `${r.upstream_protocol}.${r.upstream_operation ?? '*'}`
+												: null,
+										].filter(Boolean).join(' · ')}
 									</div>
 								)}
+								<div className="mt-0.5 truncate text-[10px] text-indigo-600">
+									{r.pool_name ?? r.route_pool_id ?? 'legacy pool'}
+								</div>
 							</li>
 						))}
 					</ul>

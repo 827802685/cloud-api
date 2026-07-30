@@ -17,6 +17,8 @@ function minimalRoute(overrides: Partial<RouteResult>): RouteResult {
 		routeChargedProfileJson: null,
 		customParams: null,
 		routeGroup: 'default',
+		routePriority: 0,
+		routeWeight: 1,
 		...overrides,
 	};
 }

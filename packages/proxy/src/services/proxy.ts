@@ -17,14 +17,14 @@ import {
 import { dispatchAnthropicRoute } from './egress/anthropic-driver';
 import { dispatchGeminiRoute } from './egress/gemini-driver';
 import {
-	failoverDispatchWithKeyPool,
+	failoverDispatch,
 	type FailoverDispatchOptions,
 	type ProxyDispatchMeta,
 } from './failover-dispatch';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
 import type { RequestTimingAttempt, RequestTimingCollector } from './request-timing';
 
-export type { FailoverDispatchOptions, StickyDispatchContext, ProxyDispatchMeta } from './failover-dispatch';
+export type { FailoverDispatchOptions, ProxyDispatchMeta } from './failover-dispatch';
 
 /** 各协议 driver 从上游响应/stream 汇总出的用量（供 `usage-tracker` 计价）。 */
 export interface UsageFromStream {
@@ -58,7 +58,7 @@ export interface ProxyResult {
 	upstreamRequestId: string | null;
 	/** 实际选用或最后尝试的路由（用于日志）；若全部失败则为最后一次尝试 */
 	chosenRoute: RouteResult;
-	/** 本次请求触发的熔断事件（provider key / user+model） */
+	/** 本次请求触发的熔断事件（provider / user+model） */
 	circuitEvents: GatewayCircuitAlertEvent[];
 	/** 因已有熔断短路、无需重复 webhook 告警 */
 	suppressErrorAlert: boolean;
@@ -78,7 +78,7 @@ export const EMPTY_USAGE: UsageFromStream = {
 };
 
 /**
- * 代理 OpenAI Chat Completions：外层 provider 优先级 + 内层 key pool failover。
+ * 代理 OpenAI Chat Completions：外层 provider 优先级 + 层内 route strategy failover。
  */
 export async function proxyChatCompletions(
 	repos: GatewayRepositories,
@@ -87,7 +87,7 @@ export async function proxyChatCompletions(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	const result = await failoverDispatchWithKeyPool(
+	const result = await failoverDispatch(
 		repos,
 		routes,
 		'openai',
@@ -109,7 +109,7 @@ export async function proxyAnthropicMessages(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	return failoverDispatchWithKeyPool(
+	return failoverDispatch(
 		repos,
 		routes,
 		'anthropic',
@@ -130,7 +130,7 @@ export async function proxyImageGenerations(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	return failoverDispatchWithKeyPool(
+	return failoverDispatch(
 		repos,
 		routes,
 		'openai',
@@ -151,7 +151,7 @@ export async function proxyImageEdits(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	return failoverDispatchWithKeyPool(
+	return failoverDispatch(
 		repos,
 		routes,
 		'openai',
@@ -172,7 +172,7 @@ export async function proxyAudioTranscriptions(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	return failoverDispatchWithKeyPool(
+	return failoverDispatch(
 		repos,
 		routes,
 		'openai',
@@ -195,7 +195,7 @@ export async function proxyGeminiContent(
 	requestSignal?: AbortSignal,
 	options?: FailoverDispatchOptions
 ): Promise<ProxyResult> {
-	return failoverDispatchWithKeyPool(
+	return failoverDispatch(
 		repos,
 		routes,
 		'gemini',

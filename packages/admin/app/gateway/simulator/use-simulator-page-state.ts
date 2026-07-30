@@ -182,9 +182,24 @@ export function useSimulatorPageState() {
 		return buildModelRoutingString(selectedModelId, routeGroup);
 	}, [selectedModelId, routeGroup]);
 
+	const requestOperation = selectedModelIsAudio
+		? 'audio.transcriptions'
+		: selectedModelIsImage
+			? `images.${imageOperation}`
+			: protocol === 'openai'
+				? 'chat'
+				: protocol === 'anthropic'
+					? 'messages'
+					: geminiAction;
 	const matchingRoutes = useMemo(
-		() => filterMatchingActiveRoutes(routes, selectedModelId, routeGroup),
-		[routes, selectedModelId, routeGroup]
+		() => filterMatchingActiveRoutes(
+			routes,
+			selectedModelId,
+			routeGroup,
+			protocol,
+			requestOperation
+		),
+		[routes, selectedModelId, routeGroup, protocol, requestOperation]
 	);
 
 	const sendBlockReason = useMemo((): SendBlockReason => {

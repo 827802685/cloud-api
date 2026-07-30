@@ -1,23 +1,23 @@
 /**
- * 上游 HTTP 失败分类：决定是否在同 provider 内换 key、或换下一 provider。
+ * 上游 HTTP 失败分类：决定是否 failover 到下一 provider。
  */
 
-import type { ProviderKeyFailureKind } from './provider-key-circuit-breaker';
+import type { ProviderFailureKind } from './provider-circuit-breaker';
 
 export type UpstreamFailureAction = 'retry_key' | 'fail_immediately';
 
 export type UpstreamFailureClassification = {
 	action: UpstreamFailureAction;
-	/** 401/403 等 key 异常，切换 key 但应记录告警 */
+	/** 401/403 等鉴权异常，切换 provider 但应记录告警 */
 	alertOnKeySwitch?: boolean;
-	/** 有值时 dispatch 会写入 provider key 熔断；524 / fetch 等瞬时错误不设此项 */
-	failureKind?: ProviderKeyFailureKind;
+	/** 有值时 dispatch 会写入 provider 熔断；524 / fetch 等瞬时错误不设此项 */
+	failureKind?: ProviderFailureKind;
 };
 
 /**
  * 对上游 HTTP status 分类。
- * - `retry_key`：可尝试同 provider 下一把 key；全部 key 失败后再换 provider。
- * - `fail_immediately`：请求本身错误（400/404 等），不重试其它 key 或 provider。
+ * - `retry_key`：可尝试下一 provider（历史命名保留）。
+ * - `fail_immediately`：请求本身错误（400/404 等），不重试其它 provider。
  */
 export function classifyUpstreamHttpFailure(status: number): UpstreamFailureClassification {
 	if (status === 429) {

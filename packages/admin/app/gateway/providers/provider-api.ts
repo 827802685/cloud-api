@@ -1,13 +1,7 @@
 import { readApiJson } from '@/lib/api-json';
 import type { GatewayProvider } from '@/lib/types';
-import { buildLimitConfigJson, formDataToEndpointsMap } from './provider-utils';
-import type {
-	ProviderFormData,
-	ProviderImportCatalogRow,
-	ProviderImportResult,
-	ProviderKeyFormData,
-	ProviderKeyRow,
-} from './types';
+import { formDataToEndpointsMap } from './provider-utils';
+import type { ProviderFormData, ProviderImportCatalogRow, ProviderImportResult } from './types';
 
 export async function fetchProvidersList(): Promise<GatewayProvider[]> {
 	const response = await fetch('/api/admin/providers');
@@ -18,15 +12,6 @@ export async function fetchProvidersList(): Promise<GatewayProvider[]> {
 	throw new Error(data.message || 'Failed to load providers');
 }
 
-export async function loadProviderKeyRows(providerId: string): Promise<ProviderKeyRow[]> {
-	const response = await fetch(`/api/admin/providers/${encodeURIComponent(providerId)}/keys`);
-	const data = await readApiJson<ProviderKeyRow[]>(response);
-	if (data.success && data.data) {
-		return data.data;
-	}
-	throw new Error(data.message || 'Failed to load keys');
-}
-
 export async function saveProvider(
 	formData: ProviderFormData,
 	editingProviderId: string | null
@@ -35,18 +20,26 @@ export async function saveProvider(
 		name: formData.name,
 		description: formData.description,
 		endpoints: formDataToEndpointsMap(formData),
+		status: formData.status === 'disabled' ? 'disabled' : 'active',
 	};
+
+	const apiKey = formData.api_key.trim();
+	if (apiKey) {
+		payload.api_key = apiKey;
+	}
 
 	let response: Response;
 	if (editingProviderId) {
-		const patchBody = { ...payload };
-		delete patchBody.id;
 		response = await fetch(`/api/admin/providers/${encodeURIComponent(editingProviderId)}`, {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(patchBody),
+			body: JSON.stringify(payload),
 		});
 	} else {
+		if (!apiKey) {
+			return { success: false, message: 'api_key is required' };
+		}
+		payload.api_key = apiKey;
 		if (formData.id.trim()) {
 			payload.id = formData.id.trim();
 		}
@@ -91,84 +84,25 @@ export async function importProviderPresets(
 	return { success: false, message: data.message || 'Import failed' };
 }
 
-export async function fetchProviderKeyPlaintext(
-	providerId: string,
-	keyId: string
-): Promise<string> {
+export async function fetchProviderApiKeyPlaintext(providerId: string): Promise<string> {
 	const response = await fetch(
-		`/api/admin/providers/${encodeURIComponent(providerId)}/keys/${encodeURIComponent(keyId)}`
+		`/api/admin/providers/${encodeURIComponent(providerId)}/api-key`
 	);
 	const data = await readApiJson<{ api_key: string }>(response);
 	if (data.success && data.data?.api_key) return data.data.api_key;
-	throw new Error(data.message || 'Failed to copy API key');
+	throw new Error(data.message || 'Failed to reveal API key');
 }
 
-export async function toggleProviderKeyStatus(
+export async function toggleProviderStatus(
 	providerId: string,
-	keyId: string,
 	nextStatus: 'active' | 'disabled'
 ): Promise<{ success: true } | { success: false; message: string }> {
-	const response = await fetch(
-		`/api/admin/providers/${encodeURIComponent(providerId)}/keys/${encodeURIComponent(keyId)}`,
-		{
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ status: nextStatus }),
-		}
-	);
+	const response = await fetch(`/api/admin/providers/${encodeURIComponent(providerId)}`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ status: nextStatus }),
+	});
 	const data = await readApiJson(response);
 	if (data.success) return { success: true };
 	return { success: false, message: data.message || 'Update failed' };
-}
-
-export async function saveProviderKey(
-	providerId: string,
-	form: ProviderKeyFormData,
-	editingKeyId: string | null
-): Promise<{ success: true } | { success: false; message: string }> {
-	const label = form.label.trim();
-	const apiKey = form.api_key.trim();
-	const body: Record<string, unknown> = {
-		label,
-		status: form.status === 'disabled' ? 'disabled' : 'active',
-		weight: Number(form.weight) || 1,
-		priority: Number(form.priority) || 0,
-		limit_config: buildLimitConfigJson(form),
-	};
-	if (apiKey) body.api_key = apiKey;
-
-	const response = editingKeyId
-		? await fetch(
-				`/api/admin/providers/${encodeURIComponent(providerId)}/keys/${encodeURIComponent(editingKeyId)}`,
-				{
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(body),
-				}
-			)
-		: await fetch(`/api/admin/providers/${encodeURIComponent(providerId)}/keys`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			});
-
-	const data = await readApiJson(response);
-	if (data.success) return { success: true };
-	return {
-		success: false,
-		message: data.message || (editingKeyId ? 'Failed to update key' : 'Failed to create key'),
-	};
-}
-
-export async function deleteProviderKey(
-	providerId: string,
-	keyId: string
-): Promise<{ success: true } | { success: false; message: string }> {
-	const response = await fetch(
-		`/api/admin/providers/${encodeURIComponent(providerId)}/keys/${encodeURIComponent(keyId)}`,
-		{ method: 'DELETE' }
-	);
-	const data = await readApiJson(response);
-	if (data.success) return { success: true };
-	return { success: false, message: data.message || 'Delete failed' };
 }

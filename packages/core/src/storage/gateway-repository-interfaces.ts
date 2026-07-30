@@ -15,12 +15,6 @@ import type { InsertUserParams, UserMaxBudgetFilter } from '../db/users-types';
 import type { ApiKeyListSortField, ApiKeyListSortOrder } from '../db/api-keys-list-sort';
 import type { UserListSortField, UserListSortOrder } from '../db/users-list-sort';
 import type { ProviderProtocolBases } from '../db/providers-types';
-import type {
-	ActiveProviderApiKeyRow,
-	InsertProviderApiKeyParams,
-	ProviderApiKeyAdminRow,
-	UpdateProviderApiKeyPatch,
-} from '../db/provider-api-keys-types';
 import type { SystemConfigRow } from '../db/system-config-types';
 import type {
 	AdminApiKeyListItem,
@@ -39,6 +33,7 @@ import type {
 	UserAnalyticsRow,
 	UserTokenTimeseriesRow,
 } from './repository-dtos';
+import type { ResolvedModelSurfaceRow } from '../route-topology';
 
 /** 管理端分析聚合 */
 export interface AdminAnalyticsRepository {
@@ -169,6 +164,13 @@ export interface ModelRoutingRepository {
 	getModelById(id: string): Promise<ModelRow | null>;
 	listModelsWithActiveRoutes(): Promise<ModelRow[]>;
 	getModelRoutesByModelId(modelId: string): Promise<ModelRouteRow[]>;
+	resolveModelSurface(params: {
+		modelId: string;
+		routeGroup: string;
+		requestProtocol: string;
+		requestOperation: string;
+	}): Promise<ResolvedModelSurfaceRow | null>;
+	getModelRoutesByPoolId(poolId: string): Promise<ModelRouteRow[]>;
 }
 
 export interface ModelRoutesRepository {
@@ -181,11 +183,25 @@ export interface ModelRoutesRepository {
 		priority: number;
 		status: string;
 		routeGroup: string;
+		weight?: number;
 		priceOverride: unknown;
 		customParams: string | null;
 		upstreamProtocol: string;
+		routePoolId: string;
+		upstreamOperation: string;
+		adapter: string;
 	}): Promise<void>;
 	getModelRouteRowById(id: string): Promise<ModelRouteDetailRow | null>;
+	ensureModelSurfacePool(params: {
+		poolId: string;
+		surfaceId: string;
+		modelId: string;
+		routeGroup: string;
+		requestProtocol: string;
+		requestOperation: string;
+		poolName: string;
+	}): Promise<{ poolId: string; surfaceId: string }>;
+	updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number>;
 	updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number>;
 	deleteModelRouteById(id: string): Promise<number>;
 }
@@ -199,23 +215,16 @@ export interface ProvidersRepository {
 		/** `providers.endpoints` JSON 文本 */
 		endpoints: string | null;
 		description: unknown;
+		apiKey?: string;
+		status?: string;
 	}): Promise<void>;
 	updateProviderByPatch(id: string, body: Record<string, unknown>): Promise<number>;
 	deleteProviderById(id: string): Promise<number>;
 	getProviderById(id: string): Promise<ProviderRow | null>;
 	getProviderRowById(id: string): Promise<ProviderAdminRow | null>;
 	getProviderProtocolBases(providerId: string): Promise<ProviderProtocolBases | null>;
-}
-
-export interface ProviderApiKeysRepository {
-	listProviderKeys(providerId: string): Promise<ProviderApiKeyAdminRow[]>;
-	getActiveProviderKeys(providerId: string): Promise<ActiveProviderApiKeyRow[]>;
-	createProviderKey(params: InsertProviderApiKeyParams): Promise<void>;
-	updateProviderKeyByPatch(keyId: string, patch: UpdateProviderApiKeyPatch): Promise<number>;
-	deleteProviderKeyById(keyId: string): Promise<number>;
-	getProviderKeyById(keyId: string): Promise<ProviderApiKeyAdminRow | null>;
-	getProviderKeyPlaintext(keyId: string): Promise<{ provider_id: string; api_key: string } | null>;
-	countActiveProviderKeys(providerId: string): Promise<number>;
+	/** 读取 providers.api_key 明文（仅服务端推理/管理用）。 */
+	getProviderApiKeyPlaintext(providerId: string): Promise<{ api_key: string } | null>;
 }
 
 /** Filters for {@link RequestLogsRepository.getRequestLogsByKeyId}. If `includeStatuses` is non-empty after whitelist, use `status IN (...)`; else if `excludeStatus` is set, use `(status IS NULL OR status != ?)`; else no status predicate. */

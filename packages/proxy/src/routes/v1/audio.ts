@@ -11,13 +11,15 @@ import type { Context } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey, type ApiKeyContext } from '../../middleware/auth';
 import {
-	getActiveModelRouteRows,
-	resolveRouteResultsFromRows,
+	resolveRoutesForSurface,
 	type RouteResult,
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
-import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+	buildAffinityKey,
+	buildTierKeyPrefix,
+	resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyAudioTranscriptions, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
 import {
@@ -61,6 +63,7 @@ async function resolveOpenAiAudioRoutes(
 			baseModelId: string;
 			effectiveRouteGroup: string;
 			routes: RouteResult[];
+			poolStrategy: string | null;
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
@@ -73,17 +76,13 @@ async function resolveOpenAiAudioRoutes(
 	const { model, baseModelId, explicitGroup } = resolved;
 	const effectiveRouteGroup = explicitGroup?.trim() || 'default';
 	try {
-		const routeRows = await getActiveModelRouteRows(repos, baseModelId);
-		const selectedRows = selectActiveRouteRows(routeRows, explicitGroup);
-		if (selectedRows.length === 0) {
-			return {
-				ok: false,
-				status: 400,
-				error: `No active routes for route group "${effectiveRouteGroup}" for this model`,
-			};
-		}
-		let routes = await resolveRouteResultsFromRows(repos, selectedRows);
-		routes = routes.filter((route) => route.upstreamProtocol === 'openai');
+		const resolvedSurface = await resolveRoutesForSurface(repos, {
+			modelId: baseModelId,
+			routeGroup: effectiveRouteGroup,
+			requestProtocol: 'openai',
+			requestOperation: 'audio.transcriptions',
+		});
+		const routes = resolvedSurface.routes;
 		if (routes.length === 0) {
 			return {
 				ok: false,
@@ -91,7 +90,14 @@ async function resolveOpenAiAudioRoutes(
 				error: `No OpenAI route in route group "${effectiveRouteGroup}" for this model`,
 			};
 		}
-		return { ok: true, model, baseModelId, effectiveRouteGroup, routes };
+		return {
+			ok: true,
+			model,
+			baseModelId,
+			effectiveRouteGroup,
+			routes,
+			poolStrategy: resolvedSurface.surface?.pool_strategy ?? null,
+		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Model route resolution failed';
 		return { ok: false, status: 502, error: message };
@@ -305,13 +311,16 @@ audioRoutes.post('/transcriptions', async (c) => {
 		return circuitBlocked;
 	}
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
+		poolStrategy: routed.poolStrategy,
 		protocol: 'openai',
+		capability: 'audio.transcriptions',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -323,7 +332,7 @@ audioRoutes.post('/transcriptions', async (c) => {
 		routes,
 		transcription,
 		c.req.raw.signal,
-		{ sticky: stickyContext, timing }
+		{ affinityKey, tierKeyPrefix, strategy, timing }
 	);
 
 	return finalizeAudioResponse({
@@ -429,7 +438,13 @@ async function finalizeAudioResponse(params: {
 			providerName: chosenRoute.providerName,
 			requestBody: requestBodyForLog,
 			requestProtocol: 'openai',
+			requestOperation: 'audio.transcriptions',
 			upstreamProtocol: chosenRoute.upstreamProtocol,
+			upstreamOperation: chosenRoute.upstreamOperation,
+			modelSurfaceId: chosenRoute.modelSurfaceId,
+			routePoolId: chosenRoute.routePoolId,
+			routeTargetId: chosenRoute.targetId,
+			adapter: chosenRoute.adapter,
 			routeGroup: effectiveRouteGroup,
 			status,
 			latencyMs,

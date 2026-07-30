@@ -22,7 +22,8 @@ Authorization: Bearer sk-admin-xxx
 存储 / 查询 / 业务日界 / `BUSINESS_TIMEZONE` 的完整约定见 **[time-and-timezone.md](../reference/time-and-timezone.md)**。摘要：库内 UTC；API 时间字段返回 ISO 8601 UTC（`Z`）；Admin 墙钟与业务日界按 `BUSINESS_TIMEZONE`。
 
 - **计费币种**：`system_config.BILLING_CURRENCY` 仅允许 **`USD`** 或 **`CNY`**（各库的 **`0002_seed.sql`** 默认 `USD`），与 `pricing_profile` / Key 预算数值单位一致；`GET /v1/me` 返回 `billing_currency`（见用户接口文档）。**`PUT /admin/config`** 写入该键时由服务端白名单校验。
-- **Proxy 错误告警（可选）**：`ALERT_WEBHOOK_WECOM_URL`、`ALERT_WEBHOOK_FEISHU_URL` 存**完整**群机器人 Webhook URL（含 query `key` / hook id）。**未配置或值为空则不告警**。Proxy 在 **`api_key_request_logs.status = error`** 且用量写入成功后，分别向已配置的 URL 发送一条**按错误类型归类**的文本摘要（企业微信 `msgtype=text`、飞书 `msg_type=text`）：首行含类别与优先级（如上游超时、供应商鉴权、限流、5xx、敏感内容拦截、请求/模型错误、路由配置），并分组展示影响用户、路由/协议、供应商 key、原始 `error_message`、处理建议与发生时间（UTC+8）；发送失败只打日志，不影响请求。键名常量见 `@octafuse/core` 导出 `ALERT_WEBHOOK_WECOM_URL_KEY` / `ALERT_WEBHOOK_FEISHU_URL_KEY`。
+- **全局路由策略**：`system_config.ROUTE_STRATEGY`（默认 `affinity`；四选一，见 [route-strategies.md](../reference/route-strategies.md)）。**`PUT /admin/config`** 白名单校验。
+- **Proxy 错误告警（可选）**：`ALERT_WEBHOOK_WECOM_URL`、`ALERT_WEBHOOK_FEISHU_URL` 存**完整**群机器人 Webhook URL（含 query `key` / hook id）。**未配置或值为空则不告警**。Proxy 在 **`api_key_request_logs.status = error`** 且用量写入成功后，分别向已配置的 URL 发送一条**按错误类型归类**的文本摘要（企业微信 `msgtype=text`、飞书 `msg_type=text`）：首行含类别与优先级（如上游超时、供应商鉴权、限流、5xx、敏感内容拦截、请求/模型错误、路由配置），并分组展示影响用户、路由/协议、供应商、原始 `error_message`、处理建议与发生时间（UTC+8）；发送失败只打日志，不影响请求。键名常量见 `@octafuse/core` 导出 `ALERT_WEBHOOK_WECOM_URL_KEY` / `ALERT_WEBHOOK_FEISHU_URL_KEY`。
 
 ### `/admin/keys` 统一响应格式
 
@@ -54,17 +55,16 @@ Authorization: Bearer sk-admin-xxx
 | `/admin/keys/:id` | GET | `api_keys` **JOIN** `users` | 外部集成方、Admin UI |
 | `/admin/keys/:id` | PATCH, DELETE | `api_keys` | Admin UI、外部集成方 |
 | `/admin/keys/:id/logs` | GET | `api_key_request_logs`（Key 范围，分页） | 外部集成方、Admin UI |
-| `/admin/providers` | GET, POST, GET/PATCH/DELETE `/:id` | `providers` | Admin UI |
-| `/admin/providers/:id/keys` | GET, POST | `provider_api_keys`（列表脱敏 `fingerprint`） | Admin UI |
-| `/admin/providers/:id/keys/:keyId` | PATCH, DELETE | `provider_api_keys` | Admin UI |
+| `/admin/providers` | GET, POST, GET/PATCH/DELETE `/:id` | `providers`（单键 `api_key` + `status`；列表脱敏） | Admin UI |
+| `/admin/providers/:id/api-key` | GET | `providers.api_key` 明文揭示 | Admin UI |
 | `/admin/providers/import/catalog` | GET | 内置 Provider 模板摘要（无密钥） | Admin UI |
-| `/admin/providers/import` | POST | 请求体 `{"ids":["0","1",…]}`：catalog 键（非 provider id）；每次导入新增 `providers` 行（UUID id；同名自动后缀）；不含 API Key，须在 Admin 中手动添加 | Admin UI、运维脚本 |
-| `/admin/models` | GET, POST, GET/PATCH/DELETE `/:id` | `models`，`model_tags` | Admin UI |
+| `/admin/providers/import` | POST | 请求体 `{"ids":["0","1",…]}`：catalog 键（非 provider id）；每次导入新增 `providers` 行（UUID id；同名自动后缀）；占位 API Key，须在 Admin 中替换 | Admin UI、运维脚本 |
+| `/admin/models` | GET, POST, GET/PATCH/DELETE `/:id` | `models`（含可选 `route_policy`），`model_tags` | Admin UI |
 | `/admin/models/import/catalog` | GET | 内置静态目录可选项摘要（不含完整 `pricing_profile`） | Admin UI |
 | `/admin/models/import` | POST | 请求体 `{"ids":["…"]}`：仅导入指定预设 → `models`，`model_tags`（按 `BILLING_CURRENCY` 选用 USD/CNY 价；**同 id 不覆盖**，记入 `skipped_existing`） | Admin UI、运维脚本 |
-| `/admin/routes` | GET（`?model_id=&provider_id=`）, POST, GET/PATCH/DELETE `/:id` | `model_routes` | Admin UI |
+| `/admin/routes` | GET（`?model_id=&provider_id=`）, POST, GET/PATCH/DELETE `/:id` | `model_routes`（含 `priority` / `weight`） | Admin UI |
 | `/admin/stats` | GET | 多表聚合（含 `api_key_request_logs`、`api_keys` 等） | Admin UI |
-| `/admin/config` | GET, PUT | `system_config` | Admin UI |
+| `/admin/config` | GET, PUT | `system_config`（含 `ROUTE_STRATEGY`） | Admin UI |
 | `/admin/business-timezone` | GET | `system_config.BUSINESS_TIMEZONE` | Admin UI（Provider 首屏加载） |
 | `/admin/request-logs` | GET | `api_key_request_logs`（**GlobalLogs**，多条件筛选分页） | Admin UI |
 | `/admin/budget-audit-logs` | GET | **`user_audit_logs`**（左联 **`users`** 取 `email` 等，多维筛选分页） | Admin UI |
@@ -553,7 +553,49 @@ curl "http://localhost:8787/admin/keys/uuid-here/logs?page=1&page_size=10" \
 
 面向用户的「有活跃路由的模型」列表：**Agent / SDK** 用 **`GET /v1/models`**（用户 Key）；**门户 / 公开 discovery** 用 Proxy **`GET /catalog/models`**（无需 Key，含协议能力，见 [用户接口](./user.md#公开模型目录catalog-discovery)）。
 
-**管理端基础数据**（`Authorization: Bearer <MASTER_KEY>`，响应多为 `{ success, data, count? }`）：**`/admin/keys`**（上文）与 **`/admin/providers`**（`POST`/`PATCH` body 以 **`endpoints`** JSON 为权威：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。列表/详情含 `endpoints`（已无 `base_url_*` 列）。`POST` 创建时 body 仍可含 **`api_key`**，服务端写入 **`provider_api_keys`** 的 `label=default` 行；`providers` 表不再存密钥。列表响应含 **`active_key_count`** / **`has_pending_key`**。含 **`GET/POST /admin/providers/:id/keys`**、**`PATCH/DELETE /admin/providers/:id/keys/:keyId`** 多 key 管理；key 列表脱敏 `fingerprint` + **`is_pending_import`**，不回显明文）、**`/admin/models`**（含 **`GET /admin/models/import/catalog`** 与 **`POST /admin/models/import`**；models 不引用 provider base URL，image / audio 的 openai-only 锁在 **route `upstream_protocol`**）、**`/admin/routes`**（REST：`GET/POST` 集合，`GET/PATCH/DELETE /:id`；路由列表支持 `GET /admin/routes?model_id=&provider_id=`；创建时校验 provider 对该协议是否配置了 `endpoints` base 或任一 capability）。**`POST /admin/routes`** 省略或空白 **`route_group`** 时写入 **`default`**；**`PATCH`** 若包含 **`route_group`** 则不得为仅空白字符串（否则 **400** `route_group cannot be empty`）。
+**管理端基础数据**（`Authorization: Bearer <MASTER_KEY>`，响应多为 `{ success, data, count? }`）：**`/admin/keys`**（上文用户 Key）与下列 Catalog API。
+
+### Providers（`/admin/providers`）
+
+一个 Provider = **一把** `api_key` + **`status`**（`active` \| `disabled`）。**无** `/admin/providers/:id/keys*` 子资源（迁移 0015 已删除 `provider_api_keys`）。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/admin/providers` | 列表；`api_key` **脱敏**；含 `endpoints`、`status`、`has_pending_key`（导入占位密钥） |
+| POST | `/admin/providers` | 创建；**`name` + `api_key` 必填**；可选 `id`、`description`、`endpoints`、`status` |
+| GET | `/admin/providers/:id` | 详情（脱敏 `api_key`） |
+| PATCH | `/admin/providers/:id` | 部分更新；`api_key` 空串/未传 = **不改密钥**；`status` 仅 `active` \| `disabled` |
+| DELETE | `/admin/providers/:id` | 删除 |
+| GET | `/admin/providers/:id/api-key` | **揭示明文** `api_key`（`{ success, data: { api_key } }`） |
+| GET / POST | `/admin/providers/import/catalog`、`/import` | 静态模板导入（占位 key，须手动替换） |
+
+`endpoints` JSON 权威形状：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。
+
+### Models / Routes
+
+- **`/admin/models`**：CRUD；`PATCH` 可写 **`route_policy`**（TEXT JSON 或 `null` 清空）。含 **`GET /admin/models/import/catalog`** 与 **`POST /admin/models/import`**。image / audio 的 openai-only 锁在 **route `upstream_protocol`**。
+- **`/admin/routes`**：REST `GET/POST`、`GET/PATCH/DELETE /:id`；列表支持 `?model_id=&provider_id=`。创建时校验 provider 对该协议是否配置了 `endpoints` base 或任一 capability。
+  - **`priority`**：层（Proxy 按 **DESC** 硬序）。
+  - **`weight`**：同层权重，整数 **≥ 1**（默认 1）；非法 → **400**。
+  - **`POST`** 省略或空白 **`route_group`** → **`default`**；**`PATCH`** 若含 `route_group` 则不得为仅空白（否则 **400**）。
+
+### `models.route_policy`（`PATCH /admin/models/:id`）
+
+同层路由策略覆盖（可覆盖全局 `ROUTE_STRATEGY`）。形状与五级解析见 [route-strategies.md](../reference/route-strategies.md)。
+
+```json
+{
+  "strategy": "affinity",
+  "rules": {
+    "openai:default": { "strategy": "affinity" },
+    "openai.chat:default": { "strategy": "strict" }
+  }
+}
+```
+
+- **清空**：`null` 或空串 ⇒ 列 `NULL`（回退全局）。
+- **校验**：`normalizeModelRoutePolicyInput`；须含顶层 `strategy` 和/或至少一条合法 `rules`。
+- **运行时**：仅 Proxy failover 路径；Admin Playground **不走**策略排序。
 
 ### `GET /admin/models/import/catalog`
 
@@ -634,39 +676,6 @@ curl -sS "$GATEWAY_URL/v1/images/generations" \
   -H "Content-Type: application/json" \
   -d '{"model":"doubao-seedream-5-0","prompt":"海边灯塔水彩封面","size":"2K","n":1,"watermark":false}'
 ```
-
-### `provider_api_keys.limit_config`（`PATCH /admin/providers/:id/keys/:keyId`）
-
-Per-key **网关侧**软限流（进程内存；与上游供应商限额独立）。写入 `provider_api_keys.limit_config` 列（TEXT JSON）。
-
-- **形状**：`{ "rpm": 500, "tpm": 200000, "max_concurrency": 32 }`；字段均可选，至少一个正整数才生效。
-- **清空**：`null` 或空字符串 ⇒ 该 key **不限流**（列置 `NULL`）。
-- **校验**：`normalizeProviderKeyLimitConfigInput`（`packages/core/src/db/provider-key-limit-config.ts`）；非法 JSON 或全无有效字段 ⇒ **400**。
-- **运行时**：60s 滑动窗口 RPM/TPM + 并发 acquire/release；Workers 多 isolate 为软限制，建议设为供应商真实限额约 **90%**。详见 [proxy-request-lifecycle.md §3.3](../architecture/proxy-request-lifecycle.md#33-限流三阶段)。
-
-### `models.sticky_config`（`PATCH /admin/models/:id`）
-
-Opt-in **粘性 key 路由**：同一用户尽量连续命中同一把 provider key（保上游 prompt cache）。写入 `models.sticky_config` 列（TEXT JSON）。
-
-- **形状**：
-
-```json
-{
-  "ttl_seconds": 600,
-  "short_wait_ms": 3000,
-  "rules": {
-    "openai:default": { "enabled": true },
-    "openai:free": { "enabled": true, "ttl_seconds": 300, "short_wait_ms": 1000 }
-  }
-}
-```
-
-- **Rule 键**：`"{upstream_protocol}:{route_group}"`（协议与 group 均规范化为小写匹配；输入大小写不敏感）。
-- **顶层缺省**：`ttl_seconds=600`（空闲绑定 TTL，秒）、`short_wait_ms=3000`（网关限流短等待，毫秒）；各 rule 可覆盖。
-- **启用**：`rules` 中对应条目存在且 `enabled !== false`；列为 `NULL`、`rules` 无条目、或 `enabled=false` ⇒ 该「协议 × 分组」无粘性。
-- **清空**：`null` 或空字符串 ⇒ 整列 `NULL`（全关）。Admin UI 删除最后一条 rule 时亦会整列清空。
-- **校验**：`normalizeModelStickyConfigInput`（`packages/core/src/db/model-sticky-config.ts`）；`rules` 须至少一条合法 rule。
-- **运行时**：仅 Proxy failover 路径生效（`/v1/*`）；Admin Playground **不走** sticky。详见 [proxy-request-lifecycle.md §3.5](../architecture/proxy-request-lifecycle.md#35-粘性绑定)。
 
 ### `pricing_profile` / `price_override` 契约（`/admin/models`、`/admin/routes`）
 
@@ -753,6 +762,7 @@ Opt-in **粘性 key 路由**：同一用户尽量连续命中同一把 provider 
 请求体：`{ "key": "string", "value": "string" }`（`key` 必填；`value` 可省略或 `null` 视为空字符串）。
 
 - **`BILLING_CURRENCY`**：仅允许写入 **`USD`** 或 **`CNY`**（大写）；否则返回 `400` 与 `success: false`。
+- **`ROUTE_STRATEGY`**：仅允许 **`affinity`** \| **`weighted_random`** \| **`strict`** \| **`round_robin`**（小写）；非法 → `400`。全局同层路由策略缺省；模型 `route_policy` 可覆盖。详见 [route-strategies.md](../reference/route-strategies.md)。Proxy 进程内缓存约 **30s**。
 
 与 **Proxy 错误 Webhook** 相关的键（默认不存在于种子数据，按需 `PUT` 写入即可）：
 
@@ -786,7 +796,7 @@ Admin UI 登录后由 `BusinessTimezoneProvider` 调用，用于时间列展示�
 | `status` | 精确匹配 |
 | `start_date` / `end_date` | 过滤 `created_at`（UTC，格式：`YYYY-MM-DD HH:mm:ss`） |
 
-`data` 每条日志即 **`api_key_request_logs` 行**（读接口不 JOIN `models` / `providers`；展示名依赖写入时快照列）。**`model_name`** / **`provider_name`** 为请求当时展示名快照；**`provider_model_name`** 为上游模型 id；**`provider_key_id`** / **`provider_key_label`** / **`provider_key_fingerprint`** 为最终选用的 provider key 快照（迁移前旧行可能为 `null`）。**`request_body`** 为客户端入口侧脱敏 JSON（无提示词正文；长度有上限）。**`upstream_request_body`** 为合并路由 `custom_params` 后、与发往供应商的 wire 体结构对齐的脱敏快照（规则同 `request_body`；迁移前或旧行可能为 `null`）。**`request_protocol`**（入口）与 **`upstream_protocol`**（所选路由实际转发协议）见上文注。升级前列可能为 `null`。
+`data` 每条日志即 **`api_key_request_logs` 行**（读接口不 JOIN `models` / `providers`；展示名依赖写入时快照列）。**`model_name`** / **`provider_name`** 为请求当时展示名快照；**`provider_model_name`** 为上游模型 id；**`provider_key_id`** / **`provider_key_label`** / **`provider_key_fingerprint`** 为最终选用 Provider 快照（现为 **provider id / name / api_key 指纹**；0015 前旧行可能仍为历史 key 池 id）。**`request_body`** 为客户端入口侧脱敏 JSON（无提示词正文；长度有上限）。**`upstream_request_body`** 为合并路由 `custom_params` 后、与发往供应商的 wire 体结构对齐的脱敏快照（规则同 `request_body`；迁移前或旧行可能为 `null`）。**`request_protocol`**（入口）与 **`upstream_protocol`**（所选路由实际转发协议）见上文注。升级前列可能为 `null`。
 
 ### `GET /admin/budget-audit-logs`
 

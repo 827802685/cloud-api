@@ -39,8 +39,8 @@ export interface ModelWithRouteCountsRow {
 	input_modalities: string | null;
 	output_modalities: string | null;
 	released_at: string | null;
-	/** 粘性路由配置 JSON；NULL=无粘性 */
-	sticky_config: string | null;
+	/** 路由策略配置 JSON；NULL=使用全局/代码默认 */
+	route_policy: string | null;
 	created_at: string;
 	routes_count: number;
 	active_routes_count: number;
@@ -55,9 +55,19 @@ export interface ModelRouteJoinRow {
 	priority: number;
 	status: string;
 	route_group: string;
+	/** 同 priority 层内权重 */
+	weight?: number;
 	price_override: string | null;
 	custom_params: string | null;
 	upstream_protocol: string;
+	route_pool_id: string | null;
+	upstream_operation: string;
+	adapter: string;
+	/** JSON array of surfaces attached to this target's pool. */
+	surfaces: string | null;
+	pool_name: string | null;
+	pool_strategy: string | null;
+	pool_status: string | null;
 	model_name: string | null;
 	provider_name: string | null;
 }
@@ -71,6 +81,10 @@ export interface ProviderAdminRow {
 	name: string;
 	/** 协议端点 JSON（权威） */
 	endpoints: string | null;
+	/** 上游 API Key（管理端稍后脱敏） */
+	api_key?: string;
+	/** `active` | `disabled` */
+	status?: string;
 	description: string | null;
 	created_at: string;
 }

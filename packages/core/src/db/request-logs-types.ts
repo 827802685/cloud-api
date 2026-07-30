@@ -17,7 +17,14 @@ export type InsertRequestLogParams = {
 	requestBody: string | null;
 	upstreamRequestBody: string | null;
 	requestProtocol: 'openai' | 'anthropic' | 'gemini';
+	requestOperation?: string | null;
 	upstreamProtocol: UpstreamProtocol;
+	upstreamOperation?: string | null;
+	modelSurfaceId?: string | null;
+	routePoolId?: string | null;
+	routeTargetId?: string | null;
+	adapter?: string | null;
+	routeTrace?: string | null;
 	inputTokens: number;
 	outputTokens: number;
 	cacheReadTokens: number;

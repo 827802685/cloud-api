@@ -24,7 +24,7 @@ import {
 	type ImageOperation,
 } from '@/lib/image-generations';
 import { AdminServiceError, badRequest, notFound } from './errors';
-import { resolvePlaygroundProviderKey } from './provider-api-keys-service';
+import { isPendingProviderImportApiKey } from '@octafuse/core/db/provider-key-utils';
 
 /** 与 Proxy `RouteResult` 对齐的最小子集，供合并默认参数与拼 URL。 */
 export type PlaygroundResolvedRoute = {
@@ -34,8 +34,6 @@ export type PlaygroundResolvedRoute = {
 	providerApiKey: string;
 	providerModelName: string;
 	customParams: Record<string, unknown> | null;
-	providerKeyId: string;
-	providerKeyLabel: string;
 	/** Catalog model is image-generation (`output_modalities` includes image). */
 	isImageModel: boolean;
 	/** Catalog model is audio transcription (`audio_billing_mode: per_second | token`). */
@@ -92,11 +90,11 @@ function parseJsonObject(raw: string | null | undefined): Record<string, unknown
 
 /**
  * 解析路由与供应商，得到实际上游根 URL 与密钥（Playground 专用，不落库）。
+ * 始终使用该供应商的单键 `providers.api_key`。
  */
 export async function resolvePlaygroundRoute(
 	repos: GatewayRepositories,
-	routeId: string,
-	providerKeyId?: string | null
+	routeId: string
 ): Promise<PlaygroundResolvedRoute> {
 	const id = String(routeId ?? '').trim();
 	if (!id) {
@@ -112,6 +110,15 @@ export async function resolvePlaygroundRoute(
 	if (!provider) {
 		throw badRequest('Provider not found for this route');
 	}
+	if (provider.status === 'disabled') {
+		throw badRequest('Provider is disabled');
+	}
+
+	const keyRow = await repos.providers.getProviderApiKeyPlaintext(provider.id);
+	const apiKey = keyRow?.api_key?.trim() ?? '';
+	if (!apiKey || isPendingProviderImportApiKey(apiKey)) {
+		throw badRequest('Provider has no usable API key configured');
+	}
 
 	let protocol: UpstreamProtocol;
 	try {
@@ -126,8 +133,6 @@ export async function resolvePlaygroundRoute(
 	if (row.custom_params && !customParams) {
 		throw badRequest('Invalid custom_params JSON on route');
 	}
-
-	const resolvedKey = await resolvePlaygroundProviderKey(repos, provider.id, providerKeyId);
 
 	const model = await repos.models.getModelDetailWithRouteCounts(row.model_id);
 	const isImageModel = model
@@ -146,11 +151,9 @@ export async function resolvePlaygroundRoute(
 		upstreamProtocol: protocol,
 		providerEndpoints,
 		providerId: provider.id,
-		providerApiKey: resolvedKey.api_key,
+		providerApiKey: apiKey,
 		providerModelName: row.provider_model_name,
 		customParams,
-		providerKeyId: resolvedKey.id,
-		providerKeyLabel: resolvedKey.label,
 		isImageModel,
 		isAudioModel,
 	};
@@ -199,8 +202,6 @@ export type PlaygroundInvokeInput = {
 	 * For edits, `body.image` / `body.images` should be data URL string(s).
 	 */
 	imageOperation?: ImageOperation;
-	/** 可选：指定 `provider_api_keys.id` 做连通性测试。 */
-	providerKeyId?: string | null;
 };
 
 type DecodedEditImage = {
@@ -402,7 +403,7 @@ export async function invokePlaygroundUpstream(
 	input: PlaygroundInvokeInput,
 	requestSignal?: AbortSignal
 ): Promise<PlaygroundInvokeResult> {
-	const route = await resolvePlaygroundRoute(repos, input.routeId, input.providerKeyId);
+	const route = await resolvePlaygroundRoute(repos, input.routeId);
 	const userBody = input.body;
 	if (!isPlainObject(userBody)) {
 		throw badRequest('body must be a JSON object');

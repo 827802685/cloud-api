@@ -123,9 +123,12 @@ export interface GatewayProvider {
   icon_key?: string;
   /** 协议端点 JSON；见 `providers.endpoints` */
   endpoints?: string | null;
+  /** 脱敏预览；明文仅经 `GET /admin/providers/:id/api-key` */
+  api_key?: string;
+  /** `active` | `disabled` */
+  status?: string;
   description: string | null;
   created_at: string;
-  active_key_count?: number;
   has_pending_key?: boolean;
 }
 
@@ -149,8 +152,8 @@ export interface GatewayModel {
   tags: string;
   description: string | null;
   metadata: string | null;
-  /** 粘性 key 路由配置 JSON（`{"rules":{"openai:default":{"ttl_seconds":600,...}}}`）；null=无粘性 */
-  sticky_config?: string | null;
+  /** 路由策略 JSON（`strategy` + `rules`）；null=回退全局 ROUTE_STRATEGY */
+  route_policy?: string | null;
   created_at: string;
   /** Count of active routes associated with this model */
   active_routes_count?: number;
@@ -164,6 +167,8 @@ export interface GatewayModelRoute {
   provider_id: string;
   provider_model_name: string;
   priority: number;
+  /** Same-priority layer weight; default 1 */
+  weight?: number;
   status: string;
   /** Route channel: e.g. default, free (gateway migration 0016) */
   route_group: string;
@@ -172,6 +177,17 @@ export interface GatewayModelRoute {
   custom_params: string | null;
   /** NOT NULL DEFAULT 'openai' after gateway migration 0011 */
   upstream_protocol: string;
+  /** Provider-side capability; `*` follows the matched request operation. */
+  upstream_operation?: string;
+  /** Request conversion adapter. */
+  adapter?: string;
+  /** Stable target pool identity. */
+  route_pool_id?: string | null;
+  pool_name?: string | null;
+  pool_strategy?: string | null;
+  pool_status?: string | null;
+  /** JSON array of public ingress surfaces sharing this pool. */
+  surfaces?: string | null;
 }
 
 export interface GatewayRequestLog {
@@ -184,8 +200,15 @@ export interface GatewayRequestLog {
   /** 展示名快照（`api_key_request_logs.model_name`，读接口不 JOIN catalog） */
   model_name?: string | null;
   request_protocol?: string | null;
+  request_operation?: string | null;
   /** 所选路由的上游协议快照（`model_routes.upstream_protocol`）；旧行可能缺省 */
   upstream_protocol?: string | null;
+  upstream_operation?: string | null;
+  model_surface_id?: string | null;
+  route_pool_id?: string | null;
+  route_target_id?: string | null;
+  adapter?: string | null;
+  route_trace?: string | null;
   /** 供应商展示名快照（`api_key_request_logs.provider_name`） */
   provider_name?: string | null;
   /** 最终选用的 provider key id（`provider_api_keys.id`） */

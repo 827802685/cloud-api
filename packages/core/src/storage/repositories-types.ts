@@ -5,7 +5,6 @@ import type {
 	ModelRoutesRepository,
 	ModelRoutingRepository,
 	ModelsRepository,
-	ProviderApiKeysRepository,
 	ProvidersRepository,
 	RequestLogsRepository,
 	SystemConfigRepository,
@@ -23,7 +22,6 @@ export interface GatewayRepositories {
 	readonly apiKeys: ApiKeysRepositoryHandle;
 	readonly requestLogs: RequestLogsRepositoryHandle;
 	readonly providers: ProvidersRepository;
-	readonly providerKeys: ProviderApiKeysRepository;
 	readonly models: ModelsRepository;
 	readonly routes: ModelRoutesRepository;
 	readonly systemConfig: SystemConfigRepository;

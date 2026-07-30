@@ -62,6 +62,12 @@ export interface ResolvedGatewayKeyRow extends ApiKeyRow {
 	budget_reset_at: string | null;
 }
 
+/** `providers.status` 枚举。 */
+export type ProviderStatus = 'active' | 'disabled';
+
+/** 同层路由排序策略名。 */
+export type RouteStrategyName = 'affinity' | 'weighted_random' | 'strict' | 'round_robin';
+
 /** `providers` 表行。 */
 export interface ProviderRow {
   id: string;
@@ -71,6 +77,10 @@ export interface ProviderRow {
    * 见 `parseProviderEndpoints` / `resolveUpstreamEndpoint`。
    */
   endpoints?: string | null;
+  /** 该上游账号唯一 API Key（明文，仅服务端）。 */
+  api_key?: string;
+  /** `active` | `disabled`；disabled 不参与调度。 */
+  status?: ProviderStatus | string;
   description: string | null;
   created_at: string;
 }
@@ -98,8 +108,8 @@ export interface ModelRow {
   output_modalities: string | null;
   /** Model release date `YYYY-MM-DD` */
   released_at: string | null;
-  /** 粘性路由配置 JSON（`parseModelStickyConfig`）；NULL=该模型无粘性（部分查询可能无此列） */
-  sticky_config?: string | null;
+  /** 路由策略配置 JSON（`parseModelRoutePolicy`）；NULL=使用全局/代码默认（部分查询可能无此列） */
+  route_policy?: string | null;
   created_at: string;
 }
 
@@ -113,11 +123,19 @@ export interface ModelRouteRow {
   status: string;
   /** 计费/选路通道；迁移后默认 `default` */
   route_group?: string;
+  /** 同 priority 层内权重；策略排序用，默认 1 */
+  weight?: number;
   price_override: string | null;
   /** 路由级默认请求体片段（JSON 对象字符串）；与用户请求体深度合并，用户字段优先 */
   custom_params: string | null;
   /** `openai` | `anthropic` | `gemini` */
   upstream_protocol: string;
+  /** Owning route pool. Nullable only for databases that have not applied migration 0016 yet. */
+  route_pool_id?: string | null;
+  /** Upstream capability; `*` means use the request operation (legacy compatibility). */
+  upstream_operation?: string;
+  /** Request-to-upstream conversion adapter. First release supports `passthrough`. */
+  adapter?: string;
 }
 
 /** `api_key_request_logs` 表行。 */
@@ -139,8 +157,15 @@ export interface RequestLogRow {
   /** 脱敏后的上游 wire 请求体（路由合并默认参数后；旧行可能为 null） */
   upstream_request_body: string | null;
   request_protocol: string | null;
+  request_operation?: string | null;
   /** 所选路由的上游协议快照（`model_routes.upstream_protocol`） */
   upstream_protocol: string;
+  upstream_operation?: string | null;
+  model_surface_id?: string | null;
+  route_pool_id?: string | null;
+  route_target_id?: string | null;
+  adapter?: string | null;
+  route_trace?: string | null;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
@@ -171,10 +196,14 @@ export interface RequestLogRow {
   raw_usage: string | null;
   /** 计费审计 JSON 字符串（单列）；结构约定见 `db/pricing-audit.ts` */
   pricing_audit: string | null;
-  /** 最终选用的 provider key id（`provider_api_keys.id`） */
+  /**
+   * 历史列：曾存 `provider_api_keys.id`；单键化后语义为 provider id（或兼容旧值）。
+   * 新写入可填 `providers.id`；展示以 label / fingerprint 为准。
+   */
   provider_key_id: string | null;
+  /** 历史列：曾存 key label；单键化后可填 provider name */
   provider_key_label: string | null;
-  /** 脱敏尾号指纹，不存明文 */
+  /** 脱敏尾号指纹，不存明文（历史语义保留） */
   provider_key_fingerprint: string | null;
   /** 上游响应头中的 provider 追踪 id（如 x-request-id）；传输层，经聚合商/CDN 可能为 null */
   upstream_request_id: string | null;

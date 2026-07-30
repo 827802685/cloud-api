@@ -5,13 +5,15 @@ import { Hono } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';
 import {
-  getActiveModelRouteRows,
-  resolveRouteResultsFromRows,
+  resolveRoutesForSurface,
   type RouteResult,
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
-import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+  buildAffinityKey,
+  buildTierKeyPrefix,
+  resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyGeminiContent, EMPTY_USAGE, type UsageFromStream } from '../../services/proxy';
 import { buildRouteRequestBody } from '../../services/route-default-params';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
@@ -143,21 +145,20 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
   }
 
   let routes: RouteResult[];
+  let poolStrategy: string | null = null;
   try {
-    const routeRows = await getActiveModelRouteRows(repos, baseModelId);
-    const selectedRows = selectActiveRouteRows(routeRows, explicitGroup);
-    if (selectedRows.length === 0) {
-      return c.json(
-        { error: `No active routes for route group "${effectiveRouteGroup}" for this model` },
-        400
-      );
-    }
-    routes = await resolveRouteResultsFromRows(repos, selectedRows);
+    const resolvedSurface = await resolveRoutesForSurface(repos, {
+      modelId: baseModelId,
+      routeGroup: effectiveRouteGroup,
+      requestProtocol: 'gemini',
+      requestOperation: action,
+    });
+    routes = resolvedSurface.routes;
+    poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Model route resolution failed';
     return c.json({ error: message }, 502);
   }
-  routes = routes.filter((route) => route.upstreamProtocol === 'gemini');
   if (routes.length === 0) {
     return c.json(
       {
@@ -186,13 +187,16 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
   }
 
   const requestSignal = c.req.raw.signal;
-  const stickyContext = buildStickyDispatchContext({
-    stickyConfigRaw: model.sticky_config ?? null,
-    userId: apiKey.userId,
-    baseModelId,
-    routeGroup: effectiveRouteGroup,
+  const strategy = await resolveRouteStrategy({
+    routePolicyRaw: model.route_policy ?? null,
+    poolStrategy,
     protocol: 'gemini',
+    capability: action,
+    routeGroup: effectiveRouteGroup,
+    repos,
   });
+  const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'gemini');
+  const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'gemini');
   timing.markGatewayComplete();
   const proxyResult = await proxyGeminiContent(
     repos,
@@ -201,7 +205,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
     body,
     c.req.url.includes('?') ? c.req.url.slice(c.req.url.indexOf('?')) : '',
     requestSignal,
-    { sticky: stickyContext, timing }
+    { affinityKey, tierKeyPrefix, strategy, timing }
   );
   const { usagePromise, chosenRoute, upstreamRequestId, circuitEvents, suppressErrorAlert } = proxyResult;
   const { response, errorBodyText } = await materializeNonOkResponse(proxyResult.response);
@@ -286,7 +290,13 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
           request_body: requestBodyForLog,
           upstream_request_body: upstreamRequestBodyForLog,
           request_protocol: 'gemini',
+          request_operation: action,
           upstream_protocol: chosenRoute.upstreamProtocol,
+          upstream_operation: chosenRoute.upstreamOperation,
+          model_surface_id: chosenRoute.modelSurfaceId,
+          route_pool_id: chosenRoute.routePoolId,
+          route_target_id: chosenRoute.targetId,
+          adapter: chosenRoute.adapter,
           usage: usageCollected,
           model_pricing_profile: model.pricing_profile ?? null,
           route_price_override_json: chosenRoute.priceOverrideRaw,

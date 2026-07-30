@@ -302,28 +302,29 @@
 	"providers": {
 		"title": "Providers",
 		"subtitle": "{product}에서 사용하는 업스트림 AI 엔드포인트",
-		"importHint": "가져오기를 사용해 일반적인 Provider 엔드포인트를 미리 구성하세요. LLM 전용 템플릿은 Base가 아닌 chat URL을 사용하고, OpenAI 전체 기능을 지원하는 템플릿은 Base URL을 유지합니다. 가져온 뒤 해당 항목을 열어 API Key를 추가하세요.",
+		"importHint": "가져오기로 일반 공급자 엔드포인트를 채웁니다. LLM 전용 템플릿은 chat URL(Base 없음), 전체 OpenAI 호환은 Base URL을 유지합니다. 행을 열어 API 키를 설정하세요.",
 		"emptySearch": "이 이름과 일치하는 Provider가 없습니다",
 		"empty": "Provider가 없습니다",
-		"searchPlaceholder": "Provider 이름 검색",
+		"searchPlaceholder": "Provider, ID, 엔드포인트 또는 기능 검색",
 		"clearSearch": "Provider 검색 초기화",
-		"expandKeys": "Keys 펼치기",
-		"collapseKeys": "Keys 접기",
-		"loadingKeys": "Keys 불러오는 중…",
 		"card": {
-			"pending": "대기 중",
-			"noKey": "Key 없음",
-			"noEndpoint": "설정된 엔드포인트 없음",
-			"keysActive": "Keys · 활성 {count}개",
-			"keysTotal": "전체 {count}개",
-			"keysInactive": "· 비활성 {count}개",
-			"addKeyFor": "{name}에 Key 추가",
-			"noKeysConfigured": "설정된 Key가 없습니다.",
-			"placeholder": "placeholder",
-			"copyKey": "{label} 복사",
-			"copiedKey": "{label} 복사됨",
-			"keyEnabled": "Key {label} 활성화됨 (체크 해제하여 비활성화)",
-			"keyDisabled": "Key {label} 비활성화됨 (체크하여 활성화)",
+			"pending": "대기",
+			"noKey": "키 없음",
+			"disabled": "비활성",
+			"noEndpoint": "엔드포인트 없음",
+			"placeholder": "플레이스홀더",
+			"copyApiKey": "API 키 복사",
+			"apiKey": "API 키",
+			"supportedEndpoints": "지원 엔드포인트",
+			"editProvider": "Provider 편집",
+			"baseWithOverrides": "공통 Base + 재정의 {count}개",
+			"endpointCount": "독립 엔드포인트 {count}개",
+			"showEndpointDetails": "엔드포인트 상세 보기",
+			"hideEndpointDetails": "엔드포인트 상세 숨기기",
+			"derived": "파생",
+			"override": "재정의",
+			"providerEnabled": "공급자 활성(체크 해제 시 비활성)",
+			"providerDisabled": "공급자 비활성(체크 시 활성)",
 			"capabilitiesTitle": "{label}: {caps} · {url}",
 			"capabilitiesSr": "{label} 기능: {caps}",
 			"cap": {
@@ -386,26 +387,15 @@
 			"description": "설명",
 			"descriptionHint": "내부 참고용이며 업스트림으로 전송되지 않습니다.",
 			"descriptionPlaceholder": "선택적 내부 설명",
-			"deleteProvider": "Provider 삭제"
-		},
-		"keys": {
-			"editTitle": "Provider Key 편집",
-			"newTitle": "새 Provider Key",
-			"label": "레이블",
-			"labelMaxLength": "최대 {max}자",
-			"replaceApiKey": "API Key 교체",
-			"apiKey": "API Key",
-			"leaveBlank": "현재 Key를 유지하려면 비워 두세요",
+			"deleteProvider": "Provider 삭제",
+			"apiKeyRequired": "API Key *",
+			"apiKeyOptional": "API Key",
 			"apiKeyPlaceholder": "sk-…",
-			"priority": "우선순위",
-			"weight": "가중치",
-			"rpmLimit": "RPM 제한",
-			"tpmLimit": "TPM 제한",
-			"concurrency": "동시 요청 수",
-			"unlimited": "제한 없음",
-			"deleteKey": "Key 삭제",
-			"saveKey": "Key 저장",
-			"createKey": "Key 생성"
+			"apiKeyEditPlaceholder": "비우면 현재 키 유지",
+			"apiKeyHint": "이 공급자의 업스트림 자격 증명.",
+			"apiKeyEditHint": "비우면 현재 키를 유지하고, 새 값을 입력하면 교체합니다.",
+			"statusEnabled": "공급자 사용",
+			"statusHint": "비활성 공급자는 라우팅과 Playground에서 제외됩니다."
 		}
 	},
 	"models": {
@@ -560,6 +550,50 @@
 			"allModelsRoutes": "모든 모델 및 Routes",
 			"newRoute": "새 Route"
 		},
+		"flow": {
+			"overviewTitle": "요청 처리 흐름",
+			"overviewHint": "각 모델을 왼쪽에서 오른쪽으로 확인하세요. 설정 항목은 실제로 적용되는 단계에 표시됩니다.",
+			"step": "단계 {number}",
+			"requestStep": "클라이언트 요청",
+			"lookupStep": "모델 확인",
+			"policyStep": "정책 및 장애 조치",
+			"providerStep": "업스트림 공급자",
+			"requestNode": "요청 진입점",
+			"modelGroupResolved": "모델 ID와 라우트 그룹으로 매칭",
+			"routeGroup": "라우트 그룹",
+			"routeMatchAria": "라우트 그룹 {group}, 요청 model={model}",
+			"policyNode": "정책",
+			"strategyValue": "전략: {strategy}",
+			"strategyInherit": "전략: 상속",
+			"inheritShort": "상속",
+			"effectiveStrategy": "실제 적용 전략",
+			"strategySource": {
+				"pool": "현재 라우트 풀",
+				"modelOperation": "모델 엔드포인트 규칙에서 상속",
+				"modelProtocol": "모델 프로토콜 규칙에서 상속",
+				"model": "모델 기본값에서 상속",
+				"global": "전역 설정에서 상속",
+				"default": "시스템 기본값에서 상속"
+			},
+			"priorityHint": "우선순위가 높을수록 먼저 시도합니다. 클릭하여 전략을 편집하세요.",
+			"targetsNode": "업스트림 대상",
+			"targetCount": "대상 {count}개",
+			"addToPool": "대상 추가",
+			"addProvider": "공급자 추가",
+			"enabledShort": "활성",
+			"disabledShort": "비활성",
+			"addRoute": "라우트 추가",
+			"firstAttempt": "첫 시도 계층",
+			"fallback": "실패 시 계속",
+			"fallbackLayer": "대체 계층",
+			"weight": "W{value}",
+			"chargedShort": "청구",
+			"meteredShort": "비용",
+			"scheduled": "시간대",
+			"defaults": "기본값",
+			"providerDisabled": "공급자 중지",
+			"editRoute": "이 라우트 편집"
+		},
 		"vendor": {
 			"label": "Vendor",
 			"modelCount": "모델 {count}개",
@@ -585,10 +619,10 @@
 		},
 		"protocol": {
 			"sectionTitle": "upstream_protocol: {protocol} · route_group: {group}",
-			"stickyOn": "고정 Key Routing 켜짐 · 유휴 TTL {ttl}s · 짧은 대기 {wait}ms (클릭하여 설정)",
-			"stickyOff": "고정 Key Routing 꺼짐 (클릭하여 설정)",
-			"stickyLabel": "고정 {ttl}s",
-			"stickyOffLabel": "고정 꺼짐"
+			"strategyOn": "라우트 전략: {strategy} (클릭하여 설정)",
+			"strategyInherit": "라우트 전략: 상속 (클릭하여 설정)",
+			"strategyLabel": "{strategy}",
+			"strategyInheritLabel": "상속"
 		},
 		"listItem": {
 			"routeEnabled": "Route 활성화됨 (체크 해제하여 비활성화)",
@@ -602,15 +636,6 @@
 			"chargedTooltip": "청구 배수: {value} · 카탈로그 가격 대비 고객 청구 배수",
 			"meteredTooltip": "계측 배수: {value} · 카탈로그 가격 대비 Provider 비용 배수"
 		},
-		"sticky": {
-			"title": "고정 Key Routing",
-			"enable": "고정 Key Routing 사용",
-			"enableHint": "업스트림 prompt-cache 적중률을 높이기 위해 각 사용자를 이 프로토콜 × 그룹의 Provider Key 하나에 연결합니다. 유휴 TTL이 지나면 연결이 해제됩니다.",
-			"idleTtl": "유휴 TTL (초)",
-			"shortWait": "짧은 대기 (ms)",
-			"defaultPlaceholder": "기본값 {value}",
-			"shortWaitHint": "짧은 대기: 연결된 Key가 일시적으로 Rate limit에 도달했지만 이 시간 안에 복구될 것으로 예상되면, Gateway는 Key를 전환하지 않고 기다려 캐시를 유지합니다."
-		},
 		"modal": {
 			"editTitle": "Route 편집",
 			"newTitle": "새 Route",
@@ -620,9 +645,15 @@
 			"selectModel": "모델 선택",
 			"providerRequired": "Provider *",
 			"selectProvider": "Provider 선택",
+			"requestProtocol": "공개 프로토콜",
+			"requestOperation": "공개 작업",
 			"upstreamProtocol": "업스트림 프로토콜",
-			"protocolHintConfigured": "이 Provider에 Base URL이 설정된 프로토콜만 표시됩니다.",
+			"upstreamOperation": "업스트림 작업",
+			"passthroughHint": "현재 릴리스는 패스스루만 지원하며 공개 및 업스트림 프로토콜이 같아야 합니다.",
+			"protocolHintConfigured": "현재 모델과 호환되며 Provider에 설정된 프로토콜만 표시됩니다.",
 			"protocolHintSelectProvider": "먼저 Provider를 선택하세요.",
+			"upstreamOperationHintConfigured": "Provider 엔드포인트 설정과 현재 모델이 지원하는 기능만 표시됩니다.",
+			"currentLegacyValue": "현재 이전 값",
 			"providerModelName": "Provider 모델 이름 *",
 			"providerModelPlaceholder": "예: gpt-4o-2024-11-20",
 			"routeGroup": "Route 그룹",
@@ -676,9 +707,75 @@
 			"standardCatalogHintAudio": "이 ASR 모델의 카탈로그 오디오 요금(읽기 전용).",
 			"noCatalogAudioPricing": "이 모델에 오디오 요금이 없습니다.",
 			"audioPricePerSecond": "초당 가격",
-			"audioMinimumSeconds": "최소 초"
+			"audioMinimumSeconds": "최소 초",
+			"weight": "가중치",
+			"weightHint": "동일 priority 층 가중치(≥ 1). 가중 전략에서 클수록 트래픽이 많습니다."
 		},
-		"kindAudio": "오디오"
+		"kindAudio": "오디오",
+		"strategy": {
+			"title": "라우트 전략",
+			"protocolLevel": "현재 라우트 풀 전략",
+			"protocolLevelHint": "비워 두면 모델 엔드포인트, 모델 프로토콜, 모델 기본값, 전역 설정, 시스템 기본값 순서로 상속합니다.",
+			"capabilityLevel": "capability 덮어쓰기",
+			"capabilityHint": "비움 = 프로토콜 수준 상속.",
+			"inherit": "상속",
+			"inheritedResult": "현재 상속 결과",
+			"effective": "현재 적용",
+			"guideTitle": "전략 안내",
+			"guideHint": "전략 카드를 선택하고 저장 전에 현재 Target 처리 효과를 확인할 수 있습니다.",
+			"bestFor": "적합한 용도",
+			"tradeoff": "고려 사항",
+			"source": {
+				"pool": "현재 라우트 풀",
+				"modelOperation": "모델 엔드포인트 규칙",
+				"modelProtocol": "모델 프로토콜 규칙",
+				"model": "모델 기본값",
+				"global": "전역 설정",
+				"default": "시스템 기본값"
+			},
+			"affinity": "affinity",
+			"weighted_random": "weighted_random",
+			"strict": "strict",
+			"round_robin": "round_robin",
+			"description": {
+				"affinity": {
+					"summary": "사용자와 모델로 안정적인 선호 대상을 만들고 가중치로 전체 분포를 조정합니다.",
+					"bestFor": "Prompt Cache와 세션 지역성",
+					"tradeoff": "단기간 트래픽은 완전히 균등하지 않을 수 있습니다"
+				},
+				"weighted_random": {
+					"summary": "요청마다 가중 랜덤으로 선택하고 중복 없는 재시도 순서를 만듭니다.",
+					"bestFor": "비율 분배, A/B 테스트, 비용 배분",
+					"tradeoff": "같은 사용자도 Provider가 자주 바뀔 수 있습니다"
+				},
+				"strict": {
+					"summary": "같은 우선순위에서 가중치 내림차순으로 고정하며 동률은 Provider ID로 정렬합니다.",
+					"bestFor": "명확한 주/백업 구성과 예측 가능성",
+					"tradeoff": "첫 Provider에 대부분의 트래픽이 집중됩니다"
+				},
+				"round_robin": {
+					"summary": "가중치로 확장한 순서를 회전하여 Provider가 번갈아 첫 선택이 됩니다.",
+					"bestFor": "균등 순환과 용량 분산",
+					"tradeoff": "카운터는 런타임 인스턴스별이며 전역 동기화되지 않습니다"
+				}
+			},
+			"effectTitle": "전략 효과 미리보기",
+			"effectHint": "활성 Target을 기준으로 순서를 설명하며 실제 요청은 보내지 않습니다.",
+			"effect": {
+				"affinity": "동일한 사용자, 모델, 그룹, 프로토콜은 안정적인 선호 Target을 가지며 실패 시 같은 층의 나머지를 시도합니다.",
+				"weighted_random": "각 요청의 첫 Target을 가중치로 선택합니다. 백분율은 같은 우선순위 내 예상 비율입니다.",
+				"strict": "번호는 같은 우선순위 내 고정 시도 순서이며 가중치가 높을수록 앞섭니다.",
+				"round_robin": "같은 우선순위에서 가중치에 따라 첫 Target을 번갈아 선택합니다. 시작점은 런타임 인스턴스 카운터에 따라 달라집니다."
+			},
+			"priorityFirst": "Priority는 항상 전략보다 먼저 적용됩니다. 상위 층의 모든 Target이 실패한 뒤에만 다음 층으로 이동합니다.",
+			"runtimeHealthHint": "실행 시 회로가 열린 Provider도 먼저 제외되므로 실제 순서는 상태에 따라 바뀔 수 있습니다.",
+			"singleTargetEffect": "사용 가능한 Target은 {count}개입니다. 2개 미만이면 모든 전략의 첫 선택이 같습니다.",
+			"firstAttemptLayer": "첫 시도 층",
+			"fallbackLayer": "폴백 층",
+			"inactiveExcluded": "비활성 Route 또는 Provider는 미리보기에서 제외됩니다.",
+			"hintCache": "affinity가 아니면 prompt cache 적중률이 낮아질 수 있습니다.",
+			"hintNoCache": "업스트림에 prompt cache가 없습니다. weighted_random 또는 round_robin을 권장합니다."
+		}
 	},
 	"playground": {
 		"title": "Playground",
@@ -1025,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway 모델 이름, 프로토콜 및 Route 그룹",
 			"route": "Provider, 업스트림 모델 및 Provider Key",
-			"cost": "표준 (1행), 표준 대비 청구 배수 (2행), 표준 대비 계측 배수 (3행)",
+			"cost": "청구(C) 및 공급자 비용(M); 표준 카탈로그 가격은 상세 정보에서 확인",
 			"profit": "청구액 − 계측 비용 (요청당)",
 			"rowDetail": "클릭하여 요금 감사와 요청 / 사용량 본문 표시 또는 숨기기",
 			"inputOutputTokens": "입력 / 출력 Tokens",
@@ -1044,7 +1141,16 @@
 			"pricingAudit": "요금 감사",
 			"entryRequestBody": "진입 요청 본문 (민감 정보 숨김)",
 			"upstreamRequestBody": "업스트림 요청 본문 (민감 정보 숨김)",
-			"upstreamUsageRaw": "업스트림 사용량 (원본)"
+			"upstreamUsageRaw": "업스트림 사용량 (원본)",
+			"requestId": "요청 ID",
+			"identity": "사용자 · API 키",
+			"modelId": "모델 ID",
+			"routeGroup": "라우트 그룹",
+			"providerRoute": "Provider · 업스트림 모델",
+			"protocolMapping": "프로토콜 매핑",
+			"providerKey": "Provider 키",
+			"routeTarget": "라우트 대상",
+			"error": "오류"
 		},
 		"timing": {
 			"helpTitle": "Timing 지표",
@@ -1254,8 +1360,15 @@
 			"useMasterKeySection": "MASTER_KEY는 \"Admin API master key\" 섹션에서 설정하세요.",
 			"useWebhooksSection": "ALERT_WEBHOOK_WECOM_URL / ALERT_WEBHOOK_FEISHU_URL은 \"Proxy 오류 Webhooks\" 섹션에서 설정하세요.",
 			"useToolsSection": "WEB_*_ACTIVE / WEB_*_CATALOG은 Tools → 설정에서 관리하세요(Provider별 API Key 및 비용).",
-			"invalidIanaTimezone": "유효하지 않은 IANA 시간대입니다(예: Asia/Shanghai, America/New_York)"
-		}
+			"invalidIanaTimezone": "유효하지 않은 IANA 시간대입니다(예: Asia/Shanghai, America/New_York)",
+			"useRouteStrategySection": "ROUTE_STRATEGY는 \"전역 라우트 전략\" 섹션에서 설정하세요."
+		},
+		"routeStrategy": {
+			"title": "전역 라우트 전략",
+			"description": "모델에 route_policy가 없을 때 기본 전략(system_config.ROUTE_STRATEGY).",
+			"strategy": "전략"
+		},
+		"saveRouteStrategy": "라우트 전략 저장"
 	},
 	"tools": {
 		"catalog": {

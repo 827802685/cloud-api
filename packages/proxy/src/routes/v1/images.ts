@@ -12,13 +12,15 @@ import type { Context } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey, type ApiKeyContext } from '../../middleware/auth';
 import {
-	getActiveModelRouteRows,
-	resolveRouteResultsFromRows,
+	resolveRoutesForSurface,
 	type RouteResult,
 } from '../../services/model-router';
 import { resolveModelRouting } from '../../services/resolve-model-route-group';
-import { selectActiveRouteRows } from '../../services/route-selection';
-import { buildStickyDispatchContext } from '../../services/failover-dispatch';
+import {
+	buildAffinityKey,
+	buildTierKeyPrefix,
+	resolveRouteStrategy,
+} from '../../services/route-strategies';
 import { proxyImageEdits, proxyImageGenerations, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
 import {
@@ -60,7 +62,8 @@ imageRoutes.use('*', requireApiKey);
 
 async function resolveOpenAiImageRoutes(
 	repos: GatewayRepositories,
-	rawModelId: string
+	rawModelId: string,
+	requestOperation: 'images.generations' | 'images.edits'
 ): Promise<
 	| {
 			ok: true;
@@ -68,6 +71,7 @@ async function resolveOpenAiImageRoutes(
 			baseModelId: string;
 			effectiveRouteGroup: string;
 			routes: RouteResult[];
+			poolStrategy: string | null;
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
@@ -80,17 +84,13 @@ async function resolveOpenAiImageRoutes(
 	const { model, baseModelId, explicitGroup } = resolved;
 	const effectiveRouteGroup = explicitGroup?.trim() || 'default';
 	try {
-		const routeRows = await getActiveModelRouteRows(repos, baseModelId);
-		const selectedRows = selectActiveRouteRows(routeRows, explicitGroup);
-		if (selectedRows.length === 0) {
-			return {
-				ok: false,
-				status: 400,
-				error: `No active routes for route group "${effectiveRouteGroup}" for this model`,
-			};
-		}
-		let routes = await resolveRouteResultsFromRows(repos, selectedRows);
-		routes = routes.filter((route) => route.upstreamProtocol === 'openai');
+		const resolvedSurface = await resolveRoutesForSurface(repos, {
+			modelId: baseModelId,
+			routeGroup: effectiveRouteGroup,
+			requestProtocol: 'openai',
+			requestOperation,
+		});
+		const routes = resolvedSurface.routes;
 		if (routes.length === 0) {
 			return {
 				ok: false,
@@ -98,7 +98,14 @@ async function resolveOpenAiImageRoutes(
 				error: `No OpenAI route in route group "${effectiveRouteGroup}" for this model`,
 			};
 		}
-		return { ok: true, model, baseModelId, effectiveRouteGroup, routes };
+		return {
+			ok: true,
+			model,
+			baseModelId,
+			effectiveRouteGroup,
+			routes,
+			poolStrategy: resolvedSurface.surface?.pool_strategy ?? null,
+		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Model route resolution failed';
 		return { ok: false, status: 502, error: message };
@@ -120,23 +127,141 @@ function truncateModelIdForLog(rawModelId: string, maxLen = 200): string {
 	return `${trimmed.slice(0, maxLen)}…`;
 }
 
-async function parseMultipartEdits(c: {
-	req: { parseBody: (options?: { all?: boolean }) => Promise<Record<string, unknown>> };
-}): Promise<
-	| { ok: true; model: string; edit: NormalizedImageEditRequest }
-	| { ok: false; error: string }
-> {
+/**
+ * Return an error message when Content-Type is not multipart/form-data; otherwise null.
+ * Hono `parseBody` returns `{}` without reading the body for non-form types, which used to
+ * surface as a misleading "Missing model".
+ * @internal exported for unit tests
+ */
+export function validateImagesEditsContentType(contentType: string | null | undefined): string | null {
+	const ct = (contentType ?? '').trim();
+	if (!ct.toLowerCase().startsWith('multipart/form-data')) {
+		return `Unsupported Content-Type for /v1/images/edits: expected multipart/form-data, got "${ct || '(missing)'}"`;
+	}
+	return null;
+}
+
+/** Summarize multipart/JSON field shapes for diagnostics (keys + type only; never values). */
+function summarizeBodyKeys(body: Record<string, unknown>): string[] {
+	return Object.keys(body)
+		.map((key) => {
+			const value = body[key];
+			if (value == null) return `${key}:null`;
+			if (typeof value === 'string') return `${key}:string`;
+			if (typeof value === 'number' || typeof value === 'boolean') return `${key}:${typeof value}`;
+			if (Array.isArray(value)) {
+				const first = value[0];
+				const itemType =
+					first == null
+						? 'empty'
+						: typeof first === 'object' && first !== null && 'arrayBuffer' in first
+							? 'file'
+							: typeof first;
+				return `${key}:array(${value.length},${itemType})`;
+			}
+			if (typeof value === 'object' && 'arrayBuffer' in value) return `${key}:file`;
+			return `${key}:object`;
+		})
+		.slice(0, 40);
+}
+
+type ImageRejectDiag = {
+	operation: 'generations' | 'edits';
+	contentType?: string | null;
+	contentLength?: string | null;
+	bodyKeys?: string[];
+	hasModel?: boolean;
+	clientModel?: string;
+	promptChars?: number;
+	referenceCount?: number;
+	totalUploadBytes?: number;
+};
+
+/**
+ * Log + return a client-facing Images 4xx/403. Never logs prompt / base64 / image bytes.
+ */
+function rejectImageRequest(
+	c: ImagesContext,
+	status: 400 | 403 | 404 | 502,
+	error: string,
+	diag: ImageRejectDiag
+): Response {
+	const apiKey = c.get('apiKey');
+	console.warn('[Gateway Images] request rejected', {
+		operation: diag.operation,
+		status,
+		error,
+		contentType: diag.contentType ?? c.req.header('content-type') ?? null,
+		contentLength: diag.contentLength ?? c.req.header('content-length') ?? null,
+		keyId: apiKey?.keyId ?? null,
+		userId: apiKey?.userId ?? null,
+		bodyKeys: diag.bodyKeys ?? null,
+		hasModel: diag.hasModel ?? null,
+		clientModel: diag.clientModel ? truncateModelIdForLog(diag.clientModel) : null,
+		promptChars: diag.promptChars ?? null,
+		referenceCount: diag.referenceCount ?? null,
+		totalUploadBytes: diag.totalUploadBytes ?? null,
+	});
+	return c.json({ error }, status);
+}
+
+type MultipartEditsParseResult =
+	| { ok: true; model: string; edit: NormalizedImageEditRequest; totalUploadBytes: number }
+	| {
+			ok: false;
+			error: string;
+			diag: Omit<ImageRejectDiag, 'operation'>;
+	  };
+
+async function parseMultipartEdits(c: ImagesContext): Promise<MultipartEditsParseResult> {
+	const contentType = c.req.header('content-type') ?? '';
+	const contentLength = c.req.header('content-length') ?? null;
+	const baseDiag = {
+		contentType: contentType || null,
+		contentLength,
+	};
+
+	const contentTypeError = validateImagesEditsContentType(contentType);
+	if (contentTypeError) {
+		return {
+			ok: false,
+			error: contentTypeError,
+			diag: {
+				...baseDiag,
+				bodyKeys: [],
+				hasModel: false,
+			},
+		};
+	}
+
 	let body: Record<string, unknown>;
 	try {
 		body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
 	} catch {
-		return { ok: false, error: 'Invalid multipart body' };
+		return {
+			ok: false,
+			error: 'Invalid multipart body',
+			diag: {
+				...baseDiag,
+				bodyKeys: [],
+				hasModel: false,
+			},
+		};
 	}
 
+	const bodyKeys = summarizeBodyKeys(body);
 	const modelRaw = body.model;
 	const model = typeof modelRaw === 'string' ? modelRaw.trim() : '';
 	if (!model) {
-		return { ok: false, error: 'Missing model' };
+		return {
+			ok: false,
+			error: 'Missing model',
+			diag: {
+				...baseDiag,
+				bodyKeys,
+				hasModel: false,
+			},
+		};
 	}
 
 	const common = normalizeImageCommonParams({
@@ -147,7 +272,17 @@ async function parseMultipartEdits(c: {
 		background: body.background,
 	});
 	if (!common.ok) {
-		return { ok: false, error: common.error };
+		return {
+			ok: false,
+			error: common.error,
+			diag: {
+				...baseDiag,
+				bodyKeys,
+				hasModel: true,
+				clientModel: model,
+				promptChars: typeof body.prompt === 'string' ? body.prompt.length : 0,
+			},
+		};
 	}
 
 	const images: ImageEditUpload[] = [];
@@ -193,11 +328,39 @@ async function parseMultipartEdits(c: {
 		let i = 0;
 		for (const item of imageField) {
 			const err = await collectFile(item, `image-${i++}.png`);
-			if (err) return { ok: false, error: err };
+			if (err) {
+				return {
+					ok: false,
+					error: err,
+					diag: {
+						...baseDiag,
+						bodyKeys,
+						hasModel: true,
+						clientModel: model,
+						promptChars: common.prompt.length,
+						referenceCount: images.length,
+						totalUploadBytes: totalBytes,
+					},
+				};
+			}
 		}
 	} else {
 		const err = await collectFile(imageField, 'image.png');
-		if (err) return { ok: false, error: err };
+		if (err) {
+			return {
+				ok: false,
+				error: err,
+				diag: {
+					...baseDiag,
+					bodyKeys,
+					hasModel: true,
+					clientModel: model,
+					promptChars: common.prompt.length,
+					referenceCount: images.length,
+					totalUploadBytes: totalBytes,
+				},
+			};
+		}
 	}
 
 	// Also accept image[] style keys if parseBody flattened differently
@@ -208,24 +371,88 @@ async function parseMultipartEdits(c: {
 			let i = 0;
 			for (const item of value) {
 				const err = await collectFile(item, `image-${i++}.png`);
-				if (err) return { ok: false, error: err };
+				if (err) {
+					return {
+						ok: false,
+						error: err,
+						diag: {
+							...baseDiag,
+							bodyKeys,
+							hasModel: true,
+							clientModel: model,
+							promptChars: common.prompt.length,
+							referenceCount: images.length,
+							totalUploadBytes: totalBytes,
+						},
+					};
+				}
 			}
 		} else {
 			const err = await collectFile(value, 'image.png');
-			if (err) return { ok: false, error: err };
+			if (err) {
+				return {
+					ok: false,
+					error: err,
+					diag: {
+						...baseDiag,
+						bodyKeys,
+						hasModel: true,
+						clientModel: model,
+						promptChars: common.prompt.length,
+						referenceCount: images.length,
+						totalUploadBytes: totalBytes,
+					},
+				};
+			}
 		}
 	}
 
 	if (images.length === 0) {
-		return { ok: false, error: 'At least one image file is required' };
+		return {
+			ok: false,
+			error: 'At least one image file is required',
+			diag: {
+				...baseDiag,
+				bodyKeys,
+				hasModel: true,
+				clientModel: model,
+				promptChars: common.prompt.length,
+				referenceCount: 0,
+				totalUploadBytes: totalBytes,
+			},
+		};
 	}
 	if (images.length > IMAGE_MAX_REFERENCE_COUNT) {
-		return { ok: false, error: `At most ${IMAGE_MAX_REFERENCE_COUNT} reference images are allowed` };
+		return {
+			ok: false,
+			error: `At most ${IMAGE_MAX_REFERENCE_COUNT} reference images are allowed`,
+			diag: {
+				...baseDiag,
+				bodyKeys,
+				hasModel: true,
+				clientModel: model,
+				promptChars: common.prompt.length,
+				referenceCount: images.length,
+				totalUploadBytes: totalBytes,
+			},
+		};
 	}
 	for (const img of images) {
 		const err = validateImageUpload(img);
 		if (err) {
-			return { ok: false, error: err };
+			return {
+				ok: false,
+				error: err,
+				diag: {
+					...baseDiag,
+					bodyKeys,
+					hasModel: true,
+					clientModel: model,
+					promptChars: common.prompt.length,
+					referenceCount: images.length,
+					totalUploadBytes: totalBytes,
+				},
+			};
 		}
 	}
 
@@ -240,6 +467,7 @@ async function parseMultipartEdits(c: {
 			background: common.background,
 			images,
 		},
+		totalUploadBytes: totalBytes,
 	};
 }
 
@@ -391,7 +619,13 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 			requestBody: requestBodyForLog,
 			upstreamRequestBody: upstreamRequestBodyForLog,
 			requestProtocol: 'openai',
+			requestOperation: operation === 'generations' ? 'images.generations' : 'images.edits',
 			upstreamProtocol: chosenRoute.upstreamProtocol,
+			upstreamOperation: chosenRoute.upstreamOperation,
+			modelSurfaceId: chosenRoute.modelSurfaceId,
+			routePoolId: chosenRoute.routePoolId,
+			routeTargetId: chosenRoute.targetId,
+			adapter: chosenRoute.adapter,
 			routeGroup: effectiveRouteGroup,
 			status,
 			latencyMs: latency,
@@ -437,17 +671,32 @@ imageRoutes.post('/generations', async (c) => {
 	const apiKey = c.get('apiKey');
 	const start = Date.now();
 	const timing = new RequestTimingCollector();
+	const contentType = c.req.header('content-type') ?? null;
+	const contentLength = c.req.header('content-length') ?? null;
 
 	let body: Record<string, unknown>;
 	try {
 		body = await c.req.json();
 	} catch {
-		return c.json({ error: 'Invalid JSON body' }, 400);
+		return rejectImageRequest(c, 400, 'Invalid JSON body', {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys: [],
+			hasModel: false,
+		});
 	}
 
+	const bodyKeys = summarizeBodyKeys(body);
 	const rawModelId = typeof body.model === 'string' ? body.model.trim() : '';
 	if (!rawModelId) {
-		return c.json({ error: 'Missing model' }, 400);
+		return rejectImageRequest(c, 400, 'Missing model', {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys,
+			hasModel: false,
+		});
 	}
 
 	const common = normalizeImageCommonParams({
@@ -458,23 +707,42 @@ imageRoutes.post('/generations', async (c) => {
 		background: body.background,
 	});
 	if (!common.ok) {
-		return c.json({ error: common.error }, 400);
+		return rejectImageRequest(c, 400, common.error, {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: typeof body.prompt === 'string' ? body.prompt.length : 0,
+		});
 	}
 
-	const routed = await resolveOpenAiImageRoutes(repos, rawModelId);
+	const routed = await resolveOpenAiImageRoutes(repos, rawModelId, 'images.generations');
 	if (!routed.ok) {
-		if (routed.status !== 404) {
-			console.warn(
-				`[Gateway Images] generations route resolve failed status=${routed.status} clientModel=${truncateModelIdForLog(rawModelId)} error=${routed.error}`
-			);
-		}
-		return c.json({ error: routed.error }, routed.status);
+		return rejectImageRequest(c, routed.status, routed.error, {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: common.prompt.length,
+		});
 	}
 	const { model, baseModelId, effectiveRouteGroup, routes } = routed;
 	const modelNameForLog = modelDisplayName(model, baseModelId);
 
 	if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
-		return c.json({ error: 'Budget exceeded' }, 403);
+		return rejectImageRequest(c, 403, 'Budget exceeded', {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: common.prompt.length,
+		});
 	}
 
 	const referenceCount = countOpenAiGenerationReferenceImages(body);
@@ -494,7 +762,16 @@ imageRoutes.post('/generations', async (c) => {
 		routes.map((route) => route.priceOverrideRaw)
 	);
 	if (!canAffordImageCost(apiKey.budgetMax, apiKey.budgetSpent, estimate.chargedCost)) {
-		return c.json({ error: 'Budget exceeded' }, 403);
+		return rejectImageRequest(c, 403, 'Budget exceeded', {
+			operation: 'generations',
+			contentType,
+			contentLength,
+			bodyKeys,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: common.prompt.length,
+			referenceCount,
+		});
 	}
 
 	const requestBodyForLog = finalizeRequestLogJson(
@@ -538,13 +815,16 @@ imageRoutes.post('/generations', async (c) => {
 	// Seedream 等兼容扩展：用户显式传入时透传；亦可由 route `custom_params` 注入默认值
 	applyOpenAiImageGenerationExtras(upstreamBody, body);
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
+		poolStrategy: routed.poolStrategy,
 		protocol: 'openai',
+		capability: 'images.generations',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -552,7 +832,9 @@ imageRoutes.post('/generations', async (c) => {
 	);
 
 	const proxyResult = await proxyImageGenerations(repos, routes, upstreamBody, c.req.raw.signal, {
-		sticky: stickyContext,
+		affinityKey,
+		tierKeyPrefix,
+		strategy,
 		timing,
 	});
 
@@ -594,24 +876,40 @@ imageRoutes.post('/edits', async (c) => {
 
 	const parsed = await parseMultipartEdits(c);
 	if (!parsed.ok) {
-		return c.json({ error: parsed.error }, 400);
+		return rejectImageRequest(c, 400, parsed.error, {
+			operation: 'edits',
+			...parsed.diag,
+		});
 	}
-	const { model: rawModelId, edit } = parsed;
+	const { model: rawModelId, edit, totalUploadBytes } = parsed;
 
-	const routed = await resolveOpenAiImageRoutes(repos, rawModelId);
+	const routed = await resolveOpenAiImageRoutes(repos, rawModelId, 'images.edits');
 	if (!routed.ok) {
-		if (routed.status !== 404) {
-			console.warn(
-				`[Gateway Images] edits route resolve failed status=${routed.status} clientModel=${truncateModelIdForLog(rawModelId)} error=${routed.error}`
-			);
-		}
-		return c.json({ error: routed.error }, routed.status);
+		return rejectImageRequest(c, routed.status, routed.error, {
+			operation: 'edits',
+			contentType: c.req.header('content-type') ?? null,
+			contentLength: c.req.header('content-length') ?? null,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: edit.prompt.length,
+			referenceCount: edit.images.length,
+			totalUploadBytes,
+		});
 	}
 	const { model, baseModelId, effectiveRouteGroup, routes } = routed;
 	const modelNameForLog = modelDisplayName(model, baseModelId);
 
 	if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
-		return c.json({ error: 'Budget exceeded' }, 403);
+		return rejectImageRequest(c, 403, 'Budget exceeded', {
+			operation: 'edits',
+			contentType: c.req.header('content-type') ?? null,
+			contentLength: c.req.header('content-length') ?? null,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: edit.prompt.length,
+			referenceCount: edit.images.length,
+			totalUploadBytes,
+		});
 	}
 
 	const estimate = await estimateImageBudgetPrecheck(
@@ -629,7 +927,16 @@ imageRoutes.post('/edits', async (c) => {
 		routes.map((route) => route.priceOverrideRaw)
 	);
 	if (!canAffordImageCost(apiKey.budgetMax, apiKey.budgetSpent, estimate.chargedCost)) {
-		return c.json({ error: 'Budget exceeded' }, 403);
+		return rejectImageRequest(c, 403, 'Budget exceeded', {
+			operation: 'edits',
+			contentType: c.req.header('content-type') ?? null,
+			contentLength: c.req.header('content-length') ?? null,
+			hasModel: true,
+			clientModel: rawModelId,
+			promptChars: edit.prompt.length,
+			referenceCount: edit.images.length,
+			totalUploadBytes,
+		});
 	}
 
 	const requestBodyForLog = finalizeRequestLogJson(
@@ -657,13 +964,16 @@ imageRoutes.post('/edits', async (c) => {
 		return circuitBlocked;
 	}
 
-	const stickyContext = buildStickyDispatchContext({
-		stickyConfigRaw: model.sticky_config ?? null,
-		userId: apiKey.userId,
-		baseModelId,
-		routeGroup: effectiveRouteGroup,
+	const strategy = await resolveRouteStrategy({
+		routePolicyRaw: model.route_policy ?? null,
+		poolStrategy: routed.poolStrategy,
 		protocol: 'openai',
+		capability: 'images.edits',
+		routeGroup: effectiveRouteGroup,
+		repos,
 	});
+	const affinityKey = buildAffinityKey(apiKey.userId, baseModelId, effectiveRouteGroup, 'openai');
+	const tierKeyPrefix = buildTierKeyPrefix(baseModelId, effectiveRouteGroup, 'openai');
 	timing.markGatewayComplete();
 
 	console.log(
@@ -671,7 +981,9 @@ imageRoutes.post('/edits', async (c) => {
 	);
 
 	const proxyResult = await proxyImageEdits(repos, routes, edit, c.req.raw.signal, {
-		sticky: stickyContext,
+		affinityKey,
+		tierKeyPrefix,
+		strategy,
 		timing,
 	});
 

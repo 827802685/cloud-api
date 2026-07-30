@@ -1,12 +1,18 @@
 /**
  * 管理后台 `model_routes` CRUD：校验上游协议与 provider 是否配置对应 base URL，并规范化 JSON 参数字段。
  */
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
+import {
+	isRequestOperationForProtocol,
+	normalizeRouteOperation,
+	PASSTHROUGH_ROUTE_ADAPTER,
+} from '@octafuse/core';
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
 import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
+import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
 import { badRequest, notFound } from './errors';
 import { coerceRoutePriceOverrideInput, assertRoutePriceOverrideFactors } from './pricing-input';
 import { normalizeJsonObjectField, providerSupportsUpstreamProtocol } from './shared';
@@ -105,9 +111,63 @@ export async function createModelRouteService(
 
 	const routeGroup =
 		typeof body.route_group === 'string' && body.route_group.trim() !== '' ? body.route_group.trim() : 'default';
+	let requestProtocol: UpstreamProtocol;
+	try {
+		requestProtocol = normalizeUpstreamProtocol(
+			String(body.request_protocol ?? body.upstream_protocol ?? 'openai')
+		);
+	} catch (e) {
+		throw badRequest(e instanceof Error ? e.message : 'Invalid request_protocol');
+	}
+	const requestOperation = normalizeRouteOperation(body.request_operation);
+	if (!isRequestOperationForProtocol(requestProtocol, requestOperation)) {
+		throw badRequest(
+			`request_operation "${requestOperation}" is not valid for request_protocol "${requestProtocol}"`
+		);
+	}
+	const upstreamOperation = normalizeRouteOperation(body.upstream_operation);
+	if (!isRequestOperationForProtocol(proto, upstreamOperation)) {
+		throw badRequest(
+			`upstream_operation "${upstreamOperation}" is not valid for upstream_protocol "${proto}"`
+		);
+	}
+	const adapter = String(body.adapter ?? PASSTHROUGH_ROUTE_ADAPTER).trim() || PASSTHROUGH_ROUTE_ADAPTER;
+	if (adapter !== PASSTHROUGH_ROUTE_ADAPTER) {
+		throw badRequest('Only adapter="passthrough" is supported in this release');
+	}
+	if (requestProtocol !== proto && adapter === PASSTHROUGH_ROUTE_ADAPTER) {
+		throw badRequest('Cross-protocol targets require a conversion adapter');
+	}
+	if (
+		adapter === PASSTHROUGH_ROUTE_ADAPTER &&
+		requestOperation !== '*' &&
+		upstreamOperation !== '*' &&
+		requestOperation !== upstreamOperation
+	) {
+		throw badRequest('Different request and upstream operations require a conversion adapter');
+	}
+
+	const topology = await repos.routes.ensureModelSurfacePool({
+		poolId: crypto.randomUUID(),
+		surfaceId: crypto.randomUUID(),
+		modelId,
+		routeGroup,
+		requestProtocol,
+		requestOperation,
+		poolName: `${requestProtocol}.${requestOperation} · ${routeGroup}`,
+	});
 	const id = crypto.randomUUID();
 	const priceOverride = coerceRoutePriceOverrideInput(body.price_override);
 	assertRoutePriceOverrideFactors(priceOverride);
+
+	const weightRaw = body.weight;
+	const weight =
+		weightRaw === undefined || weightRaw === null || weightRaw === ''
+			? 1
+			: Number(weightRaw);
+	if (!Number.isFinite(weight) || weight < 1) {
+		throw badRequest('weight must be a number >= 1');
+	}
 
 	await repos.routes.insertModelRoute({
 		id,
@@ -115,11 +175,15 @@ export async function createModelRouteService(
 		providerId,
 		providerModelName,
 		priority: Number(body.priority ?? 0),
+		weight: Math.floor(weight),
 		status: String(body.status ?? 'active'),
 		routeGroup,
 		priceOverride,
 		customParams: customParamsNorm.value,
 		upstreamProtocol: proto,
+		routePoolId: topology.poolId,
+		upstreamOperation,
+		adapter,
 	});
 
 	return { id };
@@ -143,6 +207,8 @@ export async function updateModelRouteService(
 ): Promise<void> {
 	const patch = { ...body };
 	delete patch.id;
+	delete patch.request_protocol;
+	delete patch.request_operation;
 	if (patch.custom_params !== undefined) {
 		const normalized = normalizeJsonObjectField(patch.custom_params, 'custom_params');
 		if (!normalized.ok) throw badRequest(normalized.message);
@@ -152,6 +218,13 @@ export async function updateModelRouteService(
 		const g = String(patch.route_group).trim();
 		if (g === '') throw badRequest('route_group cannot be empty');
 		patch.route_group = g;
+	}
+	if (patch.weight !== undefined) {
+		const weight = Number(patch.weight);
+		if (!Number.isFinite(weight) || weight < 1) {
+			throw badRequest('weight must be a number >= 1');
+		}
+		patch.weight = Math.floor(weight);
 	}
 	if (patch.price_override !== undefined) {
 		const normalized = coerceRoutePriceOverrideInput(patch.price_override);
@@ -165,9 +238,6 @@ export async function updateModelRouteService(
 			throw badRequest(e instanceof Error ? e.message : 'Invalid upstream_protocol');
 		}
 	}
-	const hasPatch = Object.values(patch).some((v) => v !== undefined);
-	if (!hasPatch) return;
-
 	const existing = await repos.routes.getModelRouteRowById(id);
 	if (!existing) throw notFound('Route not found');
 	const effectiveModelId =
@@ -175,9 +245,85 @@ export async function updateModelRouteService(
 	const effectiveProto = (patch.upstream_protocol !== undefined
 		? patch.upstream_protocol
 		: existing.upstream_protocol) as 'openai' | 'anthropic' | 'gemini';
+	const effectiveProviderId =
+		patch.provider_id !== undefined ? String(patch.provider_id) : String(existing.provider_id);
+	const provider = await repos.providers.getProviderProtocolBases(effectiveProviderId);
+	if (!provider) throw badRequest('Provider not found');
+	if (!providerSupportsUpstreamProtocol(effectiveProto, provider)) {
+		throw badRequest(`Provider has no base URL for upstream protocol "${effectiveProto}".`);
+	}
 	await assertImageModelOpenaiProtocol(repos, effectiveModelId, effectiveProto);
 	await assertAudioModelOpenaiProtocol(repos, effectiveModelId, effectiveProto);
 
+	const requestProtocolRaw = body.request_protocol;
+	const requestOperationRaw = body.request_operation;
+	if (requestProtocolRaw !== undefined || requestOperationRaw !== undefined) {
+		let requestProtocol: UpstreamProtocol;
+		try {
+			requestProtocol = normalizeUpstreamProtocol(
+				String(requestProtocolRaw ?? effectiveProto)
+			);
+		} catch (e) {
+			throw badRequest(e instanceof Error ? e.message : 'Invalid request_protocol');
+		}
+		const requestOperation = normalizeRouteOperation(requestOperationRaw);
+		if (!isRequestOperationForProtocol(requestProtocol, requestOperation)) {
+			throw badRequest(
+				`request_operation "${requestOperation}" is not valid for request_protocol "${requestProtocol}"`
+			);
+		}
+		const effectiveAdapter =
+			body.adapter === undefined
+				? String(existing.adapter ?? PASSTHROUGH_ROUTE_ADAPTER)
+				: String(body.adapter).trim() || PASSTHROUGH_ROUTE_ADAPTER;
+		if (requestProtocol !== effectiveProto && effectiveAdapter === PASSTHROUGH_ROUTE_ADAPTER) {
+			throw badRequest('Cross-protocol targets require a conversion adapter');
+		}
+		const effectiveUpstreamOperation = normalizeRouteOperation(
+			body.upstream_operation ?? existing.upstream_operation
+		);
+		if (
+			effectiveAdapter === PASSTHROUGH_ROUTE_ADAPTER &&
+			requestOperation !== '*' &&
+			effectiveUpstreamOperation !== '*' &&
+			requestOperation !== effectiveUpstreamOperation
+		) {
+			throw badRequest('Different request and upstream operations require a conversion adapter');
+		}
+		const effectiveGroup =
+			patch.route_group !== undefined
+				? String(patch.route_group)
+				: String(existing.route_group ?? 'default');
+		const topology = await repos.routes.ensureModelSurfacePool({
+			poolId: crypto.randomUUID(),
+			surfaceId: crypto.randomUUID(),
+			modelId: effectiveModelId,
+			routeGroup: effectiveGroup,
+			requestProtocol,
+			requestOperation,
+			poolName: `${requestProtocol}.${requestOperation} · ${effectiveGroup}`,
+		});
+		patch.route_pool_id = topology.poolId;
+	}
+	if (patch.upstream_operation !== undefined) {
+		const operation = normalizeRouteOperation(patch.upstream_operation);
+		if (!isRequestOperationForProtocol(effectiveProto, operation)) {
+			throw badRequest(
+				`upstream_operation "${operation}" is not valid for upstream_protocol "${effectiveProto}"`
+			);
+		}
+		patch.upstream_operation = operation;
+	}
+	if (patch.adapter !== undefined) {
+		const adapter = String(patch.adapter).trim() || PASSTHROUGH_ROUTE_ADAPTER;
+		if (adapter !== PASSTHROUGH_ROUTE_ADAPTER) {
+			throw badRequest('Only adapter="passthrough" is supported in this release');
+		}
+		patch.adapter = adapter;
+	}
+
+	const hasPatch = Object.values(patch).some((v) => v !== undefined);
+	if (!hasPatch) return;
 	const changes = await repos.routes.updateModelRouteByPatch(id, patch);
 	if (!changes) throw notFound('Route not found');
 }
@@ -186,4 +332,18 @@ export async function updateModelRouteService(
 export async function deleteModelRouteService(repos: GatewayRepositories, id: string): Promise<void> {
 	const changes = await repos.routes.deleteModelRouteById(id);
 	if (!changes) throw notFound('Route not found');
+}
+
+/** Update the strategy owned by one concrete route pool. `null` inherits the model/global policy. */
+export async function updateRoutePoolStrategyService(
+	repos: GatewayRepositories,
+	poolId: string,
+	strategyInput: unknown
+): Promise<void> {
+	const raw = strategyInput == null ? '' : String(strategyInput).trim().toLowerCase();
+	if (raw && !isRouteStrategyName(raw)) {
+		throw badRequest(`Invalid route pool strategy "${raw}"`);
+	}
+	const changes = await repos.routes.updateRoutePoolStrategy(poolId, raw || null);
+	if (!changes) throw notFound('Route pool not found');
 }

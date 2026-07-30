@@ -440,7 +440,13 @@ export type RecordImageUsageParams = {
 	requestBody?: string | null;
 	upstreamRequestBody?: string | null;
 	requestProtocol: 'openai';
+	requestOperation?: string | null;
 	upstreamProtocol: UpstreamProtocol;
+	upstreamOperation?: string | null;
+	modelSurfaceId?: string | null;
+	routePoolId?: string | null;
+	routeTargetId?: string | null;
+	adapter?: string | null;
 	routeGroup: string;
 	status: 'success' | 'error';
 	latencyMs: number;
@@ -669,7 +675,18 @@ export async function recordImageUsage(params: RecordImageUsageParams): Promise<
 			requestBody: params.requestBody ?? null,
 			upstreamRequestBody: params.upstreamRequestBody ?? null,
 			requestProtocol: params.requestProtocol,
+			requestOperation: params.requestOperation ?? null,
 			upstreamProtocol: params.upstreamProtocol,
+			upstreamOperation: params.upstreamOperation ?? null,
+			modelSurfaceId: params.modelSurfaceId ?? null,
+			routePoolId: params.routePoolId ?? null,
+			routeTargetId: params.routeTargetId ?? null,
+			adapter: params.adapter ?? null,
+			routeTrace: JSON.stringify({
+				surface: params.modelSurfaceId ?? null,
+				pool: params.routePoolId ?? null,
+				target: params.routeTargetId ?? null,
+			}),
 			inputTokens: costs.logTokens.inputTokens,
 			outputTokens: costs.logTokens.outputTokens,
 			cacheReadTokens: costs.logTokens.cacheReadTokens,

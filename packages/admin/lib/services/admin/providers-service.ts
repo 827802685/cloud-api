@@ -1,10 +1,15 @@
-/** 管理后台 `providers` CRUD：`endpoints` JSON 校验与持久化。 */
+/** 管理后台 `providers` CRUD：单键 `api_key` + `status`，`endpoints` JSON 校验与持久化。 */
 import type { GatewayRepositories } from '@octafuse/core';
 import {
 	serializeProviderEndpoints,
 	validateAndNormalizeProviderEndpoints,
 	type ProviderEndpointsMap,
 } from '@octafuse/core/provider-endpoints';
+import {
+	isPendingProviderImportApiKey,
+	maskProviderApiKeyForAdmin,
+	PROVIDER_IMPORT_PENDING_API_KEY,
+} from '@octafuse/core/db/provider-key-utils';
 import {
 	inferStaticProviderIconKey,
 	inferStaticProviderVendorKey,
@@ -31,36 +36,51 @@ function resolveEndpointsFromMutation(body: AdminProviderMutationInput): string 
 	return serializeProviderEndpoints(map);
 }
 
-/** 供应商列表（含 key 池摘要，仅 BFF/管理端使用）。 */
+function normalizeProviderStatus(raw: unknown): 'active' | 'disabled' {
+	if (raw === 'disabled') return 'disabled';
+	if (raw === 'active' || raw === undefined || raw === null || raw === '') return 'active';
+	throw badRequest('status must be active or disabled');
+}
+
+/** 列表/详情脱敏：明文 `api_key` → masked；附带 `has_pending_key`。 */
+function enrichProviderRow(provider: AdminProviderRow): AdminProviderRow {
+	const plaintext = typeof provider.api_key === 'string' ? provider.api_key : '';
+	const vendorKey = inferStaticProviderVendorKey(provider);
+	return {
+		...provider,
+		vendor_key: vendorKey,
+		icon_key: inferStaticProviderIconKey({ ...provider, vendor_key: vendorKey }),
+		api_key: maskProviderApiKeyForAdmin(plaintext),
+		status: provider.status === 'disabled' ? 'disabled' : 'active',
+		has_pending_key: isPendingProviderImportApiKey(plaintext),
+	};
+}
+
+/** 供应商列表（脱敏 api_key）。 */
 export async function listProvidersService(repos: GatewayRepositories): Promise<AdminProviderRow[]> {
 	const providers = (await repos.providers.listProviders()) as AdminProviderRow[];
-	const enriched: AdminProviderRow[] = [];
-	for (const provider of providers) {
-		const keys = await repos.providerKeys.listProviderKeys(provider.id);
-		const vendorKey = inferStaticProviderVendorKey(provider);
-		enriched.push({
-			...provider,
-			vendor_key: vendorKey,
-			icon_key: inferStaticProviderIconKey({ ...provider, vendor_key: vendorKey }),
-			active_key_count: keys.filter((k) => k.status === 'active').length,
-			has_pending_key: keys.some((k) => k.is_pending_import),
-		});
-	}
-	return enriched;
+	return providers.map(enrichProviderRow);
 }
 
 /**
- * 创建供应商；可指定 `id`，冲突抛 `conflict`；协议 endpoints 均可为空，路由会按所选协议校验可用性。
+ * 创建供应商；可指定 `id`，冲突抛 `conflict`；`api_key` 必填；协议 endpoints 均可为空。
  */
-export async function createProviderService(repos: GatewayRepositories, body: AdminProviderMutationInput): Promise<AdminCreatedIdOutput> {
+export async function createProviderService(
+	repos: GatewayRepositories,
+	body: AdminProviderMutationInput
+): Promise<AdminCreatedIdOutput> {
 	const customId = String(body.id ?? '').trim();
 	const name = String(body.name ?? '');
 	const apiKey = String(body.api_key ?? '').trim();
 	if (!name) {
 		throw badRequest('name is required');
 	}
+	if (!apiKey) {
+		throw badRequest('api_key is required');
+	}
 
 	const endpointsJson = resolveEndpointsFromMutation(body);
+	const status = normalizeProviderStatus(body.status);
 
 	const id = customId || crypto.randomUUID();
 	if (customId && (await repos.providers.providerIdExists(id))) {
@@ -72,43 +92,70 @@ export async function createProviderService(repos: GatewayRepositories, body: Ad
 		name,
 		endpoints: endpointsJson,
 		description: body.description,
+		apiKey,
+		status,
 	});
-
-	if (apiKey) {
-		await repos.providerKeys.createProviderKey({
-			id: `pkey_${id}`,
-			providerId: id,
-			label: 'default',
-			apiKey,
-			status: 'active',
-			weight: 1,
-			priority: 0,
-		});
-	}
 
 	return { id };
 }
 
-/** 单条供应商；不存在抛 `notFound`。 */
+/** 单条供应商（脱敏）；不存在抛 `notFound`。 */
 export async function getProviderService(repos: GatewayRepositories, id: string): Promise<AdminProviderRow> {
 	const provider = await repos.providers.getProviderRowById(id);
 	if (!provider) throw notFound('Provider not found');
-	return provider as AdminProviderRow;
+	return enrichProviderRow(provider as AdminProviderRow);
+}
+
+/** 揭示供应商明文 API Key。 */
+export async function revealProviderApiKeyService(
+	repos: GatewayRepositories,
+	providerId: string
+): Promise<{ api_key: string }> {
+	const provider = await repos.providers.getProviderRowById(providerId);
+	if (!provider) throw notFound('Provider not found');
+	const row = await repos.providers.getProviderApiKeyPlaintext(providerId);
+	if (!row) throw notFound('Provider not found');
+	return { api_key: row.api_key };
 }
 
 /**
- * PATCH 供应商；写 `endpoints`（权威）。
+ * PATCH 供应商；`api_key` 空串/未传 = 不改；写 `endpoints`（权威）。
  */
-export async function updateProviderService(repos: GatewayRepositories, id: string, body: AdminProviderMutationInput): Promise<void> {
-	const patch = { ...body } as Record<string, unknown>;
-	delete patch.api_key;
+export async function updateProviderService(
+	repos: GatewayRepositories,
+	id: string,
+	body: AdminProviderMutationInput
+): Promise<void> {
+	const existing = await repos.providers.getProviderRowById(id);
+	if (!existing) throw notFound('Provider not found');
 
-	if ('endpoints' in patch) {
+	const patch: Record<string, unknown> = {};
+
+	if (body.name !== undefined) {
+		const name = String(body.name ?? '').trim();
+		if (!name) throw badRequest('name cannot be empty');
+		patch.name = name;
+	}
+	if (body.description !== undefined) {
+		patch.description = body.description;
+	}
+	if ('endpoints' in body) {
 		patch.endpoints = resolveEndpointsFromMutation(body);
 	}
+	if (body.status !== undefined) {
+		patch.status = normalizeProviderStatus(body.status);
+	}
+	if (body.api_key !== undefined) {
+		const apiKey = String(body.api_key ?? '').trim();
+		if (apiKey) {
+			patch.api_key = apiKey;
+		}
+	}
+
+	if (Object.keys(patch).length === 0) return;
 
 	const changes = await repos.providers.updateProviderByPatch(id, patch);
-	if (Object.keys(patch).some((k) => k !== 'id' && patch[k] !== undefined) && changes === 0) {
+	if (changes === 0) {
 		throw notFound('Provider not found');
 	}
 }
@@ -135,9 +182,8 @@ function suggestUniqueProviderImportName(baseName: string, existingNameLower: Se
 }
 
 /**
- * 从 `lib/provider-import-presets.json` 按 **catalog 键**（数组下标字符串）导入 Provider：
- * 每次导入均新增一行（自动生成 provider id）；同名模板可重复导入，显示名自动追加 `(2)` 等后缀。
- * 导入后不含 API Key，须在 Admin Edit Provider 中手动添加。
+ * 从 `lib/provider-import-presets.json` 按 **catalog 键**导入 Provider：
+ * 写入占位 `PROVIDER_IMPORT_PENDING_API_KEY`，须在 Admin 中替换为真实密钥。
  */
 export async function importProvidersFromStaticPresetsService(
 	repos: GatewayRepositories,
@@ -174,6 +220,8 @@ export async function importProvidersFromStaticPresetsService(
 				name,
 				endpoints: preset.endpoints,
 				description: preset.description ?? null,
+				api_key: PROVIDER_IMPORT_PENDING_API_KEY,
+				status: 'active',
 			});
 
 			existingNameLower.add(name.toLowerCase());

@@ -10,7 +10,7 @@ API 字段细节见 [用户接口 · Images](../api/user.md#images图片生成--
 |----|------|
 | 入口 | **`POST /v1/images/generations`**；OpenAI 另有 **`POST /v1/images/edits`**（multipart） |
 | 不走 Chat | 文生图 **不** 走 `/v1/chat/completions` |
-| 驱动 | `packages/proxy` OpenAI Images driver；failover 复用 `failoverDispatchWithKeyPool` |
+| 驱动 | `packages/proxy` OpenAI Images driver；failover 复用 `failoverDispatch` |
 | 路由协议 | `model_routes.upstream_protocol` **锁定 `openai`**（anthropic/gemini 保存应 400） |
 | Kind 判定 | `output_modalities` 含 **`image`**（勿用 input 含 image——多模态 LLM 也会有） |
 | Catalog 列表 | 默认 `/v1/models` **不含** 纯 image 模型；需 `kind=image` / `kind=all`，或直接打 Images API |
@@ -51,7 +51,7 @@ Admin → Models → Import 勾选导入；**同 id 已存在不会覆盖**—�
 
 - Import / 手建 Provider：`endpoints.openai.base` = `https://api.openai.com/v1`（或显式写 `images.generations` / `images.edits` 完整 URL）。
 - `base` 会派生标准路径：`…/images/generations`、`…/images/edits`。
-- Key 写入 `provider_api_keys`。
+- Key 写入 `providers.api_key`（单键；`status=active`）。
 
 ### 火山方舟 Volcengine Ark（Seedream）
 

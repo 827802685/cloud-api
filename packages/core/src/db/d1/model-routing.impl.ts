@@ -2,6 +2,7 @@
  * D1：推理路径模型/路由查询。
  */
 import type { ModelRow, ModelRouteRow } from '../../types';
+import type { ResolvedModelSurfaceRow } from '../../route-topology';
 import type { D1DatabaseClient } from '../../storage/database-client';
 import type { ModelRoutingRepository } from '../../storage/gateway-repository-interfaces';
 
@@ -21,7 +22,7 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 				.prepare(
 					`SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
        (SELECT json_group_array(tag) FROM model_tags WHERE model_id = m.id) AS tags,
-       m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.sticky_config, m.created_at
+       m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.route_policy, m.created_at
        FROM models m WHERE m.id = ?`
 				)
 				.bind(id)
@@ -50,6 +51,43 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 			const rows = await raw
 				.prepare('SELECT * FROM model_routes WHERE model_id = ? AND status = \'active\' ORDER BY priority DESC')
 				.bind(modelId)
+				.all<ModelRouteRow>();
+			return rows.results ?? [];
+		},
+
+		async resolveModelSurface(params): Promise<ResolvedModelSurfaceRow | null> {
+			return raw
+				.prepare(
+					`SELECT ms.*, rp.name AS pool_name, rp.strategy AS pool_strategy, rp.status AS pool_status
+					 FROM model_surfaces ms
+					 JOIN route_pools rp ON rp.id = ms.route_pool_id
+					 WHERE ms.model_id = ?
+					   AND lower(ms.route_group) = lower(?)
+					   AND lower(ms.request_protocol) = lower(?)
+					   AND ms.request_operation IN (?, '*')
+					   AND ms.status = 'active'
+					   AND rp.status = 'active'
+					 ORDER BY CASE WHEN ms.request_operation = ? THEN 0 ELSE 1 END
+					 LIMIT 1`
+				)
+				.bind(
+					params.modelId,
+					params.routeGroup,
+					params.requestProtocol,
+					params.requestOperation,
+					params.requestOperation
+				)
+				.first<ResolvedModelSurfaceRow>();
+		},
+
+		async getModelRoutesByPoolId(poolId: string): Promise<ModelRouteRow[]> {
+			const rows = await raw
+				.prepare(
+					`SELECT * FROM model_routes
+					 WHERE route_pool_id = ? AND status = 'active'
+					 ORDER BY priority DESC`
+				)
+				.bind(poolId)
 				.all<ModelRouteRow>();
 			return rows.results ?? [];
 		},

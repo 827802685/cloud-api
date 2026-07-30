@@ -25,29 +25,20 @@ export type ProviderImportCatalogRow = {
 	description: string | null;
 };
 
-export type ProviderKeyRow = {
-	id: string;
-	provider_id: string;
-	label: string;
-	status: string;
-	weight: number;
-	priority: number;
-	/** 限流配置 JSON（`{"rpm":…,"tpm":…,"max_concurrency":…}`）；null=不限流 */
-	limit_config: string | null;
-	masked_api_key: string;
-	is_pending_import: boolean;
-	created_at: string;
-	updated_at: string;
-};
-
 export type ProviderProtocolSummary = {
 	key: 'openai' | 'anthropic' | 'gemini';
 	label: string;
-	url: string;
+	baseUrl: string | null;
+	overrideCount: number;
 	/** 与 runtime 一致的已配置 capability（完整 key）。 */
 	capabilities: ProviderEndpointCapability[];
 	/** 卡片紧凑标签（images.* → images）。 */
 	badges: ProviderCapabilityBadge[];
+	endpoints: Array<{
+		capability: ProviderEndpointCapability;
+		url: string;
+		source: 'base' | 'override';
+	}>;
 };
 
 /** 单协议表单：base + Advanced capability 覆盖 */
@@ -65,26 +56,14 @@ export type ProtocolEndpointForm = {
 export type ProviderFormData = {
 	id: string;
 	name: string;
+	/** 创建必填；编辑时空 = 不改 */
+	api_key: string;
+	/** `active` | `disabled` */
+	status: 'active' | 'disabled';
 	openai: ProtocolEndpointForm;
 	anthropic: ProtocolEndpointForm;
 	gemini: ProtocolEndpointForm;
 	description: string;
-};
-
-export type ProviderKeyFormData = {
-	label: string;
-	api_key: string;
-	weight: string;
-	priority: string;
-	rpm: string;
-	tpm: string;
-	max_concurrency: string;
-	status: string;
-};
-
-export type EditingProviderKeyState = {
-	providerId: string;
-	key: ProviderKeyRow;
 };
 
 export type ProviderImportResult = {
@@ -106,21 +85,12 @@ export const EMPTY_PROTOCOL_FORM: ProtocolEndpointForm = {
 export const EMPTY_PROVIDER_FORM: ProviderFormData = {
 	id: '',
 	name: '',
+	api_key: '',
+	status: 'active',
 	openai: { ...EMPTY_PROTOCOL_FORM },
 	anthropic: { ...EMPTY_PROTOCOL_FORM },
 	gemini: { ...EMPTY_PROTOCOL_FORM },
 	description: '',
-};
-
-export const EMPTY_KEY_EDIT_FORM: ProviderKeyFormData = {
-	label: '',
-	api_key: '',
-	weight: '1',
-	priority: '0',
-	rpm: '',
-	tpm: '',
-	max_concurrency: '',
-	status: 'active',
 };
 
 export type { GatewayProvider, ProviderEndpointsMap };

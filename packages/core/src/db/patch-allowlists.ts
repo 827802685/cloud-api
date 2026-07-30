@@ -4,16 +4,7 @@
  * 防止传入任意字符串被拼入 SQL。
  */
 
-export const PROVIDER_PATCH_COLS = new Set(['name', 'endpoints', 'description']);
-
-export const PROVIDER_API_KEY_PATCH_COLS = new Set([
-	'label',
-	'api_key',
-	'status',
-	'weight',
-	'priority',
-	'limit_config',
-]);
+export const PROVIDER_PATCH_COLS = new Set(['name', 'endpoints', 'description', 'api_key', 'status']);
 
 export const MODEL_PATCH_COLS = new Set([
 	'display_name',
@@ -26,7 +17,7 @@ export const MODEL_PATCH_COLS = new Set([
 	'input_modalities',
 	'output_modalities',
 	'released_at',
-	'sticky_config',
+	'route_policy',
 ]);
 
 export const MODEL_ROUTE_PATCH_COLS = new Set([
@@ -36,7 +27,11 @@ export const MODEL_ROUTE_PATCH_COLS = new Set([
 	'priority',
 	'status',
 	'route_group',
+	'weight',
 	'price_override',
 	'custom_params',
 	'upstream_protocol',
+	'route_pool_id',
+	'upstream_operation',
+	'adapter',
 ]);

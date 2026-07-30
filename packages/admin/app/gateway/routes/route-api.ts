@@ -1,17 +1,24 @@
 import { readApiJson } from '@/lib/api-json';
-import type { GatewayModel, GatewayProvider } from '@/lib/types';
+import type { GatewayModel, GatewayProvider, SystemConfigRow } from '@/lib/types';
+import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
 import { buildRouteSavePayload } from './route-utils';
 import type { RouteFormData, RouteListRow, RoutesPageData } from './types';
 
 export async function fetchRoutesPageData(): Promise<RoutesPageData> {
-	const [routesRes, modelsRes, providersRes] = await Promise.all([
+	const [routesRes, modelsRes, providersRes, configRes] = await Promise.all([
 		fetch('/api/admin/routes'),
 		fetch('/api/admin/models'),
 		fetch('/api/admin/providers'),
+		fetch('/api/admin/config'),
 	]);
 	const routesData = await readApiJson<RouteListRow[]>(routesRes);
 	const modelsData = await readApiJson<GatewayModel[]>(modelsRes);
 	const providersData = await readApiJson<GatewayProvider[]>(providersRes);
+	const configData = await readApiJson<SystemConfigRow[]>(configRes);
+	const globalStrategyRaw = configData.success
+		? configData.data?.find((row) => row.key === ROUTE_STRATEGY_KEY)?.value?.trim().toLowerCase()
+		: null;
 
 	return {
 		routes: routesData.success ? routesData.data || [] : [],
@@ -21,6 +28,8 @@ export async function fetchRoutesPageData(): Promise<RoutesPageData> {
 					a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 				)
 			: [],
+		globalRouteStrategy:
+			globalStrategyRaw && isRouteStrategyName(globalStrategyRaw) ? globalStrategyRaw : null,
 	};
 }
 
@@ -78,14 +87,28 @@ export async function toggleRouteStatus(
 	return { success: false, message: data.message || 'Update failed' };
 }
 
-export async function patchModelStickyConfig(
+export async function patchModelRoutePolicy(
 	modelId: string,
-	stickyConfig: string | null
+	routePolicy: string | null
 ): Promise<{ success: true } | { success: false; message: string }> {
 	const response = await fetch(`/api/admin/models/${encodeURIComponent(modelId)}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ sticky_config: stickyConfig }),
+		body: JSON.stringify({ route_policy: routePolicy }),
+	});
+	const data = await readApiJson(response);
+	if (data.success) return { success: true };
+	return { success: false, message: data.message || 'Save failed, please try again' };
+}
+
+export async function patchRoutePoolStrategy(
+	poolId: string,
+	strategy: string | null
+): Promise<{ success: true } | { success: false; message: string }> {
+	const response = await fetch(`/api/admin/routes/pools/${encodeURIComponent(poolId)}`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ strategy }),
 	});
 	const data = await readApiJson(response);
 	if (data.success) return { success: true };

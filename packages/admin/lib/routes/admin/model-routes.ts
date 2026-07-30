@@ -10,6 +10,7 @@ import {
 	getModelRouteService,
 	listModelRoutesService,
 	updateModelRouteService,
+	updateRoutePoolStrategyService,
 } from '@/lib/services/admin/model-routes-service';
 import type { AdminModelRouteMutationInput } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
@@ -46,6 +47,23 @@ adminModelRoutes.post('/', async (c) => {
 		return c.json(normalizeApiTimeFields({ success: true, message: 'Route created successfully', data }));
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to create route');
+	}
+});
+
+/** Pool-level strategy. Kept under `/routes` so existing Admin proxy/auth wiring is reused. */
+adminModelRoutes.patch('/pools/:poolId', async (c) => {
+	let body: { strategy?: unknown };
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
+	}
+	try {
+		const repos = c.get('repositories');
+		await updateRoutePoolStrategyService(repos, c.req.param('poolId'), body.strategy);
+		return c.json({ success: true, message: 'Route pool strategy updated successfully' });
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to update route pool strategy');
 	}
 });
 

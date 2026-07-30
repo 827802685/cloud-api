@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * 上游供应商：CRUD、各协议 base URL 与 API Key；对应 Worker `/admin/providers`。
+ * 上游供应商：CRUD、各协议 base URL 与单键 API Key；对应 Worker `/admin/providers`。
  */
 import { ArrowDownTrayIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ProviderCard } from './components/provider-card';
 import { ProviderImportModal } from './components/provider-import-modal';
-import { ProviderKeyModal } from './components/provider-key-modal';
 import { ProviderModal } from './components/provider-modal';
 import { ProviderToolbar } from './components/provider-toolbar';
 import { useProvidersPageState } from './use-providers-page-state';
@@ -60,10 +59,7 @@ export default function GatewayProvidersPage() {
 				providerSearch={state.providerSearch}
 				filteredCount={state.filteredProviders.length}
 				totalCount={state.providers.length}
-				isExpandingProviderKeys={state.isExpandingProviderKeys}
 				onSearchChange={state.setProviderSearch}
-				onExpandVisibleKeys={state.handleExpandVisibleProviderKeys}
-				onCollapseVisibleKeys={state.handleCollapseVisibleProviderKeys}
 			/>
 
 			{state.filteredProviders.length === 0 ? (
@@ -71,41 +67,29 @@ export default function GatewayProvidersPage() {
 					{state.providerSearch.trim() ? t('emptySearch') : t('empty')}
 				</div>
 			) : (
-				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-					{state.filteredProviders.map((provider) => (
-						<ProviderCard
-							key={provider.id}
-							provider={provider}
-							copiedId={state.copiedId}
-							isExpanded={state.expandedProviderIds.has(provider.id)}
-							previewRows={state.providerKeyPreviewById[provider.id] ?? []}
-							previewError={state.keyPreviewErrorById[provider.id]}
-							isPreviewLoading={state.keyPreviewLoadingId === provider.id}
-							providerKeyTogglingId={state.providerKeyTogglingId}
-							onEdit={state.handleEdit}
-							onCopyEndpoint={state.copyToClipboard}
-							onToggleKeyPreview={state.handleToggleProviderKeyPreview}
-							onAddKey={state.openProviderKeyCreator}
-							onEditKey={state.openProviderKeyEditor}
-							onToggleKeyStatus={state.handleToggleProviderKeyStatus}
-							onCopyKey={state.handleCopyProviderKey}
-						/>
-					))}
-				</div>
+				<section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+					<div className="hidden grid-cols-[minmax(210px,0.9fr)_minmax(340px,1.7fr)_minmax(180px,0.72fr)_auto] items-center gap-5 border-b border-slate-200 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:grid">
+						<span>{tCommon('provider')}</span>
+						<span>{t('card.supportedEndpoints')}</span>
+						<span>{t('card.apiKey')}</span>
+						<span className="text-right">{tCommon('actions')}</span>
+					</div>
+					<div className="divide-y divide-slate-200">
+						{state.filteredProviders.map((provider) => (
+							<ProviderCard
+								key={provider.id}
+								provider={provider}
+								copiedId={state.copiedId}
+								statusTogglingId={state.statusTogglingId}
+								onEdit={state.handleEdit}
+								onCopyEndpoint={state.copyToClipboard}
+								onToggleStatus={state.handleToggleStatus}
+								onCopyApiKey={state.handleCopyApiKey}
+							/>
+						))}
+					</div>
+				</section>
 			)}
-
-			<ProviderKeyModal
-				editingProviderKey={state.editingProviderKey}
-				addingProviderKeyFor={state.addingProviderKeyFor}
-				form={state.keyEditForm}
-				error={state.keyEditError}
-				isSaving={state.keyEditSaving}
-				isDeleting={state.keyEditDeleting}
-				onClose={state.closeProviderKeyEditor}
-				onFormChange={state.setKeyEditForm}
-				onSave={state.handleSaveProviderKeyEdit}
-				onDelete={state.handleDeleteProviderKeyFromEditor}
-			/>
 
 			<ProviderImportModal
 				open={state.showImportModal}

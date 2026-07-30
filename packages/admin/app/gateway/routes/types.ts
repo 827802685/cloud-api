@@ -10,6 +10,11 @@ export type RouteProtocolGroupSection<T> = {
 	key: string;
 	protocol: string;
 	protocolLabel: string;
+	requestOperation: string;
+	surfaceId: string | null;
+	poolId: string | null;
+	poolName: string | null;
+	poolStrategy: string | null;
 	group: string;
 	routes: T[];
 };
@@ -26,8 +31,14 @@ export type RouteFormData = {
 	model_id: string;
 	provider_id: string;
 	provider_model_name: string;
+	request_protocol: UpstreamProtocol;
+	request_operation: string;
 	upstream_protocol: UpstreamProtocol;
+	upstream_operation: string;
+	adapter: string;
 	priority: number;
+	/** Same-priority weight; default 1 */
+	weight: number;
 	custom_params_json: string;
 	route_group: string;
 	charged_factor: string;
@@ -36,32 +47,62 @@ export type RouteFormData = {
 	schedule_metered: RouteScheduleFormSide;
 };
 
-export type StickyDialogState = {
+export type RoutePolicyDialogState = {
 	modelId: string;
 	modelTitle: string;
 	protocol: string;
 	protocolLabel: string;
 	group: string;
+	poolId?: string | null;
+	poolStrategy?: string | null;
+	requestOperation?: string;
+	inheritedStrategy: string;
+	inheritedSource: RouteStrategySource;
+	targets: RouteStrategyPreviewTarget[];
 };
 
-export type StickyFormState = {
-	enabled: boolean;
-	ttl_seconds: string;
-	short_wait_ms: string;
+export type RouteStrategySource =
+	| 'pool'
+	| 'modelOperation'
+	| 'modelProtocol'
+	| 'model'
+	| 'global'
+	| 'default';
+
+export type RouteStrategyPreviewTarget = {
+	id: string;
+	providerId: string;
+	providerName: string;
+	providerModelName: string;
+	priority: number;
+	weight: number;
+	active: boolean;
+};
+
+/** '' = inherit; otherwise a RouteStrategyName */
+export type RoutePolicyFormState = {
+	protocolStrategy: string;
+	capabilityStrategies: Record<string, string>;
 };
 
 export type RoutesPageData = {
 	routes: RouteListRow[];
 	models: GatewayModel[];
 	providers: GatewayProvider[];
+	globalRouteStrategy: string | null;
 };
 
 export const EMPTY_ROUTE_FORM: RouteFormData = {
 	model_id: '',
 	provider_id: '',
 	provider_model_name: '',
+	request_protocol: 'openai',
+	request_operation: 'chat',
 	upstream_protocol: 'openai',
+	upstream_operation: 'chat',
+	adapter: 'passthrough',
 	priority: 0,
+	weight: 1,
 	custom_params_json: '',
 	route_group: 'default',
 	charged_factor: '1',
@@ -79,7 +120,7 @@ export const PROTOCOL_DISPLAY_LABEL: Record<string, string> = {
 export const ROUTE_GROUP_CARD_BADGE_CLASS = 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200';
 
 export const FACTOR_CHIP_BASE =
-	'inline-flex w-[3rem] shrink-0 justify-end rounded-md px-1.5 py-0 text-[10px] font-semibold font-mono tabular-nums leading-4 ring-1 ring-inset';
+	'inline-flex min-w-[3rem] w-auto shrink-0 justify-end whitespace-nowrap rounded-md px-1.5 py-0 text-[10px] font-semibold font-mono tabular-nums leading-4 ring-1 ring-inset';
 
 export const routePricePanelShell: Record<'neutral' | 'charged' | 'metered', string> = {
 	neutral:

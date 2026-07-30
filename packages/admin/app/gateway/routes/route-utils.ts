@@ -3,7 +3,20 @@ import {
 	isImageGenerationModel,
 	isTextLlmModel,
 } from '@octafuse/core/db/model-modalities';
-import { stickyRuleKey } from '@octafuse/core/db/model-sticky-config';
+import {
+	DEFAULT_ROUTE_STRATEGY,
+	isRouteStrategyName,
+	parseModelRoutePolicy,
+	routePolicyRuleKey,
+} from '@octafuse/core/db/model-route-policy';
+import {
+	ANTHROPIC_ENDPOINT_CAPABILITIES,
+	GEMINI_ENDPOINT_CAPABILITIES,
+	OPENAI_ENDPOINT_CAPABILITIES,
+	parseProviderEndpoints,
+	type ProviderEndpointCapability,
+} from '@octafuse/core/provider-endpoints';
+import { REQUEST_OPERATIONS_BY_PROTOCOL } from '@octafuse/core/route-topology';
 import {
 	findDailyWindowOverlap,
 	parseHhMmToMinutes,
@@ -29,6 +42,7 @@ import type {
 	RouteListRow,
 	RouteProtocolGroupSection,
 	RouteScheduleFormSide,
+	RouteStrategySource,
 } from './types';
 import { FACTOR_CHIP_BASE, PROTOCOL_DISPLAY_LABEL } from './types';
 
@@ -46,6 +60,54 @@ export function getProtocolDisplayLabel(protocol: string): string {
 	return PROTOCOL_DISPLAY_LABEL[protocol] ?? protocol;
 }
 
+export type EffectiveRouteStrategy = {
+	strategy: string;
+	source: RouteStrategySource;
+	inherited: boolean;
+};
+
+/**
+ * Mirrors the proxy's route strategy resolution order so the admin UI can show
+ * both the configured value and the value that will actually take effect.
+ */
+export function resolveEffectiveRouteStrategy(params: {
+	poolStrategy?: string | null;
+	routePolicyRaw?: string | null;
+	protocol: string;
+	requestOperation?: string | null;
+	routeGroup: string;
+	globalStrategy?: string | null;
+}): EffectiveRouteStrategy {
+	if (params.poolStrategy && isRouteStrategyName(params.poolStrategy)) {
+		return { strategy: params.poolStrategy, source: 'pool', inherited: false };
+	}
+
+	const policy = parseModelRoutePolicy(params.routePolicyRaw);
+	const operation = params.requestOperation?.trim();
+	if (operation && operation !== '*') {
+		const operationStrategy = policy?.rules.get(
+			routePolicyRuleKey(params.protocol, operation, params.routeGroup)
+		)?.strategy;
+		if (operationStrategy) {
+			return { strategy: operationStrategy, source: 'modelOperation', inherited: true };
+		}
+	}
+
+	const protocolStrategy = policy?.rules.get(
+		routePolicyRuleKey(params.protocol, null, params.routeGroup)
+	)?.strategy;
+	if (protocolStrategy) {
+		return { strategy: protocolStrategy, source: 'modelProtocol', inherited: true };
+	}
+	if (policy?.strategy) {
+		return { strategy: policy.strategy, source: 'model', inherited: true };
+	}
+	if (params.globalStrategy && isRouteStrategyName(params.globalStrategy)) {
+		return { strategy: params.globalStrategy, source: 'global', inherited: true };
+	}
+	return { strategy: DEFAULT_ROUTE_STRATEGY, source: 'default', inherited: true };
+}
+
 export function protocolBadgeClass(protocol: string): string {
 	if (protocol === 'openai') {
 		return 'bg-emerald-50 text-emerald-800 ring-emerald-200';
@@ -59,25 +121,66 @@ export function protocolBadgeClass(protocol: string): string {
 	return 'bg-amber-50 text-amber-900 ring-amber-200';
 }
 
-export function splitRoutesByProtocolAndRouteGroup<T extends { upstream_protocol: string; route_group?: string | null }>(
+type RouteSurfaceSummary = {
+	id?: string;
+	request_protocol?: string;
+	request_operation?: string;
+	status?: string;
+};
+
+function parseRouteSurfaces(raw: string | null | undefined): RouteSurfaceSummary[] {
+	if (!raw) return [];
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		return Array.isArray(parsed)
+			? parsed.filter((entry): entry is RouteSurfaceSummary => Boolean(entry && typeof entry === 'object'))
+			: [];
+	} catch {
+		return [];
+	}
+}
+
+export function splitRoutesByProtocolAndRouteGroup<
+	T extends {
+		upstream_protocol: string;
+		route_group?: string | null;
+		route_pool_id?: string | null;
+		pool_name?: string | null;
+		pool_strategy?: string | null;
+		surfaces?: string | null;
+	},
+>(
 	routes: T[]
 ): RouteProtocolGroupSection<T>[] {
 	const bySection = new Map<string, RouteProtocolGroupSection<T>>();
 	for (const r of routes) {
-		const protocol = r.upstream_protocol.trim().toLowerCase();
 		const g = normalizeRouteGroup(r.route_group);
-		const key = `${protocol}\u0000${g}`;
-		const section =
-			bySection.get(key) ??
-			{
-				key,
-				protocol,
-				protocolLabel: getProtocolDisplayLabel(protocol),
-				group: g,
-				routes: [],
-			};
-		section.routes.push(r);
-		bySection.set(key, section);
+		const surfaces = parseRouteSurfaces(r.surfaces);
+		const entries = surfaces.length > 0
+			? surfaces
+			: [{ request_protocol: r.upstream_protocol, request_operation: '*', status: 'active' }];
+		for (const surface of entries) {
+			if (surface.status === 'disabled') continue;
+			const protocol = String(surface.request_protocol ?? r.upstream_protocol).trim().toLowerCase();
+			const requestOperation = String(surface.request_operation ?? '*');
+			const key = `${r.route_pool_id ?? 'legacy'}\u0000${surface.id ?? `${protocol}:${requestOperation}`}\u0000${g}`;
+			const section =
+				bySection.get(key) ??
+				{
+					key,
+					protocol,
+					protocolLabel: getProtocolDisplayLabel(protocol),
+					requestOperation,
+					surfaceId: surface.id ?? null,
+					poolId: r.route_pool_id ?? null,
+					poolName: r.pool_name ?? null,
+					poolStrategy: r.pool_strategy ?? null,
+					group: g,
+					routes: [],
+				};
+			section.routes.push(r);
+			bySection.set(key, section);
+		}
 	}
 	return [...bySection.values()].sort((a, b) => {
 		const protocolCmp = compareRouteProtocolsForDisplay(a.protocol, b.protocol);
@@ -221,10 +324,22 @@ export function buildFormDataFromRoute(route: GatewayModelRoute, _models: Gatewa
 		model_id: route.model_id,
 		provider_id: route.provider_id,
 		provider_model_name: route.provider_model_name,
+		request_protocol: (() => {
+			const [surface] = parseRouteSurfaces(route.surfaces);
+			return typeof surface?.request_protocol === 'string' && isUpstreamProtocol(surface.request_protocol)
+				? surface.request_protocol
+				: isUpstreamProtocol(route.upstream_protocol)
+					? route.upstream_protocol
+					: 'openai';
+		})(),
+		request_operation: parseRouteSurfaces(route.surfaces)[0]?.request_operation ?? '*',
 		upstream_protocol: (isUpstreamProtocol(route.upstream_protocol)
 			? route.upstream_protocol
 			: 'openai') as UpstreamProtocol,
+		upstream_operation: route.upstream_operation ?? '*',
+		adapter: route.adapter ?? 'passthrough',
 		priority: route.priority,
+		weight: Number(route.weight ?? 1) || 1,
 		custom_params_json: route.custom_params ?? '',
 		route_group: route.route_group ?? 'default',
 		charged_factor: String(factors.chargedFactor),
@@ -268,8 +383,13 @@ export function buildRouteSavePayload(
 		model_id: formData.model_id,
 		provider_id: formData.provider_id,
 		provider_model_name: formData.provider_model_name,
+		request_protocol: formData.request_protocol,
+		request_operation: formData.request_operation,
 		upstream_protocol: formData.upstream_protocol,
+		upstream_operation: formData.upstream_operation,
+		adapter: formData.adapter,
 		priority: formData.priority,
+		weight: Math.max(1, Math.floor(Number(formData.weight) || 1)),
 		route_group: formData.route_group.trim() || 'default',
 		price_override: JSON.stringify(priceOverride),
 		custom_params: normalizeJsonText(formData.custom_params_json, 'custom_params'),
@@ -280,13 +400,86 @@ export function buildRouteSavePayload(
 	return payload;
 }
 
-export function buildStickyConfigPatch(
+export const CAPABILITIES_BY_PROTOCOL: Record<
+	string,
+	readonly ProviderEndpointCapability[]
+> = {
+	openai: OPENAI_ENDPOINT_CAPABILITIES,
+	anthropic: ANTHROPIC_ENDPOINT_CAPABILITIES,
+	gemini: GEMINI_ENDPOINT_CAPABILITIES,
+};
+
+/** Public operations that make sense for the selected model modality. */
+export function requestOperationsForModel(
+	model: GatewayModel | undefined,
+	protocol: UpstreamProtocol
+): readonly string[] {
+	if (model && isImageGenerationModel(model)) {
+		return protocol === 'openai' ? ['images.generations', 'images.edits'] : [];
+	}
+	if (model && isAudioTranscriptionModel(model)) {
+		return protocol === 'openai' ? ['audio.transcriptions'] : [];
+	}
+	if (model && isTextLlmModel(model) && protocol === 'openai') {
+		return ['chat', 'responses'];
+	}
+	return REQUEST_OPERATIONS_BY_PROTOCOL[protocol];
+}
+
+/**
+ * Provider-side operations supported by both the provider endpoint config and
+ * the selected model modality. A protocol base enables its standard derived
+ * capabilities; otherwise only explicitly configured capability URLs qualify.
+ */
+export function upstreamOperationsForProviderModel(
+	provider: GatewayProvider | undefined,
+	model: GatewayModel | undefined,
+	protocol: UpstreamProtocol
+): readonly string[] {
+	if (!provider) return [];
+	const config = parseProviderEndpoints(provider)[protocol];
+	if (!config) return [];
+	const providerOperations = config.base
+		? CAPABILITIES_BY_PROTOCOL[protocol] ?? []
+		: Object.keys(config.endpoints ?? {});
+	const modelOperations = new Set(requestOperationsForModel(model, protocol));
+	return providerOperations.filter((operation) => modelOperations.has(operation));
+}
+
+/** Prompt-cache-sensitive capabilities (affinity preferred). */
+export function isPromptCacheSensitiveCapability(capability: string): boolean {
+	return (
+		capability === 'chat' ||
+		capability === 'messages' ||
+		capability === 'generateContent' ||
+		capability === 'streamGenerateContent'
+	);
+}
+
+export function readRoutePolicyFormFromRaw(
+	existingRaw: string | null | undefined,
+	protocol: string,
+	group: string
+): { protocolStrategy: string; capabilityStrategies: Record<string, string> } {
+	const parsed = parseModelRoutePolicy(existingRaw);
+	const protocolStrategy = parsed?.rules.get(routePolicyRuleKey(protocol, null, group))?.strategy ?? '';
+	const capabilityStrategies: Record<string, string> = {};
+	for (const cap of CAPABILITIES_BY_PROTOCOL[protocol] ?? []) {
+		capabilityStrategies[cap] =
+			parsed?.rules.get(routePolicyRuleKey(protocol, cap, group))?.strategy ?? '';
+	}
+	return { protocolStrategy, capabilityStrategies };
+}
+
+/**
+ * Merge protocol×group (+ capability) strategy edits into models.route_policy JSON.
+ * Empty strategy = remove that rule (inherit). Returns null when no rules/top strategy remain.
+ */
+export function buildRoutePolicyPatch(
 	existingRaw: string | null | undefined,
 	protocol: string,
 	group: string,
-	form: { enabled: boolean; ttl_seconds: string; short_wait_ms: string },
-	ttl: number | null,
-	wait: number | null
+	form: { protocolStrategy: string; capabilityStrategies: Record<string, string> }
 ): string | null {
 	let existing: Record<string, unknown> = {};
 	try {
@@ -294,30 +487,45 @@ export function buildStickyConfigPatch(
 	} catch {
 		existing = {};
 	}
+
 	const existingRules =
 		existing.rules && typeof existing.rules === 'object' && !Array.isArray(existing.rules)
 			? { ...(existing.rules as Record<string, unknown>) }
 			: {};
-	const key = stickyRuleKey(protocol, group);
-	for (const k of Object.keys(existingRules)) {
-		const idx = k.indexOf(':');
-		if (idx > 0 && stickyRuleKey(k.slice(0, idx), k.slice(idx + 1)) === key) {
-			delete existingRules[k];
+
+	const keysToClear = [
+		routePolicyRuleKey(protocol, null, group),
+		...(CAPABILITIES_BY_PROTOCOL[protocol] ?? []).map((cap) =>
+			routePolicyRuleKey(protocol, cap, group)
+		),
+	];
+	for (const k of keysToClear) {
+		delete existingRules[k];
+	}
+
+	const proto = form.protocolStrategy.trim().toLowerCase();
+	if (proto && isRouteStrategyName(proto)) {
+		existingRules[routePolicyRuleKey(protocol, null, group)] = { strategy: proto };
+	}
+	for (const [cap, raw] of Object.entries(form.capabilityStrategies)) {
+		const s = raw.trim().toLowerCase();
+		if (s && isRouteStrategyName(s)) {
+			existingRules[routePolicyRuleKey(protocol, cap, group)] = { strategy: s };
 		}
 	}
-	if (form.enabled) {
-		const rule: Record<string, unknown> = { enabled: true };
-		if (ttl != null) rule.ttl_seconds = ttl;
-		if (wait != null) rule.short_wait_ms = wait;
-		existingRules[key] = rule;
+
+	const topStrategy =
+		typeof existing.strategy === 'string' && isRouteStrategyName(existing.strategy.trim().toLowerCase())
+			? existing.strategy.trim().toLowerCase()
+			: null;
+
+	if (!topStrategy && Object.keys(existingRules).length === 0) {
+		return null;
 	}
-	if (Object.keys(existingRules).length > 0) {
-		const next: Record<string, unknown> = { rules: existingRules };
-		if (typeof existing.ttl_seconds === 'number') next.ttl_seconds = existing.ttl_seconds;
-		if (typeof existing.short_wait_ms === 'number') next.short_wait_ms = existing.short_wait_ms;
-		return JSON.stringify(next);
-	}
-	return null;
+	const next: Record<string, unknown> = {};
+	if (topStrategy) next.strategy = topStrategy;
+	if (Object.keys(existingRules).length > 0) next.rules = existingRules;
+	return JSON.stringify(next);
 }
 
 export type RouteModelGroup = {
@@ -526,15 +734,26 @@ export function buildActiveFilterSummary(params: {
 }
 
 export function createInitialRouteForm(
-	_models: GatewayModel[],
+	models: GatewayModel[],
 	presetModelId?: string
 ): RouteFormData {
+	const presetModel = presetModelId ? models.find((model) => model.id === presetModelId) : undefined;
+	const defaultOperation = presetModel && isImageGenerationModel(presetModel)
+		? 'images.generations'
+		: presetModel && isAudioTranscriptionModel(presetModel)
+			? 'audio.transcriptions'
+			: 'chat';
 	return {
 		model_id: presetModelId ?? '',
 		provider_id: '',
 		provider_model_name: '',
+		request_protocol: 'openai',
+		request_operation: defaultOperation,
 		upstream_protocol: 'openai',
+		upstream_operation: defaultOperation,
+		adapter: 'passthrough',
 		priority: 0,
+		weight: 1,
 		custom_params_json: '',
 		route_group: 'default',
 		charged_factor: '1',

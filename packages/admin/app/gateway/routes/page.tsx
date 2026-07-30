@@ -9,8 +9,9 @@ import { useTranslations } from 'next-intl';
 import { ModelModal } from '../models/components/model-modal';
 import { useRoutesPageState } from './use-routes-page-state';
 import { RouteFilterSidebar } from './components/route-filter-sidebar';
+import { RouteFlowOverview } from './components/route-flow-overview';
 import { RouteModal } from './components/route-modal';
-import { RouteStickyDialog } from './components/route-sticky-dialog';
+import { RoutePolicyDialog } from './components/route-policy-dialog';
 import { RouteVendorGroup } from './components/route-vendor-group';
 import { RouteWorkspaceHeader } from './components/route-workspace-header';
 
@@ -33,6 +34,8 @@ function RoutesContent() {
 				<h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{t('title')}</h1>
 				<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
 			</div>
+
+			<RouteFlowOverview />
 
 			<div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white/70 shadow-sm ring-1 ring-black/[0.02]">
 				<div className="flex min-w-0 flex-col lg:flex-row lg:items-start">
@@ -85,25 +88,33 @@ function RoutesContent() {
 									) : null}
 								</div>
 							) : (
-								<div className={state.filterVendor ? '' : 'space-y-8'}>
-									{state.routeCardVendorGroups.map(({ vendor, cards, showHeader }, vendorGroupIdx) => (
-										<RouteVendorGroup
-											key={vendor}
-											vendor={vendor}
-											cards={cards}
-											showHeader={showHeader}
-											vendorGroupIdx={vendorGroupIdx}
-											modelMeta={state.modelMeta}
-											copiedModelId={state.copiedModelId}
-											togglingId={state.togglingId}
-											onCopyModelId={state.copyModelId}
-											onCreate={state.handleCreate}
-											onEdit={state.handleEdit}
-											onEditModel={(modelId) => void state.modelEdit.openEditById(modelId)}
-											onToggleStatus={state.handleToggleStatus}
-											onOpenStickyDialog={state.handleOpenStickyDialog}
-										/>
-									))}
+								<div>
+									<div className={state.filterVendor ? '' : 'space-y-8'}>
+										{state.routeCardVendorGroups.map(
+											({ vendor, cards, showHeader }, vendorGroupIdx) => (
+												<RouteVendorGroup
+													key={vendor}
+													vendor={vendor}
+													cards={cards}
+													showHeader={showHeader}
+													vendorGroupIdx={vendorGroupIdx}
+													modelMeta={state.modelMeta}
+													providerMeta={state.providerMeta}
+													globalRouteStrategy={state.globalRouteStrategy}
+													copiedModelId={state.copiedModelId}
+													togglingId={state.togglingId}
+													onCopyModelId={state.copyModelId}
+													onCreate={state.handleCreate}
+													onEdit={state.handleEdit}
+													onEditModel={(modelId) =>
+														void state.modelEdit.openEditById(modelId)
+													}
+													onToggleStatus={state.handleToggleStatus}
+													onOpenStrategyDialog={state.handleOpenStrategyDialog}
+												/>
+											)
+										)}
+									</div>
 								</div>
 							)}
 						</div>
@@ -167,15 +178,15 @@ function RoutesContent() {
 				onDelete={(id) => void state.modelEdit.handleDelete(id)}
 			/>
 
-			{state.stickyDialog && (
-				<RouteStickyDialog
-					dialog={state.stickyDialog}
-					form={state.stickyForm}
-					error={state.stickyError}
-					saving={state.stickySaving}
-					onClose={state.closeStickyDialog}
-					onFormChange={state.setStickyForm}
-					onSave={() => void state.handleSaveSticky()}
+			{state.strategyDialog && (
+				<RoutePolicyDialog
+					dialog={state.strategyDialog}
+					form={state.strategyForm}
+					error={state.strategyError}
+					saving={state.strategySaving}
+					onClose={state.closeStrategyDialog}
+					onFormChange={state.setStrategyForm}
+					onSave={() => void state.handleSaveStrategy()}
 				/>
 			)}
 		</div>
