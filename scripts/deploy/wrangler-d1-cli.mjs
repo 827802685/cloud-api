@@ -6,12 +6,11 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { runWrangler } from "./cf-deploy-lib.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
 const D1_CONFIG = join(ROOT, "packages/core/wrangler.d1.jsonc");
-const NPX_COMMAND = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function loadDatabaseName() {
 	let config;
@@ -49,9 +48,11 @@ const args = [
 	"./packages/core/wrangler.d1.jsonc",
 ];
 
-const result = spawnSync(NPX_COMMAND, ["wrangler", ...args], {
-	cwd: ROOT,
-	stdio: "inherit",
-});
-
-process.exit(result.status ?? 1);
+try {
+	runWrangler(args);
+} catch (err) {
+	console.error(
+		`wrangler-d1-cli: ${err instanceof Error ? err.message : String(err)}`,
+	);
+	process.exit(1);
+}
