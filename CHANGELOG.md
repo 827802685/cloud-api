@@ -2,7 +2,14 @@
 
 ## 2.0.1
 
+### Patch Changes
+
+- [#76](https://github.com/OctaFuse/octafuse-gateway/pull/76) [`6019524`](https://github.com/OctaFuse/octafuse-gateway/commit/601952484c9ca01a5f21d1e4e5e5c79d5e441d8a) Thanks [@dyc87112](https://github.com/dyc87112)! - Fix Admin Docker multi-arch build on `linux/arm64` (Alpine musl): explicitly install `@swc/core-linux-*-musl` after `npm ci --ignore-scripts`, so `next-intl` can load native SWC when evaluating `next.config` under buildx/QEMU.
+
+  Note: `v2.0.0` tagged the 2.0 major line, but its Admin image build failed on arm64 and no GitHub Release was published. Prefer **`v2.0.1`** for a complete proxy/admin/migrate image set. Breaking changes remain those documented under **2.0.0**.
+
 ## 2.0.0
+
 
 ### Major Changes
 
