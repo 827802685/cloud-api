@@ -26,6 +26,20 @@ RUN --mount=type=cache,target=/root/.npm \
 # 树内可能有多份 esbuild（如 @octafuse/core 与 @opennextjs/aws 嵌套版本）；勿用 `npm rebuild esbuild`（会对多版本做错误校验）。
 RUN find node_modules -path '*/esbuild/install.js' -exec node {} \;
 
+# next-intl → @swc/core：加载 next.config 时需要当前平台的 musl 原生绑定。
+# buildx QEMU 交叉构建 linux/arm64 时，npm optionalDependencies 有时会漏装
+# `@swc/core-linux-arm64-musl`，表现为 Failed to load native binding。
+RUN set -eux; \
+	arch="$(uname -m)"; \
+	case "$arch" in \
+		aarch64|arm64) swc_arch=arm64 ;; \
+		x86_64|amd64) swc_arch=x64 ;; \
+		*) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+	esac; \
+	swc_ver="$(node -p "require('./node_modules/@swc/core/package.json').version")"; \
+	npm install --no-save --ignore-scripts "@swc/core-linux-${swc_arch}-musl@${swc_ver}"; \
+	node -e "require('@swc/core')"
+
 COPY packages/core ./packages/core
 COPY packages/admin ./packages/admin
 
