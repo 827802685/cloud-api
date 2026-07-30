@@ -23,7 +23,7 @@
 		"dev:admin": "npm run preview -w @octafuse/admin",
 		"dev:admin:node": "dotenv -c -- npm run dev:node -w @octafuse/admin",
 		"deploy:proxy": "npm run gen:wrangler -- --remote && npm run deploy -w @octafuse/proxy",
-		"deploy:admin": "npm run gen:wrangler -- --remote && npm run deploy -w @octafuse/admin",
+		"deploy:admin": "npm run build -w @octafuse/core && npm run gen:wrangler -- --remote && npm run deploy -w @octafuse/admin",
 		"bootstrap:cloudflare": "node scripts/deploy/bootstrap-cloudflare.mjs",
 		"deploy:cloudflare": "node scripts/deploy/deploy-instance.mjs",
 		"db:migrate": "npm run gen:wrangler && node scripts/deploy/wrangler-d1-cli.mjs migrations apply --local --persist-to .wrangler/state",
