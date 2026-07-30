@@ -5,7 +5,7 @@
  */
 import { useTranslations } from 'next-intl';
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
-import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { readApiJson } from '@/lib/api-json';
 import type { GatewayModel, GatewayModelRoute, GatewayProvider, GatewayRequestLog } from '@/lib/types';
 import {
@@ -353,7 +353,7 @@ export default function GatewayRequestLogsPage() {
     return `×${ratio.toLocaleString('en-US', { maximumFractionDigits: 3 })}`;
   };
 
-  /** Tokens：input/output；第二行 cache（无命中时留空以对齐 Cost 三行）；按张/按秒显示用量 */
+  /** Tokens：默认一行 input/output；存在 cache 时补充第二行；按张/按秒保持单行。 */
   const renderTokensCell = (log: GatewayRequestLog) => {
     if (log.billing_kind === 'image_per_image') {
       const inN = log.input_image_count ?? 0;
@@ -363,11 +363,10 @@ export default function GatewayRequestLogsPage() {
           ? `${inN}×${outN} img`
           : `${inN + outN} ${inN + outN === 1 ? 'image' : 'images'}`;
       return (
-        <div className="leading-tight space-y-0.5">
+        <div className="leading-tight">
           <div className="text-gray-900 tabular-nums" title={t('titles.imagePerImageUsage')}>
             {line}
           </div>
-          <div className="text-gray-400 tabular-nums min-h-[1em]">{'\u00A0'}</div>
         </div>
       );
     }
@@ -378,11 +377,10 @@ export default function GatewayRequestLogsPage() {
           ? `${Number(secs).toLocaleString('en-US', { maximumFractionDigits: 3 })} s`
           : '—';
       return (
-        <div className="leading-tight space-y-0.5">
+        <div className="leading-tight">
           <div className="text-gray-900 tabular-nums" title={t('titles.audioPerSecondUsage')}>
             {line}
           </div>
-          <div className="text-gray-400 tabular-nums min-h-[1em]">{'\u00A0'}</div>
         </div>
       );
     }
@@ -392,17 +390,16 @@ export default function GatewayRequestLogsPage() {
         <div className="text-gray-900 tabular-nums" title={t('titles.inputOutputTokens')}>
           {log.input_tokens} / {log.output_tokens}
         </div>
-        <div
-          className="text-gray-400 tabular-nums min-h-[1em]"
-          title={hasCache ? t('titles.cacheTokens') : undefined}
-        >
-          {hasCache ? `CR ${log.cache_read_tokens} / CW ${log.cache_write_tokens}` : '\u00A0'}
-        </div>
+        {hasCache ? (
+          <div className="text-gray-400 tabular-nums" title={t('titles.cacheTokens')}>
+            CR {log.cache_read_tokens} / CW {log.cache_write_tokens}
+          </div>
+        ) : null}
       </div>
     );
   };
 
-  /** Standard / Charged / Metered 合并为一列；Charged 与 Metered 相对 Standard 显示倍率 */
+  /** 列表只展示 Charged / Metered 两行；Standard 与倍率保留在悬停及展开审计中。 */
   const renderCostCell = (
     standardCost: number,
     chargedCost: number,
@@ -410,22 +407,23 @@ export default function GatewayRequestLogsPage() {
   ) => {
     const chargedMultiplier = formatCostMultiplier(chargedCost, standardCost);
     const meteredMultiplier = formatCostMultiplier(meteredCost, standardCost);
-    const costLine = (amount: number, multiplier: string | null) => (
-      <div className="inline-flex items-baseline gap-1.5 tabular-nums">
+    const costLine = (label: 'C' | 'M', amount: number, multiplier: string | null) => (
+      <div className="inline-flex items-baseline gap-1 tabular-nums">
+        <span className="w-3 text-[10px] font-semibold text-gray-400">{label}</span>
         <span>{formatGatewayMoneyCode(amount, billingCurrency, 6)}</span>
-        {multiplier ? <span className="text-gray-500">{multiplier}</span> : null}
+        {multiplier ? <span className="text-[10px] text-gray-400">{multiplier}</span> : null}
       </div>
     );
     return (
-      <div className="leading-tight space-y-0.5">
-        <div className="text-gray-900 tabular-nums" title={t('titles.standardCatalogPrice')}>
-          {formatGatewayMoneyCode(standardCost, billingCurrency, 6)}
-        </div>
+      <div
+        className="leading-tight space-y-0.5"
+        title={`${t('titles.standardCatalogPrice')}: ${formatGatewayMoneyCode(standardCost, billingCurrency, 6)}`}
+      >
         <div className="text-gray-900" title={t('titles.chargedUserBudget')}>
-          {costLine(chargedCost, chargedMultiplier)}
+          {costLine('C', chargedCost, chargedMultiplier)}
         </div>
         <div className="text-gray-700" title={t('titles.meteredSupplierCost')}>
-          {costLine(meteredCost, meteredMultiplier)}
+          {costLine('M', meteredCost, meteredMultiplier)}
         </div>
       </div>
     );
@@ -483,7 +481,7 @@ export default function GatewayRequestLogsPage() {
       </span>
     );
 
-  /** Model 列：第一行模型名，第二行协议图标 + route_group，第三行 model id */
+  /** Model 列压缩为两行：模型；协议 + route_group + operation。完整 ID 通过 title / 展开查看。 */
   const renderModelCell = (log: GatewayRequestLog) => {
     const protocol = logProtocolKey(log);
     const name = log.model_name?.trim();
@@ -491,38 +489,36 @@ export default function GatewayRequestLogsPage() {
     const route = normalizeRouteGroup(log.route_group);
     return (
       <div className="min-w-0 leading-tight">
-        <div className="truncate font-medium text-gray-900" title={name || undefined}>
-          {name || <span className="font-normal text-gray-400">-</span>}
+        <div
+          className="truncate font-medium text-gray-900"
+          title={[name, id ? `model_id: ${id}` : ''].filter(Boolean).join('\n') || undefined}
+        >
+          {name || id || <span className="font-normal text-gray-400">-</span>}
         </div>
-        <div className="mt-0.5 inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span title={protocol ? `Protocol: ${protocol}` : 'Protocol unknown'}>
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 overflow-hidden">
+          <span className="shrink-0" title={protocol ? `Protocol: ${protocol}` : 'Protocol unknown'}>
             {protocolIconOrDash(protocol)}
           </span>
           <span
-            className={`inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold leading-4 ${routeGroupBadgeClass(route)}`}
+            className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold leading-4 ${routeGroupBadgeClass(route)}`}
             title={`route_group: ${route}`}
           >
             @{route}
           </span>
           {log.request_operation ? (
             <span
-              className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+              className="inline-flex min-w-0 items-center truncate rounded-md bg-blue-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
               title={`request_operation: ${log.request_operation}`}
             >
               {log.request_operation}
             </span>
           ) : null}
         </div>
-        {id ? (
-          <div className="mt-0.5 truncate font-mono text-[11px] text-gray-500" title={`model_id: ${id}`}>
-            {id}
-          </div>
-        ) : null}
       </div>
     );
   };
 
-  /** Route 列：第一行 Provider，第二行上游模型名，第三行 key */
+  /** Route 列压缩为两行：Provider；上游模型 + 上游协议。Target / Key 进入展开详情。 */
   const renderRouteCell = (log: GatewayRequestLog) => {
     const pname = log.provider_name?.trim();
     const pid = log.provider_id?.trim();
@@ -532,10 +528,6 @@ export default function GatewayRequestLogsPage() {
     const providerTitle =
       pname && pid && pname !== pid ? `Provider: ${pname} (id: ${pid})` : providerDisplay || undefined;
 
-    const label = log.provider_key_label?.trim();
-    const fingerprint = log.provider_key_fingerprint?.trim();
-    const keyText = [label, fingerprint].filter(Boolean).join(' · ');
-
     return (
       <div className="min-w-0 leading-tight">
         <div
@@ -544,30 +536,21 @@ export default function GatewayRequestLogsPage() {
         >
           {providerDisplay || '-'}
         </div>
-        {upstream ? (
-          <div className="mt-0.5 truncate font-mono text-gray-600" title={`Upstream model: ${upstream}`}>
-            {upstream}
-          </div>
-        ) : null}
-        {(log.upstream_protocol || log.upstream_operation) ? (
-          <div className="mt-0.5 truncate font-mono text-[11px] text-indigo-600">
-            {[log.upstream_protocol, log.upstream_operation].filter(Boolean).join(' · ')}
-          </div>
-        ) : null}
-        {log.route_target_id ? (
-          <div
-            className="mt-0.5 truncate font-mono text-[10px] text-gray-400"
-            title={`surface: ${log.model_surface_id ?? 'legacy'}\npool: ${log.route_pool_id ?? 'legacy'}\ntarget: ${log.route_target_id}`}
-          >
-            target {log.route_target_id.slice(0, 8)}
-          </div>
-        ) : null}
-        {keyText ? (
-          <div
-            className="mt-0.5 truncate text-[11px] text-gray-500 font-mono"
-            title={log.provider_key_id ? `provider key id: ${log.provider_key_id}` : undefined}
-          >
-            {keyText}
+        {upstream || log.upstream_protocol || log.upstream_operation ? (
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+            {upstream ? (
+              <span className="min-w-0 truncate font-mono text-gray-600" title={`Upstream model: ${upstream}`}>
+                {upstream}
+              </span>
+            ) : null}
+            {log.upstream_protocol || log.upstream_operation ? (
+              <span
+                className="shrink-0 truncate font-mono text-[10px] text-indigo-600"
+                title={[log.upstream_protocol, log.upstream_operation].filter(Boolean).join(' · ')}
+              >
+                {[log.upstream_protocol, log.upstream_operation].filter(Boolean).join(' · ')}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -784,7 +767,7 @@ export default function GatewayRequestLogsPage() {
                 return (
                   <Fragment key={log.id}>
                   <tr
-                    className={`align-top cursor-pointer transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-500 ${
+                    className={`align-middle cursor-pointer transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-500 ${
                       detailLogId === log.id ? 'bg-slate-50' : ''
                     }`}
                     onClick={() => toggleDetail(log.id)}
@@ -799,35 +782,40 @@ export default function GatewayRequestLogsPage() {
                     title={t('titles.rowDetail')}
                   >
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600 leading-tight">
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-center gap-2">
                         <span
-                          className={`inline-block w-2.5 h-2.5 rounded-sm shrink-0 mt-1 ${statusSwatchClass(log.status)}`}
+                          className={`inline-block w-2.5 h-2.5 rounded-sm shrink-0 ${statusSwatchClass(log.status)}`}
                           title={log.status}
                           role="img"
                           aria-label={`Status: ${log.status}`}
                         />
                         <div className="min-w-0">
                           <div>{formatDate(log.created_at)}</div>
-                          <div className="mt-0.5 text-gray-500 tabular-nums">
-                            {formatLatencyMs(log.latency_ms)}
-                          </div>
                           <div
-                            className="mt-0.5 text-gray-400 tabular-nums"
+                            className="mt-0.5 flex items-center gap-2 text-[11px] text-gray-400 tabular-nums"
                             title={formatTtftListLine(log).title ?? (log.first_token_ms != null ? `TTFT ${formatLatencyMs(log.first_token_ms)}` : undefined)}
                           >
-                            {formatTtftListLine(log).text}
+                            <span>{formatLatencyMs(log.latency_ms)}</span>
+                            <span aria-hidden>·</span>
+                            <span>{formatTtftListLine(log).text}</span>
                           </div>
                         </div>
+                        <ChevronRightIcon
+                          className={`h-3.5 w-3.5 shrink-0 text-gray-300 transition-transform ${
+                            detailLogId === log.id ? 'rotate-90 text-blue-500' : ''
+                          }`}
+                          aria-hidden
+                        />
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-xs text-gray-900 max-w-[14rem] align-top min-w-0">
+                    <td className="px-3 py-2 text-xs text-gray-900 max-w-[14rem] min-w-0">
                       <div className="min-w-0">
                         <div className="truncate" title={log.user_email || undefined}>
                           {log.user_email || '-'}
                         </div>
                         {log.status === 'error' && log.error_message?.trim() ? (
                           <div
-                            className="mt-0.5 text-[11px] text-red-600 leading-snug line-clamp-2 break-words"
+                            className="mt-0.5 truncate text-[11px] leading-snug text-red-600"
                             title={log.error_message}
                           >
                             {log.error_message.trim()}
@@ -835,20 +823,20 @@ export default function GatewayRequestLogsPage() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-xs align-top max-w-xs">
+                    <td className="px-3 py-2 text-xs max-w-xs">
                       {renderModelCell(log)}
                     </td>
-                    <td className="px-3 py-2 text-xs align-top max-w-xs">
+                    <td className="px-3 py-2 text-xs max-w-xs">
                       {renderRouteCell(log)}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600 leading-tight align-top">
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600 leading-tight">
                       {renderTokensCell(log)}
                     </td>
-                    <td className="px-3 py-2 text-xs whitespace-nowrap align-top">
+                    <td className="px-3 py-2 text-xs whitespace-nowrap">
                       {renderCostCell(standardCost, chargedCost, meteredCost)}
                     </td>
                     <td
-                      className={`px-3 py-2 text-xs whitespace-nowrap tabular-nums font-medium align-top ${profitToneClass}`}
+                      className={`px-3 py-2 text-xs whitespace-nowrap tabular-nums font-medium ${profitToneClass}`}
                       title={t('titles.profit')}
                     >
                       {formatGatewayMoneyCodeSigned(profit, billingCurrency, 6)}
@@ -874,8 +862,70 @@ export default function GatewayRequestLogsPage() {
                             ] as const;
                             const upstreamRequestId = log.upstream_request_id?.trim() ?? '';
                             const upstreamMessageId = log.upstream_message_id?.trim() ?? '';
+                            const providerKey = [
+                              log.provider_key_label?.trim(),
+                              log.provider_key_fingerprint?.trim(),
+                              log.provider_key_id?.trim(),
+                            ].filter(Boolean).join(' · ');
+                            const protocolMapping = [
+                              [log.request_protocol, log.request_operation].filter(Boolean).join('.'),
+                              [log.upstream_protocol, log.upstream_operation].filter(Boolean).join('.'),
+                            ].filter(Boolean).join(' → ');
+                            const routeTarget = [
+                              log.model_surface_id ? `surface ${log.model_surface_id}` : '',
+                              log.route_pool_id ? `pool ${log.route_pool_id}` : '',
+                              log.route_target_id ? `target ${log.route_target_id}` : '',
+                            ].filter(Boolean).join(' · ');
+                            const summaryFields = [
+                              { label: t('detail.requestId'), value: log.id },
+                              {
+                                label: t('detail.identity'),
+                                value: [log.user_email, log.api_key_id].filter(Boolean).join(' · '),
+                              },
+                              { label: t('detail.modelId'), value: log.model_id ?? '' },
+                              {
+                                label: t('detail.routeGroup'),
+                                value: normalizeRouteGroup(log.route_group),
+                              },
+                              {
+                                label: t('detail.providerRoute'),
+                                value: [log.provider_name || log.provider_id, log.provider_model_name]
+                                  .filter(Boolean)
+                                  .join(' · '),
+                              },
+                              { label: t('detail.protocolMapping'), value: protocolMapping },
+                              { label: t('detail.providerKey'), value: providerKey },
+                              { label: t('detail.routeTarget'), value: routeTarget },
+                            ];
                             return (
                               <div className="min-w-[110rem]">
+                                <div className="border-b border-gray-200 bg-slate-50/70 p-3">
+                                  <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                                    {summaryFields.map(({ label, value }) => (
+                                      <div key={label} className="min-w-0">
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                          {label}
+                                        </div>
+                                        <div
+                                          className="mt-0.5 truncate font-mono text-[11px] text-slate-700"
+                                          title={value || undefined}
+                                        >
+                                          {value || '-'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {log.error_message?.trim() ? (
+                                    <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                                      <div className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                                        {t('detail.error')}
+                                      </div>
+                                      <div className="mt-0.5 whitespace-pre-wrap break-words text-xs text-red-800">
+                                        {log.error_message.trim()}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
                                 {upstreamMessageId || upstreamRequestId ? (
                                   <div className="grid grid-cols-2 gap-3 border-b border-gray-200 bg-gray-50/70 p-3">
                                     {[

@@ -1122,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway model name, protocol, and route group",
 			"route": "Provider, upstream model, and provider key",
-			"cost": "Standard (row 1), Charged × vs standard (row 2), Metered × vs standard (row 3)",
+			"cost": "Charged (C) and metered supplier cost (M); standard catalog price remains available in details",
 			"profit": "Charged − metered (per request)",
 			"rowDetail": "Click to show or hide pricing audit and request / usage bodies",
 			"inputOutputTokens": "Input / output tokens",
@@ -1141,7 +1141,16 @@
 			"pricingAudit": "Pricing audit",
 			"entryRequestBody": "Entry request body (redacted)",
 			"upstreamRequestBody": "Upstream request body (redacted)",
-			"upstreamUsageRaw": "Upstream usage (raw)"
+			"upstreamUsageRaw": "Upstream usage (raw)",
+			"requestId": "Request ID",
+			"identity": "User · API Key",
+			"modelId": "Model ID",
+			"routeGroup": "Route group",
+			"providerRoute": "Provider · upstream model",
+			"protocolMapping": "Protocol mapping",
+			"providerKey": "Provider key",
+			"routeTarget": "Route target",
+			"error": "Error"
 		},
 		"timing": {
 			"helpTitle": "Timing metrics",

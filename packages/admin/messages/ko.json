@@ -1122,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway 모델 이름, 프로토콜 및 Route 그룹",
 			"route": "Provider, 업스트림 모델 및 Provider Key",
-			"cost": "표준 (1행), 표준 대비 청구 배수 (2행), 표준 대비 계측 배수 (3행)",
+			"cost": "청구(C) 및 공급자 비용(M); 표준 카탈로그 가격은 상세 정보에서 확인",
 			"profit": "청구액 − 계측 비용 (요청당)",
 			"rowDetail": "클릭하여 요금 감사와 요청 / 사용량 본문 표시 또는 숨기기",
 			"inputOutputTokens": "입력 / 출력 Tokens",
@@ -1141,7 +1141,16 @@
 			"pricingAudit": "요금 감사",
 			"entryRequestBody": "진입 요청 본문 (민감 정보 숨김)",
 			"upstreamRequestBody": "업스트림 요청 본문 (민감 정보 숨김)",
-			"upstreamUsageRaw": "업스트림 사용량 (원본)"
+			"upstreamUsageRaw": "업스트림 사용량 (원본)",
+			"requestId": "요청 ID",
+			"identity": "사용자 · API 키",
+			"modelId": "모델 ID",
+			"routeGroup": "라우트 그룹",
+			"providerRoute": "Provider · 업스트림 모델",
+			"protocolMapping": "프로토콜 매핑",
+			"providerKey": "Provider 키",
+			"routeTarget": "라우트 대상",
+			"error": "오류"
 		},
 		"timing": {
 			"helpTitle": "Timing 지표",

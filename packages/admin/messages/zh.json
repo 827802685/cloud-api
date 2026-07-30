@@ -1122,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway 模型名称、协议与路由组",
 			"route": "供应商、上游模型与供应商 Key",
-			"cost": "标准价（第 1 行）、计费相对标准价倍率（第 2 行）、计量相对标准价倍率（第 3 行）",
+			"cost": "计费（C）与供应成本（M）；标准目录价可在详情中查看",
 			"profit": "计费 − 计量（单请求）",
 			"rowDetail": "点击显示或隐藏定价审计、请求体与用量报文",
 			"inputOutputTokens": "输入 / 输出 Token",
@@ -1141,7 +1141,16 @@
 			"pricingAudit": "定价审计",
 			"entryRequestBody": "入口请求体（已脱敏）",
 			"upstreamRequestBody": "上游请求体（已脱敏）",
-			"upstreamUsageRaw": "上游用量（原始）"
+			"upstreamUsageRaw": "上游用量（原始）",
+			"requestId": "请求 ID",
+			"identity": "用户 · API Key",
+			"modelId": "模型 ID",
+			"routeGroup": "路由组",
+			"providerRoute": "供应商 · 上游模型",
+			"protocolMapping": "协议映射",
+			"providerKey": "供应商 Key",
+			"routeTarget": "路由目标",
+			"error": "错误信息"
 		},
 		"timing": {
 			"helpTitle": "Timing 指标",

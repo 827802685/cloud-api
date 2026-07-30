@@ -1122,7 +1122,7 @@
 		"titles": {
 			"model": "Gateway モデル名、プロトコル、Route Group",
 			"route": "Provider、アップストリームモデル、Provider Key",
-			"cost": "標準（1 行目）、標準に対する請求倍率（2 行目）、標準に対する計量倍率（3 行目）",
+			"cost": "請求（C）と仕入コスト（M）；標準カタログ価格は詳細で確認できます",
 			"profit": "請求額 − 計量額（リクエスト単位）",
 			"rowDetail": "クリックして料金監査とリクエスト / usage Body の表示を切り替え",
 			"inputOutputTokens": "Input / output tokens",
@@ -1141,7 +1141,16 @@
 			"pricingAudit": "料金監査",
 			"entryRequestBody": "入口リクエスト Body（マスキング済み）",
 			"upstreamRequestBody": "アップストリームリクエスト Body（マスキング済み）",
-			"upstreamUsageRaw": "アップストリーム usage（raw）"
+			"upstreamUsageRaw": "アップストリーム usage（raw）",
+			"requestId": "リクエスト ID",
+			"identity": "ユーザー · API キー",
+			"modelId": "モデル ID",
+			"routeGroup": "ルートグループ",
+			"providerRoute": "Provider · アップストリームモデル",
+			"protocolMapping": "プロトコル変換",
+			"providerKey": "Provider キー",
+			"routeTarget": "ルートターゲット",
+			"error": "エラー"
 		},
 		"timing": {
 			"helpTitle": "Timing 指標",
