@@ -150,11 +150,15 @@ data: [DONE]
 |------|------|----------------|
 | 请求体非法 JSON | 400 | `Invalid JSON body` |
 | 缺少 `model` | 400 | `Missing model` |
+| `/v1/images/edits` Content-Type 非 `multipart/form-data` | 400 | `Unsupported Content-Type for /v1/images/edits: expected multipart/form-data, got "…"` |
+| `/v1/images/edits` multipart 解析失败 | 400 | `Invalid multipart body` |
 | 有效路由组下无活跃路由（含未写后缀时的 **`default`**） | 400 | `No active routes for route group "default" for this model` |
 | 预算超限 | 403 | `Budget exceeded` |
 | 模型不存在 | 404 | `Model not found` |
 | 路由解析失败等 | 502 | 具体错误信息 |
 | 无 OpenAI 协议路由（有效组内无可用上游） | 502 | `No OpenAI route in route group "default" for this model`（组名随有效组变化） |
+
+Images 入参校验失败会打结构化 `console.warn('[Gateway Images] request rejected', …)`（含 `contentType` / `bodyKeys` / `hasModel` 等，**不含** prompt / 图片字节）。Proxy 另有通用 4xx 短错误体日志 `[Gateway] client error response`。
 
 ### 示例
 
@@ -721,6 +725,8 @@ Content-Type: multipart/form-data
 ```
 
 表单字段：`model`、`prompt`、`n=1`、可选 `size`/`quality`/`background`，以及最多 **5** 个 `image` 文件（`image/png` \| `image/jpeg` \| `image/webp`，单文件 ≤ 20MB）。
+
+**必须**使用 `Content-Type: multipart/form-data`（含 boundary）。若客户端误发 `application/json` 或其它类型，Gateway 在读 body 前即返回 400 `Unsupported Content-Type for /v1/images/edits…`（不会再误报成 `Missing model`）。Seedream 图生图请走 generations + JSON `image`，不要用本端点。
 
 ### 计费与审计
 

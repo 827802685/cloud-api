@@ -61,6 +61,33 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 		}),
 	);
 
+	/**
+	 * Log short Gateway-generated 4xx bodies (chat / images / audio / …).
+	 * Skips 2xx/3xx/5xx and empty bodies; truncates to avoid flooding wrangler.
+	 * Route-level diagnostics (e.g. Images rejectImageRequest) remain more specific.
+	 */
+	app.use('*', async (c, next) => {
+		await next();
+		const status = c.res.status;
+		if (status < 400 || status >= 500) return;
+		const contentType = c.res.headers.get('content-type') ?? '';
+		if (!contentType.includes('application/json')) return;
+		try {
+			const cloned = c.res.clone();
+			const text = await cloned.text();
+			if (!text) return;
+			const truncated = text.length > 200 ? `${text.slice(0, 200)}…` : text;
+			console.warn('[Gateway] client error response', {
+				method: c.req.method,
+				path: c.req.path,
+				status,
+				body: truncated,
+			});
+		} catch {
+			// best-effort; never fail the response
+		}
+	});
+
 	app.use('*', async (c, next) => {
 		const storage = await resolveStorage(c);
 		c.set('repositories', storage.repositories);

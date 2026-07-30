@@ -202,6 +202,8 @@ sequenceDiagram
 |------|------|----------|----------|
 | 非法 JSON | 400 | `Invalid JSON body` | 否 |
 | 缺少 model | 400 | `Missing model` | 否 |
+| Images edits 非 multipart Content-Type | 400 | `Unsupported Content-Type for /v1/images/edits…`（结构化 warn 日志） | 否 |
+| Images edits multipart 非法 | 400 | `Invalid multipart body` | 否 |
 | 模型不存在 | 404 | `Model not found` | 否 |
 | 用户 budget 耗尽 | 403 | `Budget exceeded` | 否 |
 | route group 无 active 路由 | 400 | `No active routes for route group ...` | 否 |
