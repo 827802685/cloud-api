@@ -23,6 +23,7 @@ import {
 	IMAGE_MAX_TOTAL_UPLOAD_BYTES,
 	type ImageOperation,
 } from '@/lib/image-generations';
+import { modelKindFromFlags, resolveOpenaiUpstreamCapability } from '@/lib/invoke-kind';
 import { AdminServiceError, badRequest, notFound } from './errors';
 import { isPendingProviderImportApiKey } from '@octafuse/core/db/provider-key-utils';
 
@@ -435,15 +436,22 @@ export async function invokePlaygroundUpstream(
 				: 'generations'
 			: null;
 
+	const invokeKind = modelKindFromFlags(route.isAudioModel, route.isImageModel);
+
 	switch (route.upstreamProtocol) {
 		case 'openai': {
 			if (route.isAudioModel) {
 				const collected = collectAudioFileFromBody(merged);
 				if (!collected.ok) throw badRequest(collected.error);
 				try {
-					url = resolveUpstreamEndpoint('openai', 'audio.transcriptions', route.providerEndpoints, {
-						providerId: route.providerId,
-					});
+					url = resolveUpstreamEndpoint(
+						'openai',
+						resolveOpenaiUpstreamCapability({ kind: 'audio' }),
+						route.providerEndpoints,
+						{
+							providerId: route.providerId,
+						}
+					);
 				} catch (e) {
 					throw badRequest(
 						e instanceof Error ? e.message : 'Failed to resolve OpenAI audio transcriptions URL'
@@ -487,9 +495,14 @@ export async function invokePlaygroundUpstream(
 				const collected = collectEditImagesFromBody(merged);
 				if (!collected.ok) throw badRequest(collected.error);
 				try {
-					url = resolveUpstreamEndpoint('openai', 'images.edits', route.providerEndpoints, {
-						providerId: route.providerId,
-					});
+					url = resolveUpstreamEndpoint(
+						'openai',
+						resolveOpenaiUpstreamCapability({ kind: 'image', imageOperation: 'edits' }),
+						route.providerEndpoints,
+						{
+							providerId: route.providerId,
+						}
+					);
 				} catch (e) {
 					throw badRequest(e instanceof Error ? e.message : 'Failed to resolve OpenAI edits URL');
 				}
@@ -532,7 +545,10 @@ export async function invokePlaygroundUpstream(
 				break;
 			}
 
-			const capability = imageOperation === 'generations' ? 'images.generations' : 'chat';
+			const capability = resolveOpenaiUpstreamCapability({
+				kind: invokeKind === 'image' ? 'image' : 'llm',
+				imageOperation: imageOperation === 'generations' ? 'generations' : undefined,
+			});
 			try {
 				url = resolveUpstreamEndpoint('openai', capability, route.providerEndpoints, {
 					providerId: route.providerId,

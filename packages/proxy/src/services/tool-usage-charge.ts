@@ -31,6 +31,8 @@ export type ChargeToolUsageParams = {
 	responseBody?: string | null;
 	errorMessage?: string | null;
 	status: 'success' | 'error';
+	/** 合并进 `pricing_audit`（如 ai-detection 的 provider / billing_units） */
+	pricingAuditExtra?: Record<string, unknown>;
 };
 
 /**
@@ -89,6 +91,7 @@ export async function chargeToolUsage(params: ChargeToolUsageParams): Promise<{ 
 				kind: 'fixed_tool_cost',
 				tool_id: params.toolId,
 				charged_cost: chargedCost,
+				...(params.pricingAuditExtra ?? {}),
 			}),
 		},
 		shouldChargeBudget,

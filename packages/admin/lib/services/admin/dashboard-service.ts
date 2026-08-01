@@ -31,6 +31,17 @@ import {
 	WEB_DEEP_SEARCH_PROVIDERS,
 } from '@octafuse/core/lib/web-deep-search-system-config';
 import {
+	AI_DETECTION_ACTIVE_KEY,
+	AI_DETECTION_CATALOG_KEY,
+	AI_DETECTION_IMPLEMENTED_PROVIDERS,
+	AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS,
+	AI_DETECTION_PROVIDERS,
+	entryHasRequiredCredentials,
+	isAiDetectionImplementedProvider,
+	parseAiDetectionActiveInput,
+	parseAiDetectionCatalogInput,
+} from '@octafuse/core/lib/ai-detection-system-config';
+import {
 	DEFAULT_ROUTE_STRATEGY,
 	isRouteStrategyName,
 	ROUTE_STRATEGY_NAMES,
@@ -344,6 +355,54 @@ export async function updateAdminSystemConfigService(repos: GatewayRepositories,
 		const entryKey = catalog[active]?.apiKey?.trim() ?? '';
 		if (!entryKey) {
 			throw badRequest(`Cannot activate web-deep-search provider "${active}" without an API key`);
+		}
+		value = active;
+	}
+
+	if (key === AI_DETECTION_CATALOG_KEY) {
+		const catalog = parseAiDetectionCatalogInput(value);
+		if (catalog == null) {
+			throw badRequest(
+				`AI_DETECTION_CATALOG must be a JSON object with whitelist providers (${AI_DETECTION_PROVIDERS.join(', ')}) and credential union + cost (+ optional billingUnitChars)`
+			);
+		}
+		const activeRaw = await repos.systemConfig.getConfig(AI_DETECTION_ACTIVE_KEY);
+		const active = parseAiDetectionActiveInput(activeRaw);
+		if (active) {
+			if (!isAiDetectionImplementedProvider(active)) {
+				throw badRequest(
+					`Cannot save AI_DETECTION_CATALOG: active provider "${active}" is not implemented; change AI_DETECTION_ACTIVE first`
+				);
+			}
+			if (
+				!entryHasRequiredCredentials(catalog[active], AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS[active])
+			) {
+				throw badRequest(
+					`Cannot save AI_DETECTION_CATALOG: active provider "${active}" would miss required credentials; change AI_DETECTION_ACTIVE first`
+				);
+			}
+		}
+		value = JSON.stringify(catalog);
+	}
+	if (key === AI_DETECTION_ACTIVE_KEY) {
+		const active = parseAiDetectionActiveInput(value);
+		if (!active) {
+			throw badRequest(`AI_DETECTION_ACTIVE must be one of: ${AI_DETECTION_PROVIDERS.join(', ')}`);
+		}
+		if (!isAiDetectionImplementedProvider(active)) {
+			throw badRequest(
+				`AI_DETECTION_ACTIVE provider "${active}" is not implemented yet (allowed: ${AI_DETECTION_IMPLEMENTED_PROVIDERS.join(', ')})`
+			);
+		}
+		const catalogRaw = await repos.systemConfig.getConfig(AI_DETECTION_CATALOG_KEY);
+		const catalog = parseAiDetectionCatalogInput(catalogRaw);
+		if (catalog == null) {
+			throw badRequest('AI_DETECTION_CATALOG must be configured before setting AI_DETECTION_ACTIVE');
+		}
+		if (
+			!entryHasRequiredCredentials(catalog[active], AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS[active])
+		) {
+			throw badRequest(`Cannot activate ai-detection provider "${active}" without required credentials`);
 		}
 		value = active;
 	}

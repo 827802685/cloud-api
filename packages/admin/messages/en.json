@@ -836,7 +836,19 @@
 		"audioTranscriptionsHint": "Audio model: JSON fields (language, response_format) plus an audio file below. File is sent as multipart to the upstream transcriptions endpoint. No billing or request logs.",
 		"audioFile": "Audio file",
 		"audioFileHint": "Select one audio file (mp3, wav, m4a, webm, …). Sent as multipart (not in the JSON editor).",
-		"audioFileRequired": "An audio file is required before Send."
+		"audioFileRequired": "An audio file is required before Send.",
+		"mode": "Mode",
+		"modeRoutes": "Routes",
+		"modeTools": "Tools",
+		"toolsSubtitle": "{product} — call a catalog engine directly (any provider, not only Active). No billing, no request logs.",
+		"toolsSection": "Tool & engine",
+		"toolsHint": "Credentials come from system_config catalogs. Use this to verify keys before switching Active.",
+		"tool": "Tool",
+		"engineProvider": "Engine provider",
+		"engineProviderHint": "Not limited to the Active engine — any implemented catalog entry can be tested.",
+		"toolsBodyMustBeObject": "Request body must be a JSON object.",
+		"toolsNeedProvider": "Select an engine provider.",
+		"applyTemplate": "Apply template"
 	},
 	"simulator": {
 		"title": "Simulator",
@@ -922,7 +934,16 @@
 		"audioTranscriptionsHint": "Transcriptions: JSON fields (language, response_format) plus an audio file → multipart POST /v1/audio/transcriptions.",
 		"audioFile": "Audio file",
 		"audioFileHint": "Select one audio file for multipart upload.",
-		"audioFileRequired": "An audio file is required before Send."
+		"audioFileRequired": "An audio file is required before Send.",
+		"kindTool": "Tools",
+		"tool": "Tool",
+		"toolHint": "Calls Proxy POST /v1/tools/{id} with the selected API key (auth, billing, logs).",
+		"toolNoRoutes": "Agent Tools are not bound to model_routes. Model and route group are hidden in this mode.",
+		"toolEndpoint": "Proxy path",
+		"toolProtocolHidden": "Tools always use JSON POST /v1/tools/* — protocol selection does not apply.",
+		"readyNeedTool": "Select a tool.",
+		"errSelectTool": "Select a tool before Send.",
+		"openToolsInvocations": "Open Tools Invocations"
 	},
 	"users": {
 		"title": "Users",
@@ -1374,7 +1395,8 @@
 		"catalog": {
 			"webSearch": "Web Search",
 			"webFetch": "Web Fetch",
-			"webDeepSearch": "Web Deep Search"
+			"webDeepSearch": "Web Deep Search",
+			"aiDetection": "AI Detection"
 		},
 		"config": {
 			"title": "Tools",
@@ -1382,7 +1404,9 @@
 			"viewInvocations": "View invocations →",
 			"saveWebSearch": "Save web search",
 			"saveWebFetch": "Save web fetch",
-			"saveWebDeepSearch": "Save web deep search"
+			"saveWebDeepSearch": "Save web deep search",
+			"saveAiDetection": "Save AI detection",
+			"testInPlayground": "Test in Playground"
 		},
 		"webSearch": {
 			"title": "Web search",
@@ -1479,6 +1503,30 @@
 				"jina": "Jina Search"
 			}
 		},
+		"aiDetection": {
+			"title": "AI detection",
+			"descriptionCatalog": "Powers POST /v1/tools/ai-detection. Multi-provider catalog: configure credentials and cost per engine, then pick Active. Billing is by character units (billingUnitChars), independent of each engine’s technical segment size. Currently only Tencent Cloud TMS is implemented.",
+			"active": "Active engine",
+			"catalogProvider": "Engine",
+			"noKey": "no credentials",
+			"needKeyToActivate": "Add credentials to at least one implemented engine before saving.",
+			"providerDocs": "Docs & API key →",
+			"cost": "Cost per billing unit ({currency})",
+			"billingUnitChars": "Billing unit (chars)",
+			"credentials": "Credentials",
+			"fields": {
+				"apiKey": "API key",
+				"secretId": "SecretId",
+				"secretKey": "SecretKey",
+				"email": "Email",
+				"region": "Region",
+				"bizType": "BizType",
+				"bizTypeOptional": "Optional BizType"
+			},
+			"providers": {
+				"tencent_tms": "Tencent Cloud TMS"
+			}
+		},
 		"invocations": {
 			"title": "Tool invocations",
 			"subtitle": "Calls billed as provider octafuse-tools (model_id tool:*). Click a row to inspect query and result summary. Same underlying rows as Request Logs.",
@@ -1515,6 +1563,8 @@
 			"invalidWebFetchProvider": "Fetch provider must be one of the implemented options.",
 			"invalidWebFetchCost": "Cost must be a non-negative number for every provider.",
 			"invalidWebDeepSearchCost": "Cost must be a non-negative number for every deep-search provider.",
+			"invalidAiDetectionCost": "Cost must be non-negative and billing unit chars must be a positive integer for every engine.",
+			"aiDetectionNotImplemented": "Cannot activate an engine that is not implemented yet.",
 			"noKeyCannotActivate": "Cannot activate a provider without an API key.",
 			"switchActiveBeforeClearingKey": "Switch Active to another engine that still has a key before clearing the current engine’s key, then save again to clear it."
 		}

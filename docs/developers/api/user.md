@@ -483,7 +483,7 @@ curl "http://localhost:8787/catalog/models?route_groups=default,web"
 
 ## Web Search（Agent 工具）
 
-协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。三个 Agent Tools 当前均按 Active 引擎的固定单价计费，日志中 `metered_cost = standard_cost = charged_cost`，`pricing_audit.kind=fixed_tool_cost`；不应用模型 Route 的价格倍率或时段 schedule。
+协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。Agent Tools 按 Active 引擎的固定单价计费（联网类按次；AI 检测按计费字符单元），日志中 `metered_cost = standard_cost = charged_cost`，`pricing_audit.kind=fixed_tool_cost`；不应用模型 Route 的价格倍率或时段 schedule。
 
 ### 请求
 
@@ -668,6 +668,123 @@ Authorization: Bearer <USER_API_KEY>
 | `cost` | 本次扣费；单位随 `BILLING_CURRENCY` |
 
 用量日志 `api_key_request_logs` 中 `model_id` 记为 `tool:web-deep-search`，`provider_id` 为 `octafuse-tools`。
+
+---
+
+## AI Detection（Agent 工具）
+
+协议无关的产品 API，供门户或 Agent 检测文本 AI 生成概率。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。
+
+计费与上游调用次数解耦：
+
+| 概念 | 计算 |
+|------|------|
+| 上游调用次数 | `ceil(总字数 / driver.segmentMaxChars)`（技术分段，随 Active 引擎变化） |
+| 计费单元数 | `ceil(总字数 / billingUnitChars)`（默认 2000；与引擎无关） |
+| 扣费 | `计费单元数 × cost` |
+
+换引擎时只需调 `cost`，价格量纲保持一致。响应**不暴露** Active 引擎名，避免客户端产生引擎耦合。
+
+### 引擎支持矩阵
+
+多 provider 架构（`AI_DETECTION_CATALOG` + `AI_DETECTION_ACTIVE` + proxy driver 注册表）。当前白名单仅一项：
+
+| Provider | 状态 | 凭证 | 技术分段上限 | 分数 |
+|----------|------|------|--------------|------|
+| `tencent_tms` | 已实现 | `secretId` + `secretKey`（可选 `region` / `bizType`） | 2000 字 | TMS `Score` 0–100 |
+
+新增引擎时扩展白名单、`requiredCredentials` 与 driver 即可；未实现引擎不可设为 Active。
+
+### 请求
+
+```
+POST /v1/tools/ai-detection
+Authorization: Bearer <USER_API_KEY>
+```
+
+### 请求体
+
+```json
+{
+  "text": "待检测正文…"
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `text` | 必填；trim 后非空 |
+
+### 行为
+
+1. 校验用户 API Key；额度不足支付预计费用 → **403** `{ "error": "Budget exceeded" }`
+2. 从 Admin `system_config` 读取配置：
+   - `AI_DETECTION_ACTIVE`（白名单当前：`tencent_tms`；须为已实现引擎）
+   - `AI_DETECTION_CATALOG`（JSON：按引擎存可选凭证字段并集 + `cost` + 可选 `billingUnitChars`）
+   - 默认单价 **0.01**、默认计费粒度 **2000** 字符，单位随 `BILLING_CURRENCY`
+3. 按 Active 引擎切段并并发检测（并发 10）；字符加权得 `overall_score`（0–100）
+4. **仅成功**后按计费单元数扣费；上游失败写 error 日志、**不扣费**
+5. 请求日志不含原文 / excerpt：`requestBody` 仅 `{ total_chars, billing_units }`；`pricing_audit` 另记 `provider` 与 `billing_units`
+
+运营侧在 Admin → **Tools → Configuration** 配置；调用记录见 **Tools → Invocations**（`model_id=tool:ai-detection`）。
+
+### 响应
+
+```json
+{
+  "data": {
+    "overall_score": 87,
+    "total_chars": 5321,
+    "segments": [
+      { "index": 0, "chars": 2000, "score": 91, "excerpt": "…" }
+    ],
+    "billing_units": 3,
+    "cost": 0.03
+  }
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `overall_score` | 0–100；字符加权 |
+| `segments` | 展示分块（含短 excerpt）；日志侧不含 excerpt |
+| `billing_units` | 计费单元数 |
+| `cost` | 本次扣费；单位随 `BILLING_CURRENCY` |
+
+---
+
+## Tools Pricing（定价只读）
+
+用户 Key 可读各工具单价，供门户费用预估。**不返回** provider 密钥与 Active 引擎名。余额仍从 `GET /v1/me` 获取。
+
+### 请求
+
+```
+GET /v1/tools/pricing
+Authorization: Bearer <USER_API_KEY>
+```
+
+### 响应
+
+```json
+{
+  "data": {
+    "billing_currency": "USD",
+    "tools": [
+      { "id": "web-search", "unit": "request", "cost": 0.001 },
+      { "id": "web-fetch", "unit": "request", "cost": 0.002 },
+      { "id": "web-deep-search", "unit": "request", "cost": 0.01 },
+      { "id": "ai-detection", "unit": "chars", "unit_chars": 2000, "cost": 0.01 }
+    ]
+  }
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `billing_currency` | 与 `system_config.BILLING_CURRENCY` 一致 |
+| `tools[].unit` | `request`（按次）或 `chars`（按字符计费单元） |
+| `tools[].unit_chars` | 仅 `ai-detection`：计费粒度字符数 |
+| `tools[].cost` | Active 引擎单价；未配置时回退代码默认值 |
 
 ---
 

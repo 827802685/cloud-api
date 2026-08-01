@@ -48,6 +48,20 @@ import {
 	type WebDeepSearchProvider,
 } from '@/lib/web-deep-search-options';
 import {
+	AI_DETECTION_ACTIVE_KEY,
+	AI_DETECTION_CATALOG_KEY,
+	AI_DETECTION_PROVIDER_DOCS_URL,
+	AI_DETECTION_PROVIDERS,
+	DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS,
+	DEFAULT_AI_DETECTION_COST,
+	DEFAULT_AI_DETECTION_PROVIDER,
+	getAiDetectionCredentialFields,
+	getAiDetectionProviderOptions,
+	isAiDetectionImplementedProvider,
+	type AiDetectionCredentialField,
+	type AiDetectionProvider,
+} from '@/lib/ai-detection-options';
+import {
 	parseWebFetchCatalogLenient,
 	serializeWebFetchCatalog,
 	type WebFetchCatalog,
@@ -62,9 +76,28 @@ import {
 	serializeWebDeepSearchCatalog,
 	type WebDeepSearchCatalog,
 } from '@octafuse/core/lib/web-deep-search-system-config';
+import {
+	entryHasRequiredCredentials as aiEntryHasRequiredCredentials,
+	parseAiDetectionCatalogLenient,
+	serializeAiDetectionCatalog,
+	AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS,
+	type AiDetectionCatalog,
+	type AiDetectionCatalogEntry,
+} from '@octafuse/core/lib/ai-detection-system-config';
 import { WebSearchProviderGuideModal } from './components/web-search-provider-guide-modal';
 
 type ProviderDraft = { apiKey: string; cost: string };
+
+type AiDetectionProviderDraft = {
+	apiKey: string;
+	secretId: string;
+	secretKey: string;
+	email: string;
+	region: string;
+	bizType: string;
+	cost: string;
+	billingUnitChars: string;
+};
 
 function emptySearchDrafts(): Record<WebSearchProvider, ProviderDraft> {
 	const out = {} as Record<WebSearchProvider, ProviderDraft>;
@@ -88,6 +121,50 @@ function emptyDeepSearchDrafts(): Record<WebDeepSearchProvider, ProviderDraft> {
 		out[p] = { apiKey: '', cost: String(DEFAULT_WEB_DEEP_SEARCH_COST) };
 	}
 	return out;
+}
+
+function emptyAiDetectionDrafts(): Record<AiDetectionProvider, AiDetectionProviderDraft> {
+	const out = {} as Record<AiDetectionProvider, AiDetectionProviderDraft>;
+	for (const p of AI_DETECTION_PROVIDERS) {
+		out[p] = {
+			apiKey: '',
+			secretId: '',
+			secretKey: '',
+			email: '',
+			region: p === 'tencent_tms' ? 'ap-guangzhou' : '',
+			bizType: '',
+			cost: String(DEFAULT_AI_DETECTION_COST),
+			billingUnitChars: String(DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS),
+		};
+	}
+	return out;
+}
+
+function draftToAiEntry(d: AiDetectionProviderDraft): AiDetectionCatalogEntry {
+	const entry: AiDetectionCatalogEntry = {
+		cost: Number(d.cost.trim()),
+	};
+	const billing = Number(d.billingUnitChars.trim());
+	if (Number.isFinite(billing) && billing >= 1) {
+		entry.billingUnitChars = Math.floor(billing);
+	}
+	if (d.apiKey.trim()) entry.apiKey = d.apiKey.trim();
+	if (d.secretId.trim()) entry.secretId = d.secretId.trim();
+	if (d.secretKey.trim()) entry.secretKey = d.secretKey.trim();
+	if (d.email.trim()) entry.email = d.email.trim();
+	if (d.region.trim()) entry.region = d.region.trim();
+	if (d.bizType.trim()) entry.bizType = d.bizType.trim();
+	return entry;
+}
+
+function aiDraftHasRequiredCredentials(provider: AiDetectionProvider, d: AiDetectionProviderDraft): boolean {
+	if (!isAiDetectionImplementedProvider(provider)) {
+		return false;
+	}
+	return aiEntryHasRequiredCredentials(
+		draftToAiEntry(d),
+		AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS[provider]
+	);
 }
 
 function syncWebSearchFromRows(
@@ -238,6 +315,70 @@ function buildDeepSearchCatalog(
 	return catalog;
 }
 
+function syncAiDetectionFromRows(rows: SystemConfigRow[]): {
+	active: AiDetectionProvider;
+	drafts: Record<AiDetectionProvider, AiDetectionProviderDraft>;
+	savedActive: AiDetectionProvider | null;
+} {
+	const drafts = emptyAiDetectionDrafts();
+	const catalogRaw = rows.find((r) => r.key === AI_DETECTION_CATALOG_KEY)?.value ?? null;
+	const catalogPresent = catalogRaw != null && String(catalogRaw).trim().length > 0;
+	if (catalogPresent) {
+		const catalog = parseAiDetectionCatalogLenient(catalogRaw) ?? {};
+		for (const p of AI_DETECTION_PROVIDERS) {
+			const entry = catalog[p];
+			if (entry) {
+				drafts[p] = {
+					apiKey: entry.apiKey ?? '',
+					secretId: entry.secretId ?? '',
+					secretKey: entry.secretKey ?? '',
+					email: entry.email ?? '',
+					region: entry.region ?? drafts[p].region,
+					bizType: entry.bizType ?? '',
+					cost: String(entry.cost),
+					billingUnitChars: String(
+						entry.billingUnitChars ?? DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS
+					),
+				};
+			}
+		}
+		const activeRaw =
+			rows.find((r) => r.key === AI_DETECTION_ACTIVE_KEY)?.value?.trim().toLowerCase() ?? '';
+		const active = (AI_DETECTION_PROVIDERS as readonly string[]).includes(activeRaw)
+			? (activeRaw as AiDetectionProvider)
+			: DEFAULT_AI_DETECTION_PROVIDER;
+		const savedActive = (AI_DETECTION_PROVIDERS as readonly string[]).includes(activeRaw)
+			? (activeRaw as AiDetectionProvider)
+			: null;
+		return { active, drafts, savedActive };
+	}
+	return { active: DEFAULT_AI_DETECTION_PROVIDER, drafts, savedActive: null };
+}
+
+function buildAiDetectionCatalog(
+	drafts: Record<AiDetectionProvider, AiDetectionProviderDraft>
+): AiDetectionCatalog | null {
+	const catalog: AiDetectionCatalog = {};
+	for (const p of AI_DETECTION_PROVIDERS) {
+		const d = drafts[p];
+		const costNum = Number(d.cost.trim());
+		if (!d.cost.trim() || !Number.isFinite(costNum) || costNum < 0) {
+			return null;
+		}
+		const unitChars = Number(d.billingUnitChars.trim());
+		if (
+			!d.billingUnitChars.trim() ||
+			!Number.isFinite(unitChars) ||
+			unitChars < 1 ||
+			!Number.isInteger(unitChars)
+		) {
+			return null;
+		}
+		catalog[p] = draftToAiEntry(d);
+	}
+	return catalog;
+}
+
 async function putConfig(key: string, value: string): Promise<{ ok: true; message?: string } | { ok: false; message: string }> {
 	const response = await fetch('/api/admin/config', {
 		method: 'PUT',
@@ -251,8 +392,15 @@ async function putConfig(key: string, value: string): Promise<{ ok: true; messag
 	return { ok: true, message: data.message };
 }
 
-type ToolCardKey = 'webSearch' | 'webFetch' | 'webDeepSearch';
+type ToolCardKey = 'webSearch' | 'webFetch' | 'webDeepSearch' | 'aiDetection';
 type CardFeedback = { kind: 'success' | 'error'; message: string };
+
+const AI_DETECTION_FIELD_I18N: Record<AiDetectionCredentialField, `aiDetection.fields.${AiDetectionCredentialField}`> = {
+	apiKey: 'aiDetection.fields.apiKey',
+	secretId: 'aiDetection.fields.secretId',
+	secretKey: 'aiDetection.fields.secretKey',
+	email: 'aiDetection.fields.email',
+};
 
 function CardSaveFeedback({ feedback }: { feedback?: CardFeedback }) {
 	if (!feedback) {
@@ -279,6 +427,7 @@ export default function GatewayToolsConfigPage() {
 	const webSearchProviderOptions = getWebSearchProviderOptions((k) => t(k));
 	const webFetchProviderOptions = getWebFetchProviderOptions((k) => t(k));
 	const webDeepSearchProviderOptions = getWebDeepSearchProviderOptions((k) => t(k));
+	const aiDetectionProviderOptions = getAiDetectionProviderOptions((k) => t(k));
 
 	const [isLoading, setIsLoading] = useState(true);
 	/** 各卡片 Save 旁的反馈；放按钮右侧，避免顶部横幅撑开布局抖动 */
@@ -309,6 +458,15 @@ export default function GatewayToolsConfigPage() {
 		Partial<Record<WebDeepSearchProvider, boolean>>
 	>({});
 	const [webDeepSearchSaving, setWebDeepSearchSaving] = useState(false);
+
+	const [aiDetectionActive, setAiDetectionActive] =
+		useState<AiDetectionProvider>(DEFAULT_AI_DETECTION_PROVIDER);
+	const [aiDetectionSavedActive, setAiDetectionSavedActive] = useState<AiDetectionProvider | null>(null);
+	const [aiDetectionDrafts, setAiDetectionDrafts] = useState(emptyAiDetectionDrafts);
+	const [aiDetectionKeyVisible, setAiDetectionKeyVisible] = useState<
+		Partial<Record<AiDetectionProvider, boolean>>
+	>({});
+	const [aiDetectionSaving, setAiDetectionSaving] = useState(false);
 
 	const clearCardSuccessTimer = useCallback((card: ToolCardKey) => {
 		const timer = successTimersRef.current[card];
@@ -377,6 +535,10 @@ export default function GatewayToolsConfigPage() {
 				setWebDeepSearchActive(deep.active);
 				setWebDeepSearchDrafts(deep.drafts);
 				setWebDeepSearchSavedActive(deep.savedActive);
+				const ai = syncAiDetectionFromRows(data.data);
+				setAiDetectionActive(ai.active);
+				setAiDetectionDrafts(ai.drafts);
+				setAiDetectionSavedActive(ai.savedActive);
 			}
 		} catch (error) {
 			console.error('Fetch tools config error:', error);
@@ -411,6 +573,13 @@ export default function GatewayToolsConfigPage() {
 		() => WEB_DEEP_SEARCH_PROVIDERS.filter((p) => webDeepSearchDrafts[p].apiKey.trim().length > 0),
 		[webDeepSearchDrafts]
 	);
+	const aiDetectionActivatable = useMemo(
+		() =>
+			AI_DETECTION_PROVIDERS.filter(
+				(p) => isAiDetectionImplementedProvider(p) && aiDraftHasRequiredCredentials(p, aiDetectionDrafts[p])
+			),
+		[aiDetectionDrafts]
+	);
 
 	useEffect(() => {
 		if (webSearchActivatable.length > 0 && !webSearchActivatable.includes(webSearchActive)) {
@@ -429,6 +598,12 @@ export default function GatewayToolsConfigPage() {
 			setWebDeepSearchActive(webDeepSearchActivatable[0]!);
 		}
 	}, [webDeepSearchActivatable, webDeepSearchActive]);
+
+	useEffect(() => {
+		if (aiDetectionActivatable.length > 0 && !aiDetectionActivatable.includes(aiDetectionActive)) {
+			setAiDetectionActive(aiDetectionActivatable[0]!);
+		}
+	}, [aiDetectionActivatable, aiDetectionActive]);
 
 	const handleSaveWebSearch = async () => {
 		const catalog = buildSearchCatalog(webSearchDrafts);
@@ -554,6 +729,55 @@ export default function GatewayToolsConfigPage() {
 		}
 	};
 
+	const handleSaveAiDetection = async () => {
+		const catalog = buildAiDetectionCatalog(aiDetectionDrafts);
+		if (!catalog) {
+			setCardError('aiDetection', t('errors.invalidAiDetectionCost'));
+			return;
+		}
+		if (!isAiDetectionImplementedProvider(aiDetectionActive)) {
+			setCardError('aiDetection', t('errors.aiDetectionNotImplemented'));
+			return;
+		}
+		if (!aiDraftHasRequiredCredentials(aiDetectionActive, aiDetectionDrafts[aiDetectionActive])) {
+			setCardError('aiDetection', t('errors.noKeyCannotActivate'));
+			return;
+		}
+		if (
+			aiDetectionSavedActive &&
+			aiDetectionSavedActive !== aiDetectionActive &&
+			isAiDetectionImplementedProvider(aiDetectionSavedActive) &&
+			!aiEntryHasRequiredCredentials(
+				catalog[aiDetectionSavedActive],
+				AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS[aiDetectionSavedActive]
+			)
+		) {
+			setCardError('aiDetection', t('errors.switchActiveBeforeClearingKey'));
+			return;
+		}
+
+		clearCardFeedback('aiDetection');
+		setAiDetectionSaving(true);
+		try {
+			const catRes = await putConfig(AI_DETECTION_CATALOG_KEY, serializeAiDetectionCatalog(catalog));
+			if (!catRes.ok) {
+				setCardError('aiDetection', catRes.message || tCommon('saveFailed'));
+				return;
+			}
+			const actRes = await putConfig(AI_DETECTION_ACTIVE_KEY, aiDetectionActive);
+			if (!actRes.ok) {
+				setCardError('aiDetection', actRes.message || tCommon('saveFailed'));
+				return;
+			}
+			setAiDetectionSavedActive(aiDetectionActive);
+			flashCardSuccess('aiDetection', actRes.message ?? catRes.message);
+		} catch {
+			setCardError('aiDetection', tCommon('requestFailed'));
+		} finally {
+			setAiDetectionSaving(false);
+		}
+	};
+
 	if (isLoading) {
 		return (
 			<div className="flex h-full items-center justify-center">
@@ -636,14 +860,22 @@ export default function GatewayToolsConfigPage() {
 												<div className="truncate font-medium text-gray-900" title={webSearchProviderOptions.find((o) => o.value === p)?.label ?? p}>
 													{webSearchProviderOptions.find((o) => o.value === p)?.label ?? p}
 												</div>
-												<a
-													href={WEB_SEARCH_PROVIDER_DOCS_URL[p]}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-xs font-medium text-blue-600 hover:underline"
-												>
-													{t('webSearch.providerDocs')}
-												</a>
+												<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+													<a
+														href={WEB_SEARCH_PROVIDER_DOCS_URL[p]}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-xs font-medium text-blue-600 hover:underline"
+													>
+														{t('webSearch.providerDocs')}
+													</a>
+													<Link
+														href={`/gateway/playground?mode=tools&tool=web-search&provider=${encodeURIComponent(p)}`}
+														className="text-xs font-medium text-slate-700 hover:underline"
+													>
+														{t('config.testInPlayground')}
+													</Link>
+												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
 												<input
@@ -768,14 +1000,22 @@ export default function GatewayToolsConfigPage() {
 												<div className="truncate font-medium text-gray-900" title={webFetchProviderOptions.find((o) => o.value === p)?.label ?? p}>
 													{webFetchProviderOptions.find((o) => o.value === p)?.label ?? p}
 												</div>
-												<a
-													href={WEB_FETCH_PROVIDER_DOCS_URL[p]}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-xs font-medium text-blue-600 hover:underline"
-												>
-													{t('webFetch.providerDocs')}
-												</a>
+												<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+													<a
+														href={WEB_FETCH_PROVIDER_DOCS_URL[p]}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-xs font-medium text-blue-600 hover:underline"
+													>
+														{t('webFetch.providerDocs')}
+													</a>
+													<Link
+														href={`/gateway/playground?mode=tools&tool=web-fetch&provider=${encodeURIComponent(p)}`}
+														className="text-xs font-medium text-slate-700 hover:underline"
+													>
+														{t('config.testInPlayground')}
+													</Link>
+												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
 												<input
@@ -917,14 +1157,22 @@ export default function GatewayToolsConfigPage() {
 												>
 													{webDeepSearchProviderOptions.find((o) => o.value === p)?.label ?? p}
 												</div>
-												<a
-													href={WEB_DEEP_SEARCH_PROVIDER_DOCS_URL[p]}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-xs font-medium text-blue-600 hover:underline"
-												>
-													{t('webDeepSearch.providerDocs')}
-												</a>
+												<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+													<a
+														href={WEB_DEEP_SEARCH_PROVIDER_DOCS_URL[p]}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-xs font-medium text-blue-600 hover:underline"
+													>
+														{t('webDeepSearch.providerDocs')}
+													</a>
+													<Link
+														href={`/gateway/playground?mode=tools&tool=web-deep-search&provider=${encodeURIComponent(p)}`}
+														className="text-xs font-medium text-slate-700 hover:underline"
+													>
+														{t('config.testInPlayground')}
+													</Link>
+												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
 												<input
@@ -998,6 +1246,239 @@ export default function GatewayToolsConfigPage() {
 								{webDeepSearchSaving ? tCommon('saving') : t('config.saveWebDeepSearch')}
 							</button>
 							<CardSaveFeedback feedback={cardFeedback.webDeepSearch} />
+						</div>
+					</div>
+				</ConfigCardShell>
+
+				<ConfigCardShell
+					id="ai-detection"
+					title={t('aiDetection.title')}
+					description={t('aiDetection.descriptionCatalog')}
+				>
+					<div className="flex flex-col gap-4">
+						<div>
+							<label className="mb-1 block text-xs font-medium text-gray-600">
+								{t('aiDetection.active')}
+							</label>
+							<select
+								value={aiDetectionActive}
+								onChange={(e) => setAiDetectionActive(e.target.value as AiDetectionProvider)}
+								className="min-w-[16rem] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm"
+							>
+								{aiDetectionProviderOptions.map((o) => {
+									const canActivate = aiDetectionActivatable.includes(o.value);
+									const disabled = !o.implemented || !canActivate;
+									return (
+										<option key={o.value} value={o.value} disabled={disabled}>
+											{o.label}
+											{!canActivate ? ` (${t('aiDetection.noKey')})` : ''}
+										</option>
+									);
+								})}
+							</select>
+							{aiDetectionActivatable.length === 0 && (
+								<p className="mt-1 text-xs text-amber-700">{t('aiDetection.needKeyToActivate')}</p>
+							)}
+						</div>
+
+						<div className="overflow-x-auto rounded-md border border-gray-200">
+							<table className="w-full min-w-[48rem] table-fixed text-left text-sm">
+								<colgroup>
+									<col className="w-[12rem]" />
+									<col className="w-[8rem]" />
+									<col className="w-[7rem]" />
+									<col />
+								</colgroup>
+								<thead className="bg-gray-50 text-xs font-medium text-gray-600">
+									<tr>
+										<th className="px-3 py-2">{t('aiDetection.catalogProvider')}</th>
+										<th className="px-3 py-2">
+											{t('aiDetection.cost', { currency: billingCurrency })}
+										</th>
+										<th className="px-3 py-2">{t('aiDetection.billingUnitChars')}</th>
+										<th className="px-3 py-2">{t('aiDetection.credentials')}</th>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-gray-100">
+									{AI_DETECTION_PROVIDERS.map((p) => {
+										const fields = getAiDetectionCredentialFields(p);
+										const draft = aiDetectionDrafts[p];
+										return (
+											<tr
+												key={p}
+												className={p === aiDetectionActive ? 'bg-blue-50/40' : undefined}
+											>
+												<td className="px-3 py-2 align-top">
+													<div
+														className="truncate font-medium text-gray-900"
+														title={
+															aiDetectionProviderOptions.find((o) => o.value === p)?.label ?? p
+														}
+													>
+														{aiDetectionProviderOptions.find((o) => o.value === p)?.label ?? p}
+													</div>
+													<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+														<a
+															href={AI_DETECTION_PROVIDER_DOCS_URL[p]}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="text-xs font-medium text-blue-600 hover:underline"
+														>
+															{t('aiDetection.providerDocs')}
+														</a>
+														{isAiDetectionImplementedProvider(p) ? (
+															<Link
+																href={`/gateway/playground?mode=tools&tool=ai-detection&provider=${encodeURIComponent(p)}`}
+																className="text-xs font-medium text-slate-700 hover:underline"
+															>
+																{t('config.testInPlayground')}
+															</Link>
+														) : null}
+													</div>
+												</td>
+												<td className="px-3 py-2 align-top">
+													<input
+														type="number"
+														min={0}
+														step="0.0001"
+														value={draft.cost}
+														onChange={(e) =>
+															setAiDetectionDrafts((prev) => ({
+																...prev,
+																[p]: { ...prev[p], cost: e.target.value },
+															}))
+														}
+														className="w-full max-w-[7rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
+													/>
+												</td>
+												<td className="px-3 py-2 align-top">
+													<input
+														type="number"
+														min={1}
+														step={1}
+														value={draft.billingUnitChars}
+														onChange={(e) =>
+															setAiDetectionDrafts((prev) => ({
+																...prev,
+																[p]: { ...prev[p], billingUnitChars: e.target.value },
+															}))
+														}
+														className="w-full max-w-[6rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
+													/>
+												</td>
+												<td className="px-3 py-2 align-top">
+													<div className="flex flex-col gap-2">
+														{fields.map((field) => (
+															<div key={field} className="flex min-w-0 items-center gap-2">
+																<span className="w-20 shrink-0 text-xs text-gray-500">
+																	{t(AI_DETECTION_FIELD_I18N[field])}
+																</span>
+																<input
+																	type={
+																		field === 'email' || aiDetectionKeyVisible[p] === false
+																			? field === 'email'
+																				? 'email'
+																				: 'password'
+																			: 'text'
+																	}
+																	value={draft[field]}
+																	onChange={(e) =>
+																		setAiDetectionDrafts((prev) => ({
+																			...prev,
+																			[p]: { ...prev[p], [field]: e.target.value },
+																		}))
+																	}
+																	placeholder={t(AI_DETECTION_FIELD_I18N[field])}
+																	autoComplete="off"
+																	spellCheck={false}
+																	className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+																/>
+															</div>
+														))}
+														{p === 'tencent_tms' && (
+															<>
+																<div className="flex min-w-0 items-center gap-2">
+																	<span className="w-20 shrink-0 text-xs text-gray-500">
+																		{t('aiDetection.fields.region')}
+																	</span>
+																	<input
+																		type="text"
+																		value={draft.region}
+																		onChange={(e) =>
+																			setAiDetectionDrafts((prev) => ({
+																				...prev,
+																				[p]: { ...prev[p], region: e.target.value },
+																			}))
+																		}
+																		placeholder={t('aiDetection.fields.region')}
+																		autoComplete="off"
+																		spellCheck={false}
+																		className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+																	/>
+																</div>
+																<div className="flex min-w-0 items-center gap-2">
+																	<span className="w-20 shrink-0 text-xs text-gray-500">
+																		{t('aiDetection.fields.bizType')}
+																	</span>
+																	<input
+																		type="text"
+																		value={draft.bizType}
+																		onChange={(e) =>
+																			setAiDetectionDrafts((prev) => ({
+																				...prev,
+																				[p]: { ...prev[p], bizType: e.target.value },
+																			}))
+																		}
+																		placeholder={t('aiDetection.fields.bizTypeOptional')}
+																		autoComplete="off"
+																		spellCheck={false}
+																		className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+																	/>
+																</div>
+															</>
+														)}
+														<button
+															type="button"
+															onClick={() =>
+																setAiDetectionKeyVisible((v) => ({
+																	...v,
+																	[p]: v[p] === false,
+																}))
+															}
+															className="inline-flex w-fit shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+															aria-pressed={aiDetectionKeyVisible[p] !== false}
+														>
+															{aiDetectionKeyVisible[p] === false ? (
+																<>
+																	<EyeIcon className="h-4 w-4" aria-hidden />
+																	{tCommon('show')}
+																</>
+															) : (
+																<>
+																	<EyeSlashIcon className="h-4 w-4" aria-hidden />
+																	{tCommon('hide')}
+																</>
+															)}
+														</button>
+													</div>
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+
+						<div className="flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								onClick={() => void handleSaveAiDetection()}
+								disabled={aiDetectionSaving || aiDetectionActivatable.length === 0}
+								className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+							>
+								{aiDetectionSaving ? tCommon('saving') : t('config.saveAiDetection')}
+							</button>
+							<CardSaveFeedback feedback={cardFeedback.aiDetection} />
 						</div>
 					</div>
 				</ConfigCardShell>

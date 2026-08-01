@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@octafuse/proxy-services/*": [
+        "../proxy/src/services/*"
       ]
     },
     "target": "ES2017"

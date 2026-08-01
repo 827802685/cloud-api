@@ -64,7 +64,7 @@ Authorization: Bearer sk-admin-xxx
 | `/admin/models/import` | POST | 请求体 `{"ids":["…"]}`：仅导入指定预设 → `models`，`model_tags`（按 `BILLING_CURRENCY` 选用 USD/CNY 价；**同 id 不覆盖**，记入 `skipped_existing`） | Admin UI、运维脚本 |
 | `/admin/routes` | GET（`?model_id=&provider_id=`）, POST, GET/PATCH/DELETE `/:id` | `model_surfaces`、`route_pools`、`model_routes`（Surface → Pool → Target） | Admin UI |
 | `/admin/routes/pools/:poolId` | PATCH | `route_pools.strategy`（Pool 级策略覆盖） | Admin UI |
-| `/admin/playground` | POST | 单条 `model_routes` 直连上游（不计费、不写请求日志、无 failover） | Admin UI、运维联调 |
+| `/admin/playground` | POST | Routes：`routeId` 直连上游；Tools：`toolId`+`provider` 读 catalog 直连引擎（均可测、不计费、不写日志、无 failover） | Admin UI、运维联调 |
 | `/admin/stats` | GET | 多表聚合（含 `api_key_request_logs`、`api_keys` 等） | Admin UI |
 | `/admin/config` | GET, PUT | `system_config`（含 `ROUTE_STRATEGY`） | Admin UI |
 | `/admin/business-timezone` | GET | `system_config.BUSINESS_TIMEZONE` | Admin UI（Provider 首屏加载） |
@@ -781,8 +781,26 @@ Agent Tools 也通过该接口维护配置：
 | Web Search | `WEB_SEARCH_CATALOG` | `WEB_SEARCH_ACTIVE` | `bocha`、`tavily`、`cleversee`、`tencent_wsa` |
 | Web Fetch | `WEB_FETCH_CATALOG` | `WEB_FETCH_ACTIVE` | `firecrawl`、`tavily`、`jina` |
 | Web Deep Search | `WEB_DEEP_SEARCH_CATALOG` | `WEB_DEEP_SEARCH_ACTIVE` | `firecrawl`、`jina` |
+| AI Detection | `AI_DETECTION_CATALOG` | `AI_DETECTION_ACTIVE` | 当前 `tencent_tms`（多 provider 架构，可扩展） |
 
-Catalog JSON 以 Provider id 为键，每项包含 `apiKey` 与 `cost`；设置 Active 前必须先在对应 Catalog 中配置非空 `apiKey`。每种工具同时只启用一个 Active Provider。
+Catalog JSON 以 Provider id 为键。联网类工具每项为 `{ apiKey, cost }`；AI Detection 为凭证字段并集 + `cost` + 可选 `billingUnitChars`。设置 Active 前必须配齐该引擎所需凭证（未实现引擎不可 Active）。每种工具同时只启用一个 Active Provider。
+
+### 运维验收：Agent Tools（Playground / Simulator）
+
+Admin 内闭环：**Tools Config → Playground（引擎）→ Simulator（Proxy）→ Tools Invocations**。
+
+1. **Config**：Admin → Tools → Configuration，为某引擎填入凭证与单价并保存；Active 指向已配齐凭证的引擎（AI Detection 第一版为 `tencent_tms`）。
+2. **Playground Tools**（不计费、不写 logs）：Admin → Playground → **Tools** 模式，或 Config 行内 **Test in Playground**（`?mode=tools&tool=…&provider=…`）。选工具 + **任意 catalog 引擎**（不限 Active）→ Send → 直连上游引擎，确认密钥与响应形态。
+3. **Simulator Tools**（真实 Proxy）：Admin → Simulator → Kind=**Tools** → 选工具与用户 API Key → Send 打到 `{proxy}/v1/tools/{id}` → 核对扣费与响应；**Open Tools Invocations**（`provider_id=octafuse-tools` / `?tool=`）核对日志与 `pricing_audit`。
+4. **边界**：Playground Tools **不经** Proxy、**不扣**用户预算、**不写** `api_key_request_logs`；Simulator Tools **走** Proxy 全链路。LLM / Image / Audio 的 Routes 模式行为不变。
+5. **curl**（可选，用户 API Key，等价 Simulator）：
+
+```bash
+curl -sS "$GATEWAY_URL/v1/tools/ai-detection" \
+  -H "Authorization: Bearer $USER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"sample paragraph for AI-rate detection"}'
+```
 
 与 **Proxy 错误 Webhook** 相关的键（默认不存在于种子数据，按需 `PUT` 写入即可）：
 

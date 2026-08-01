@@ -836,7 +836,19 @@
 		"audioTranscriptionsHint": "오디오 모델: JSON 필드(language, response_format)와 아래 오디오 파일. 파일은 multipart로 transcriptions에 전송됩니다. 과금/요청 로그 없음.",
 		"audioFile": "오디오 파일",
 		"audioFileHint": "오디오 파일 하나 선택(mp3, wav, m4a, webm…). multipart로 전송(JSON 편집기에 넣지 않음).",
-		"audioFileRequired": "보내기 전에 오디오 파일이 필요합니다."
+		"audioFileRequired": "보내기 전에 오디오 파일이 필요합니다.",
+		"mode": "모드",
+		"modeRoutes": "Routes",
+		"modeTools": "Tools",
+		"toolsSubtitle": "{product} — catalog 엔진에 직접 연결(Active 외도 가능). 과금·요청 로그 없음.",
+		"toolsSection": "도구 및 엔진",
+		"toolsHint": "자격 증명은 system_config catalog에서 읽습니다. Active 전환 전 키 검증에 사용하세요.",
+		"tool": "도구",
+		"engineProvider": "엔진 Provider",
+		"engineProviderHint": "Active에 제한되지 않으며, 구현된 catalog 항목을 테스트할 수 있습니다.",
+		"toolsBodyMustBeObject": "요청 본문은 JSON 객체여야 합니다.",
+		"toolsNeedProvider": "엔진 Provider를 선택하세요.",
+		"applyTemplate": "템플릿 적용"
 	},
 	"simulator": {
 		"title": "Simulator",
@@ -922,7 +934,16 @@
 		"audioTranscriptionsHint": "전사: JSON 필드(language, response_format)와 오디오 파일 → multipart POST /v1/audio/transcriptions.",
 		"audioFile": "오디오 파일",
 		"audioFileHint": "multipart 업로드용 오디오 파일 하나 선택.",
-		"audioFileRequired": "보내기 전에 오디오 파일이 필요합니다."
+		"audioFileRequired": "보내기 전에 오디오 파일이 필요합니다.",
+		"kindTool": "Tools",
+		"tool": "도구",
+		"toolHint": "선택한 API 키로 Proxy POST /v1/tools/{id}를 호출합니다(인증·과금·로그).",
+		"toolNoRoutes": "Agent Tools는 model_routes에 묶이지 않습니다. 이 모드에서는 모델과 라우트 그룹을 숨깁니다.",
+		"toolEndpoint": "Proxy 경로",
+		"toolProtocolHidden": "Tools는 항상 JSON POST /v1/tools/* 입니다. 프로토콜 선택은 적용되지 않습니다.",
+		"readyNeedTool": "도구를 선택하세요.",
+		"errSelectTool": "전송 전에 도구를 선택하세요.",
+		"openToolsInvocations": "Tools Invocations 열기"
 	},
 	"users": {
 		"title": "사용자",
@@ -1374,7 +1395,8 @@
 		"catalog": {
 			"webSearch": "Web Search",
 			"webFetch": "Web Fetch",
-			"webDeepSearch": "Web Deep Search"
+			"webDeepSearch": "Web Deep Search",
+			"aiDetection": "AI Detection"
 		},
 		"config": {
 			"title": "Tools",
@@ -1382,7 +1404,9 @@
 			"viewInvocations": "호출 내역 보기 →",
 			"saveWebSearch": "Web Search 저장",
 			"saveWebFetch": "Web Fetch 저장",
-			"saveWebDeepSearch": "Web Deep Search 저장"
+			"saveWebDeepSearch": "Web Deep Search 저장",
+			"saveAiDetection": "AI Detection 저장",
+			"testInPlayground": "Playground에서 테스트"
 		},
 		"webSearch": {
 			"title": "Web Search",
@@ -1479,6 +1503,30 @@
 				"jina": "Jina Search"
 			}
 		},
+		"aiDetection": {
+			"title": "AI Detection",
+			"descriptionCatalog": "POST /v1/tools/ai-detection에 사용됩니다. 멀티 Provider catalog: 엔진별 자격 증명과 단가를 설정한 다음 Active를 선택하세요. 과금은 문자 단위(billingUnitChars)이며 엔진의 기술 세그먼트 상한과 무관합니다. 현재 구현된 엔진은 Tencent Cloud TMS뿐입니다.",
+			"active": "Active 엔진",
+			"catalogProvider": "엔진",
+			"noKey": "자격 증명 없음",
+			"needKeyToActivate": "저장하기 전에 구현된 엔진 하나 이상에 자격 증명을 추가하세요.",
+			"providerDocs": "Docs 및 API Key →",
+			"cost": "과금 단위당 비용 ({currency})",
+			"billingUnitChars": "과금 단위(문자)",
+			"credentials": "자격 증명",
+			"fields": {
+				"apiKey": "API Key",
+				"secretId": "SecretId",
+				"secretKey": "SecretKey",
+				"email": "Email",
+				"region": "Region",
+				"bizType": "BizType",
+				"bizTypeOptional": "선택 BizType"
+			},
+			"providers": {
+				"tencent_tms": "Tencent Cloud TMS"
+			}
+		},
 		"invocations": {
 			"title": "Tool 호출 내역",
 			"subtitle": "provider=octafuse-tools, model_id=tool:*로 청구된 호출입니다. 행을 클릭하면 Query와 결과 요약을 확인할 수 있습니다. 요청 로그와 동일한 기본 행을 사용합니다.",
@@ -1515,6 +1563,8 @@
 			"invalidWebFetchProvider": "Fetch Provider는 구현된 옵션 중 하나여야 합니다.",
 			"invalidWebFetchCost": "각 Provider의 비용은 0 이상의 숫자여야 합니다.",
 			"invalidWebDeepSearchCost": "각 Deep Search Provider의 비용은 0 이상의 숫자여야 합니다.",
+			"invalidAiDetectionCost": "각 엔진의 비용은 0 이상이어야 하며, 과금 단위 문자 수는 양의 정수여야 합니다.",
+			"aiDetectionNotImplemented": "아직 구현되지 않은 엔진은 Active로 설정할 수 없습니다.",
 			"noKeyCannotActivate": "API Key가 없는 Provider는 활성화할 수 없습니다.",
 			"switchActiveBeforeClearingKey": "현재 엔진의 Key를 삭제하려면 먼저 Key가 있는 다른 엔진으로 Active를 전환하고 저장한 후 다시 저장하여 기존 Key를 삭제하세요."
 		}

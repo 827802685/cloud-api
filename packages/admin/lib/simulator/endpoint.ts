@@ -1,21 +1,36 @@
 /**
  * Build Proxy-facing requests from the browser: URL, headers, and JSON body per protocol
- * (including OpenAI/Anthropic `model` field).
+ * (including OpenAI/Anthropic `model` field) or Agent Tools (`/v1/tools/*`).
  */
 import { applyGeminiStreamQueryParams } from '@octafuse/core/gemini-upstream-url';
 import type { ImageOperation } from '@/lib/image-generations';
+import {
+	parseGatewayToolId,
+	proxyToolPath,
+	resolveProxyPathForModelInvoke,
+	type GeminiContentAction,
+	type InvokeKind,
+	type SimulatorProtocol,
+} from '@/lib/invoke-kind';
 
-export type SimulatorProtocol = 'openai' | 'anthropic' | 'gemini';
-
-export type SimulatorGeminiAction = 'generateContent' | 'streamGenerateContent';
+export type { SimulatorProtocol };
+export type SimulatorGeminiAction = GeminiContentAction;
 
 export type BuildSimulatorRequestInput = {
 	/** Trimmed Proxy root URL without a trailing slash, e.g. https://gateway.example.com */
 	baseUrl: string;
+	/**
+	 * Invoke kind. When `tool`, builds `POST /v1/tools/{toolId}` (protocol/model ignored).
+	 * Default inferred from audio/image flags for backward compatibility.
+	 */
+	kind?: InvokeKind;
+	/** Required when `kind === 'tool'`. */
+	toolId?: string;
 	protocol: SimulatorProtocol;
 	/**
 	 * OpenAI/Anthropic `body.model`, or the Gemini path model segment (may include `id:route_group`).
 	 * Matches Proxy `resolveModelRouting`: full id, or `baseId:group`.
+	 * Ignored for tools.
 	 */
 	modelForRouting: string;
 	geminiAction?: SimulatorGeminiAction;
@@ -73,6 +88,13 @@ function resolveImageOperation(input: BuildSimulatorRequestInput): ImageOperatio
 	return null;
 }
 
+function resolveKind(input: BuildSimulatorRequestInput): InvokeKind {
+	if (input.kind) return input.kind;
+	if (input.audioTranscriptions) return 'audio';
+	if (resolveImageOperation(input) != null) return 'image';
+	return 'llm';
+}
+
 function appendOptionalFormField(fd: FormData, key: string, value: unknown): void {
 	if (value == null) return;
 	if (typeof value === 'string') {
@@ -91,10 +113,26 @@ function appendOptionalFormField(fd: FormData, key: string, value: unknown): voi
 export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildSimulatorRequestResult {
 	const base = stripTrailingSlash(input.baseUrl.trim());
 	const auth = bearerHeader(input.apiKey);
+	const kind = resolveKind(input);
+
+	if (kind === 'tool') {
+		const toolId = parseGatewayToolId(input.toolId);
+		if (!toolId) {
+			throw new Error(`Unsupported toolId: ${String(input.toolId)}`);
+		}
+		return {
+			url: `${base}${proxyToolPath(toolId)}`,
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: auth,
+			},
+			bodyText: JSON.stringify(input.body),
+		};
+	}
 
 	switch (input.protocol) {
 		case 'openai': {
-			if (input.audioTranscriptions) {
+			if (kind === 'audio') {
 				const file = input.audioFile ?? null;
 				const fd = new FormData();
 				fd.append('model', input.modelForRouting);
@@ -116,8 +154,9 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 					!file
 						? 'file: (none selected yet — required before Send)'
 						: [`file:`, ...fileLines.map((l) => `  - ${l}`)].join('\n');
+				const path = resolveProxyPathForModelInvoke({ kind: 'audio', protocol: 'openai' });
 				return {
-					url: `${base}/v1/audio/transcriptions`,
+					url: `${base}${path}`,
 					headers: {
 						Authorization: auth,
 					},
@@ -130,7 +169,7 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 				};
 			}
 			const imageOp = resolveImageOperation(input);
-			if (imageOp === 'edits') {
+			if (kind === 'image' && imageOp === 'edits') {
 				// Allow empty files for live URL preview; Send path validates before fetch.
 				const files = input.editImages ?? [];
 				const fd = new FormData();
@@ -154,8 +193,13 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 					files.length === 0
 						? 'images: (none selected yet — required before Send)'
 						: [`images (${files.length}):`, ...fileLines.map((l) => `  - ${l}`)].join('\n');
+				const path = resolveProxyPathForModelInvoke({
+					kind: 'image',
+					protocol: 'openai',
+					imageOperation: 'edits',
+				});
 				return {
-					url: `${base}/v1/images/edits`,
+					url: `${base}${path}`,
 					headers: {
 						Authorization: auth,
 					},
@@ -168,7 +212,11 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 				};
 			}
 			const merged = { ...input.body, model: input.modelForRouting };
-			const path = imageOp === 'generations' ? '/v1/images/generations' : '/v1/chat/completions';
+			const path = resolveProxyPathForModelInvoke({
+				kind: kind === 'image' ? 'image' : 'llm',
+				protocol: 'openai',
+				imageOperation: imageOp === 'generations' ? 'generations' : undefined,
+			});
 			return {
 				url: `${base}${path}`,
 				headers: {
@@ -180,8 +228,9 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 		}
 		case 'anthropic': {
 			const merged = { ...input.body, model: input.modelForRouting };
+			const path = resolveProxyPathForModelInvoke({ kind: 'llm', protocol: 'anthropic' });
 			return {
-				url: `${base}/v1/messages`,
+				url: `${base}${path}`,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: auth,
@@ -192,8 +241,13 @@ export function buildSimulatorRequest(input: BuildSimulatorRequestInput): BuildS
 		case 'gemini': {
 			const action: SimulatorGeminiAction =
 				input.geminiAction === 'generateContent' ? 'generateContent' : 'streamGenerateContent';
-			const pathModel = encodeURIComponent(input.modelForRouting);
-			const url = new URL(`${base}/v1beta/models/${pathModel}:${action}`);
+			const path = resolveProxyPathForModelInvoke({
+				kind: 'llm',
+				protocol: 'gemini',
+				geminiAction: action,
+				geminiModelSegment: input.modelForRouting,
+			});
+			const url = new URL(`${base}${path}`);
 			applyGeminiStreamQueryParams(url, action);
 			return {
 				url: url.toString(),

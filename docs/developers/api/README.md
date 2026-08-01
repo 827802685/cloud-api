@@ -64,6 +64,8 @@
 | `/v1/tools/web-search` | POST | Agent Tools：联网搜索（按次计费；Admin Tools 配置 Active 引擎） |
 | `/v1/tools/web-fetch` | POST | Agent Tools：网页抓取（按次计费） |
 | `/v1/tools/web-deep-search` | POST | Agent Tools：深度检索（搜+读；按次计费） |
+| `/v1/tools/ai-detection` | POST | Agent Tools：AI 率检测（按计费字符单元计费） |
+| `/v1/tools/pricing` | GET | Agent Tools：只读定价（不含密钥与 Active 引擎名） |
 | `/v1/messages` | POST | Anthropic Messages |
 | `/v1beta/models/:modelAction` | POST | Gemini `generateContent` / `streamGenerateContent` |
 | `/v1/models` | GET | 模型列表（需用户 Key；OpenAI 兼容形态；默认仅 LLM，可用 `kind=image` / `kind=audio` / `kind=all`） |

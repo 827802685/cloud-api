@@ -836,7 +836,19 @@
 		"audioTranscriptionsHint": "音声モデル：JSON フィールド（language、response_format）と下の音声ファイル。ファイルは multipart で transcriptions に送信されます。課金・リクエストログなし。",
 		"audioFile": "音声ファイル",
 		"audioFileHint": "音声ファイルを 1 つ選択（mp3、wav、m4a、webm…）。multipart で送信（JSON エディタには入りません）。",
-		"audioFileRequired": "送信前に音声ファイルが必要です。"
+		"audioFileRequired": "送信前に音声ファイルが必要です。",
+		"mode": "モード",
+		"modeRoutes": "Routes",
+		"modeTools": "Tools",
+		"toolsSubtitle": "{product} — catalog エンジンへ直接接続（Active 以外も可）。課金なし・リクエストログなし。",
+		"toolsSection": "ツールとエンジン",
+		"toolsHint": "認証情報は system_config catalog から読みます。Active 切替前のキー検証に使えます。",
+		"tool": "ツール",
+		"engineProvider": "エンジン Provider",
+		"engineProviderHint": "Active 以外でも、実装済み catalog エントリを検証できます。",
+		"toolsBodyMustBeObject": "リクエストボディは JSON オブジェクトである必要があります。",
+		"toolsNeedProvider": "エンジン Provider を選択してください。",
+		"applyTemplate": "テンプレートを適用"
 	},
 	"simulator": {
 		"title": "Simulator",
@@ -922,7 +934,16 @@
 		"audioTranscriptionsHint": "文字起こし：JSON フィールド（language、response_format）と音声ファイル → multipart POST /v1/audio/transcriptions。",
 		"audioFile": "音声ファイル",
 		"audioFileHint": "multipart アップロード用の音声ファイルを 1 つ選択。",
-		"audioFileRequired": "送信前に音声ファイルが必要です。"
+		"audioFileRequired": "送信前に音声ファイルが必要です。",
+		"kindTool": "Tools",
+		"tool": "ツール",
+		"toolHint": "選択した API キーで Proxy POST /v1/tools/{id} を呼び出します（認証・課金・ログ）。",
+		"toolNoRoutes": "Agent Tools は model_routes に束縛されません。このモードではモデルとルートグループを非表示にします。",
+		"toolEndpoint": "Proxy パス",
+		"toolProtocolHidden": "Tools は常に JSON POST /v1/tools/* です。プロトコル選択は不要です。",
+		"readyNeedTool": "ツールを選択してください。",
+		"errSelectTool": "送信前にツールを選択してください。",
+		"openToolsInvocations": "Tools Invocations を開く"
 	},
 	"users": {
 		"title": "ユーザー",
@@ -1374,7 +1395,8 @@
 		"catalog": {
 			"webSearch": "Web Search",
 			"webFetch": "Web Fetch",
-			"webDeepSearch": "Web Deep Search"
+			"webDeepSearch": "Web Deep Search",
+			"aiDetection": "AI Detection"
 		},
 		"config": {
 			"title": "Tools",
@@ -1382,7 +1404,9 @@
 			"viewInvocations": "呼び出し履歴を表示 →",
 			"saveWebSearch": "Web Search を保存",
 			"saveWebFetch": "Web Fetch を保存",
-			"saveWebDeepSearch": "Web Deep Search を保存"
+			"saveWebDeepSearch": "Web Deep Search を保存",
+			"saveAiDetection": "AI Detection を保存",
+			"testInPlayground": "Playground でテスト"
 		},
 		"webSearch": {
 			"title": "Web Search",
@@ -1479,6 +1503,30 @@
 				"jina": "Jina Search"
 			}
 		},
+		"aiDetection": {
+			"title": "AI Detection",
+			"descriptionCatalog": "POST /v1/tools/ai-detection を提供します。マルチ Provider catalog：エンジンごとに認証情報と単価を設定してから Active を選択します。課金は文字ユニット（billingUnitChars）単位で、エンジンの技術的な分割上限とは独立しています。現時点で実装済みは Tencent Cloud TMS のみです。",
+			"active": "Active エンジン",
+			"catalogProvider": "エンジン",
+			"noKey": "認証情報なし",
+			"needKeyToActivate": "保存する前に、実装済みエンジンの少なくとも 1 つに認証情報を追加してください。",
+			"providerDocs": "Docs & API Key →",
+			"cost": "課金ユニットあたりのコスト（{currency}）",
+			"billingUnitChars": "課金ユニット（文字）",
+			"credentials": "認証情報",
+			"fields": {
+				"apiKey": "API Key",
+				"secretId": "SecretId",
+				"secretKey": "SecretKey",
+				"email": "Email",
+				"region": "Region",
+				"bizType": "BizType",
+				"bizTypeOptional": "任意の BizType"
+			},
+			"providers": {
+				"tencent_tms": "Tencent Cloud TMS"
+			}
+		},
 		"invocations": {
 			"title": "Tool 呼び出し履歴",
 			"subtitle": "provider octafuse-tools（model_id tool:*）として課金された呼び出しです。行をクリックするとクエリと結果概要を確認できます。リクエストログと同じ元データです。",
@@ -1515,6 +1563,8 @@
 			"invalidWebFetchProvider": "Fetch Provider は実装済みの選択肢から選んでください。",
 			"invalidWebFetchCost": "各 Provider のコストには 0 以上の数値を指定してください。",
 			"invalidWebDeepSearchCost": "各 Deep Search Provider のコストには 0 以上の数値を指定してください。",
+			"invalidAiDetectionCost": "各エンジンのコストは 0 以上、課金ユニット文字数は正の整数である必要があります。",
+			"aiDetectionNotImplemented": "未実装のエンジンは Active にできません。",
 			"noKeyCannotActivate": "API Key がない Provider は有効化できません。",
 			"switchActiveBeforeClearingKey": "現在のエンジンの Key を削除する前に、Key が残っている別のエンジンへ Active を切り替えて保存し、その後もう一度保存して Key を削除してください。"
 		}
