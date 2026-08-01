@@ -1554,8 +1554,17 @@
 				"user": "用户",
 				"status": "状态",
 				"results": "结果数",
-				"cost": "费用",
+				"standard": "标准价（{currency}）",
+				"charged": "用户扣费（{currency}）",
+				"metered": "供应价（{currency}）",
+				"profit": "毛利（{currency}）",
 				"latency": "延迟"
+			},
+			"titles": {
+				"profit": "用户扣费 − 供应价（单次）",
+				"standard": "标准价（目录）",
+				"charged": "用户扣费",
+				"metered": "供应价"
 			},
 			"detail": {
 				"request": "请求",

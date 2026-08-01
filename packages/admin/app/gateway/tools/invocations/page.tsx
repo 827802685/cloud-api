@@ -14,7 +14,11 @@ import {
 	detectRollingPreset,
 	type GatewayTimeRangeValue,
 } from '@/lib/analytics-range';
-import { formatGatewayMoneyCode } from '@/lib/format-gateway-currency';
+import {
+	formatGatewayMoneyCompact,
+	formatGatewayMoneyCompactSigned,
+	getGatewayCurrencySymbol,
+} from '@/lib/format-gateway-currency';
 import {
 	findGatewayToolById,
 	GATEWAY_TOOLS,
@@ -34,6 +38,7 @@ export default function GatewayToolInvocationsPage() {
 	const t = useTranslations('tools');
 	const tCommon = useTranslations('common');
 	const { currency: billingCurrency } = useBillingCurrency();
+	const billingCurrencySym = getGatewayCurrencySymbol(billingCurrency);
 	const { formatDateTime } = useGatewayDateTime();
 
 	const [toolFilter, setToolFilter] = useState('');
@@ -231,7 +236,30 @@ export default function GatewayToolInvocationsPage() {
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.user')}</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.status')}</th>
 								<th className="px-4 py-3 text-right font-medium text-gray-600">{t('invocations.columns.results')}</th>
-								<th className="px-4 py-3 text-right font-medium text-gray-600">{t('invocations.columns.cost')}</th>
+								<th
+									className="px-4 py-3 text-right font-medium text-gray-600"
+									title={t('invocations.titles.standard')}
+								>
+									{t('invocations.columns.standard', { currency: billingCurrencySym })}
+								</th>
+								<th
+									className="px-4 py-3 text-right font-medium text-gray-600"
+									title={t('invocations.titles.charged')}
+								>
+									{t('invocations.columns.charged', { currency: billingCurrencySym })}
+								</th>
+								<th
+									className="px-4 py-3 text-right font-medium text-gray-600"
+									title={t('invocations.titles.metered')}
+								>
+									{t('invocations.columns.metered', { currency: billingCurrencySym })}
+								</th>
+								<th
+									className="px-4 py-3 text-right font-medium text-gray-600"
+									title={t('invocations.titles.profit')}
+								>
+									{t('invocations.columns.profit', { currency: billingCurrencySym })}
+								</th>
 								<th className="px-4 py-3 text-right font-medium text-gray-600">{t('invocations.columns.latency')}</th>
 							</tr>
 						</thead>
@@ -240,11 +268,19 @@ export default function GatewayToolInvocationsPage() {
 								const req = parseToolRequestSummary(log.request_body);
 								const res = parseToolResponseSummary(log.raw_usage);
 								const engine = resolveToolEngineProvider(log);
+								const standardCost = Number(log.standard_cost ?? 0);
+								const chargedCost = Number(log.charged_cost ?? 0);
+								const meteredCost = Number(log.metered_cost ?? 0);
+								const profit = chargedCost - meteredCost;
+								const profitToneClass =
+									profit > 0 ? 'text-emerald-700' : profit < 0 ? 'text-red-600' : 'text-gray-600';
 								const expanded = detailLogId === log.id;
 								return (
 									<Fragment key={log.id}>
 										<tr
-											className={`cursor-pointer hover:bg-gray-50 ${expanded ? 'bg-slate-50' : ''}`}
+											className={`cursor-pointer hover:bg-gray-50 ${
+												expanded ? 'bg-slate-50' : profit < 0 ? 'bg-amber-50/50' : ''
+											}`}
 											onClick={() => {
 												if (expanded) {
 													setDetailLogId(null);
@@ -284,8 +320,29 @@ export default function GatewayToolInvocationsPage() {
 											<td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
 												{res.resultCount != null ? res.resultCount : '—'}
 											</td>
-											<td className="px-4 py-3 text-right font-mono text-xs text-gray-800">
-												{formatGatewayMoneyCode(log.charged_cost ?? 0, billingCurrency)}
+											<td
+												className="px-4 py-3 text-right font-mono text-xs tabular-nums text-gray-800"
+												title={t('invocations.titles.standard')}
+											>
+												{formatGatewayMoneyCompact(standardCost, billingCurrency)}
+											</td>
+											<td
+												className="px-4 py-3 text-right font-mono text-xs tabular-nums text-gray-900"
+												title={t('invocations.titles.charged')}
+											>
+												{formatGatewayMoneyCompact(chargedCost, billingCurrency)}
+											</td>
+											<td
+												className="px-4 py-3 text-right font-mono text-xs tabular-nums text-gray-700"
+												title={t('invocations.titles.metered')}
+											>
+												{formatGatewayMoneyCompact(meteredCost, billingCurrency)}
+											</td>
+											<td
+												className={`px-4 py-3 text-right font-mono text-xs font-medium tabular-nums ${profitToneClass}`}
+												title={t('invocations.titles.profit')}
+											>
+												{formatGatewayMoneyCompactSigned(profit, billingCurrency)}
 											</td>
 											<td className="px-4 py-3 text-right font-mono text-xs text-gray-600">
 												{log.latency_ms != null ? `${log.latency_ms} ms` : '—'}
@@ -293,7 +350,7 @@ export default function GatewayToolInvocationsPage() {
 										</tr>
 										{expanded && (
 											<tr className="bg-slate-50">
-												<td colSpan={9} className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+												<td colSpan={12} className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
 													<div className="grid items-stretch gap-4 lg:grid-cols-2">
 														<div className="flex min-h-[18rem] flex-col">
 															<h3 className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-500">

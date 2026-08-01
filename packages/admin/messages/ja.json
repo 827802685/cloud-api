@@ -1545,9 +1545,12 @@
 				"user": "ユーザー",
 				"status": "ステータス",
 				"results": "結果",
-				"cost": "コスト",
 				"latency": "レイテンシ",
-				"provider": "エンジン"
+				"provider": "エンジン",
+				"profit": "粗利（{currency}）",
+				"standard": "標準（{currency}）",
+				"charged": "ユーザー課金（{currency}）",
+				"metered": "供給（{currency}）"
 			},
 			"detail": {
 				"request": "リクエスト",
@@ -1558,6 +1561,12 @@
 				"noListResults": "リスト表示できる項目はありません。raw payload がある場合は JSON に切り替えてください。",
 				"noResponseStored": "レスポンス概要は保存されていません（古い行にはクエリのみが保存されているか、結果を返す前に呼び出しが失敗しています）。",
 				"hint": "運用確認用にレスポンス概要は切り詰められています。完全な chat transcript はクライアントに保持されます。"
+			},
+			"titles": {
+				"profit": "ユーザー課金 − 供給コスト（1回）",
+				"standard": "標準（カタログ）",
+				"charged": "ユーザー課金",
+				"metered": "供給コスト"
 			}
 		},
 		"errors": {

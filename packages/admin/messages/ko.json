@@ -1545,9 +1545,12 @@
 				"user": "사용자",
 				"status": "상태",
 				"results": "결과",
-				"cost": "비용",
 				"latency": "지연 시간",
-				"provider": "엔진"
+				"provider": "엔진",
+				"profit": "마진 ({currency})",
+				"standard": "표준 ({currency})",
+				"charged": "사용자 과금 ({currency})",
+				"metered": "공급 ({currency})"
 			},
 			"detail": {
 				"request": "요청",
@@ -1558,6 +1561,12 @@
 				"noListResults": "목록으로 표시할 항목이 없습니다. 원시 Payload가 있으면 JSON으로 전환하세요.",
 				"noResponseStored": "저장된 응답 요약이 없습니다(이전 행에는 Query만 저장되었거나 결과 반환 전에 호출이 실패함).",
 				"hint": "운영 검토를 위해 응답 요약은 일부만 저장됩니다. 전체 Chat 기록은 클라이언트에 유지됩니다."
+			},
+			"titles": {
+				"profit": "사용자 과금 − 공급 원가(건당)",
+				"standard": "표준(카탈로그)",
+				"charged": "사용자 과금",
+				"metered": "공급 원가"
 			}
 		},
 		"errors": {

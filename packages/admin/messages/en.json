@@ -1554,8 +1554,17 @@
 				"user": "User",
 				"status": "Status",
 				"results": "Results",
-				"cost": "Cost",
+				"standard": "Standard ({currency})",
+				"charged": "Charged ({currency})",
+				"metered": "Metered ({currency})",
+				"profit": "Profit ({currency})",
 				"latency": "Latency"
+			},
+			"titles": {
+				"profit": "Charged − metered (per call)",
+				"standard": "Standard (catalog price)",
+				"charged": "Charged (user budget)",
+				"metered": "Metered (supplier cost)"
 			},
 			"detail": {
 				"request": "Request",
