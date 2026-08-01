@@ -10,6 +10,7 @@
 	"workspaces": [
 		".",
 		"packages/core",
+		"packages/tool-engines",
 		"packages/proxy",
 		"packages/admin"
 	],
@@ -41,6 +42,7 @@
 		"test:gateway:postgres-smoke": "dotenv -c -- tsx scripts/smoke/test-postgres-core-routes.ts",
 		"test:gateway:sql-storage-smoke": "dotenv -c -- tsx scripts/smoke/test-storage-concurrent-charge.ts",
 		"test:deploy": "node --test scripts/deploy/*.test.mjs",
+		"verify:proxy-bundle": "node scripts/ci/verify-proxy-bundle-externals.mjs",
 		"test:unit": "npm run test:deploy && npm run test:unit -w @octafuse/core && npm run test:unit -w @octafuse/proxy && npm run test:unit -w @octafuse/admin"
 	},
 	"devDependencies": {

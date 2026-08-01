@@ -792,7 +792,7 @@ Admin 内闭环：**Tools Config → Playground（引擎）→ Simulator（Proxy
 1. **Config**：Admin → Tools → Configuration，为某引擎填入凭证与**三账本单价**（供应 / 目录 / 用户）并保存；Active 指向已配齐凭证的引擎（AI Detection 第一版为 `tencent_tms`）。再保存后 catalog JSON 应展开为 `metered` / `standard` / `charged`（及 `cost`）。
 2. **Playground Tools**（不计费、不写 logs）：Admin → Playground → **Tools** 模式，或 Config 行内 **Test in Playground**（`?mode=tools&tool=…&provider=…`）。选工具 + **任意 catalog 引擎**（不限 Active）→ Send → 直连上游引擎，确认密钥与响应形态。
 3. **Simulator Tools**（真实 Proxy）：Admin → Simulator → Kind=**Tools** → 选工具与用户 API Key → Send 打到 `{proxy}/v1/tools/{id}` → 核对响应 `cost`（= charged）与预算；**Open Tools Invocations** / Request Logs 核对三列不同（若配置了不同单价）、`budget_spent` 仅增 charged、失败请求三列 0、`pricing_audit` v4 `fixed_tool_cost`。
-4. **边界**：Playground Tools **不经** Proxy、**不扣**用户预算、**不写** `api_key_request_logs`；Simulator Tools **走** Proxy 全链路。LLM / Image / Audio 的 Routes 模式行为不变。
+4. **边界**：Playground Tools **不经** Proxy、**不扣**用户预算、**不写** `api_key_request_logs`；Simulator Tools **走** Proxy 全链路。二者共用 **`@octafuse/tool-engines`** 引擎客户端（Admin 不得再依赖 `packages/proxy`）。LLM / Image / Audio 的 Routes 模式行为不变。
 5. **curl**（可选，用户 API Key，等价 Simulator）：
 
 ```bash

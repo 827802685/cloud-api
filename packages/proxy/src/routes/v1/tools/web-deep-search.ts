@@ -10,7 +10,7 @@ import {
 	clampDeepSearchCount,
 	deepSearchByProvider,
 	WebDeepSearchProviderError,
-} from '../../../services/web-deep-search';
+} from '@octafuse/tool-engines/web-deep-search';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

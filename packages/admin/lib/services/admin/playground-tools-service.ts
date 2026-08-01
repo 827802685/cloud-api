@@ -34,21 +34,21 @@ import {
 	detectAiRate,
 	getAiDetectionDriver,
 	AiDetectionProviderError,
-} from '@octafuse/proxy-services/ai-detection';
+} from '@octafuse/tool-engines/ai-detection';
 import {
 	deepSearchByProvider,
 	WebDeepSearchProviderError,
 	clampDeepSearchCount,
-} from '@octafuse/proxy-services/web-deep-search';
+} from '@octafuse/tool-engines/web-deep-search';
 import {
 	assertFetchUrlSafe,
 	fetchUrlByProvider,
 	WebFetchProviderError,
-} from '@octafuse/proxy-services/web-fetch';
+} from '@octafuse/tool-engines/web-fetch';
 import {
 	searchWebByProvider,
 	WebSearchProviderError,
-} from '@octafuse/proxy-services/web-search';
+} from '@octafuse/tool-engines/web-search';
 import { parseGatewayToolId, type GatewayToolId } from '@/lib/invoke-kind';
 import { badRequest } from './errors';
 

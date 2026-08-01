@@ -22,6 +22,7 @@
 |----|------|
 | `packages/proxy` | 用户推理入口，提供 `/v1/*`、`/v1beta/*`、`/catalog/*`、`/health`。 |
 | `packages/admin` | 管理 UI 与 `/api/admin/*`。Proxy 不提供管理接口。 |
+| `packages/tool-engines` | Tools 上游引擎客户端（web-search / web-fetch / web-deep-search / ai-detection）；**source-only**，供 Proxy 与 Admin Playground 共用。 |
 | `packages/core` | D1 / Postgres / MySQL 仓储、迁移 CLI、共享类型与领域逻辑。 |
 
 贡献前也请阅读仓库根的 [CONTRIBUTING.md](../../CONTRIBUTING.md)、[SECURITY.md](../../SECURITY.md) 和 [docs/CONVENTIONS.md](../CONVENTIONS.md)。

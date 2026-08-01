@@ -11,7 +11,7 @@ import {
 	assertFetchUrlSafe,
 	fetchUrlByProvider,
 	WebFetchProviderError,
-} from '../../../services/web-fetch';
+} from '@octafuse/tool-engines/web-fetch';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

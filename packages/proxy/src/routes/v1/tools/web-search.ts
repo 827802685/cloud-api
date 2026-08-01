@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
-import { searchWebByProvider, WebSearchProviderError } from '../../../services/web-search';
+import { searchWebByProvider, WebSearchProviderError } from '@octafuse/tool-engines/web-search';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

@@ -10,7 +10,7 @@ import {
 	AiDetectionProviderError,
 	detectAiRate,
 	getAiDetectionDriver,
-} from '../../../services/ai-detection';
+} from '@octafuse/tool-engines/ai-detection';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
