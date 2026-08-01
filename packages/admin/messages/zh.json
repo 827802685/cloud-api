@@ -1402,6 +1402,8 @@
 			"title": "Tools",
 			"subtitle": "配置 /v1/tools/* 产品工具（引擎、API Key、三账本单价）。写入 system_config；用户额度仅累加 charged。",
 			"viewInvocations": "查看调用记录 →",
+			"showSecrets": "显示密钥",
+			"hideSecrets": "隐藏密钥",
 			"saveWebSearch": "保存 Web Search",
 			"saveWebFetch": "保存 Web Fetch",
 			"saveWebDeepSearch": "保存 Web Deep Search",

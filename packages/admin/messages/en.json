@@ -1402,6 +1402,8 @@
 			"title": "Tools",
 			"subtitle": "Configure product tools under /v1/tools/* (engine, API key, unit prices). Settings are stored in system_config and share the user chat budget (charged only).",
 			"viewInvocations": "View invocations →",
+			"showSecrets": "Show API keys",
+			"hideSecrets": "Hide API keys",
 			"saveWebSearch": "Save web search",
 			"saveWebFetch": "Save web fetch",
 			"saveWebDeepSearch": "Save web deep search",

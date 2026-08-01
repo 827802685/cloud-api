@@ -1406,7 +1406,9 @@
 			"saveWebFetch": "Web Fetch 저장",
 			"saveWebDeepSearch": "Web Deep Search 저장",
 			"saveAiDetection": "AI Detection 저장",
-			"testInPlayground": "Playground에서 테스트"
+			"testInPlayground": "Playground에서 테스트",
+			"showSecrets": "API 키 표시",
+			"hideSecrets": "API 키 숨기기"
 		},
 		"webSearch": {
 			"title": "Web Search",

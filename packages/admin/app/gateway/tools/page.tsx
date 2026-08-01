@@ -573,16 +573,12 @@ export default function GatewayToolsConfigPage() {
 	const [webSearchActive, setWebSearchActive] = useState<WebSearchProvider>(DEFAULT_WEB_SEARCH_PROVIDER);
 	const [webSearchSavedActive, setWebSearchSavedActive] = useState<WebSearchProvider | null>(null);
 	const [webSearchDrafts, setWebSearchDrafts] = useState(emptySearchDrafts);
-	/** 默认明文显示；仅显式设为 false 时隐藏 */
-	const [webSearchKeyVisible, setWebSearchKeyVisible] = useState<Partial<Record<WebSearchProvider, boolean>>>({});
 	const [webSearchSaving, setWebSearchSaving] = useState(false);
 	const [providerGuideOpen, setProviderGuideOpen] = useState(false);
 
 	const [webFetchActive, setWebFetchActive] = useState<WebFetchProvider>(DEFAULT_WEB_FETCH_PROVIDER);
 	const [webFetchSavedActive, setWebFetchSavedActive] = useState<WebFetchProvider | null>(null);
 	const [webFetchDrafts, setWebFetchDrafts] = useState(emptyFetchDrafts);
-	/** 默认明文显示；仅显式设为 false 时隐藏 */
-	const [webFetchKeyVisible, setWebFetchKeyVisible] = useState<Partial<Record<WebFetchProvider, boolean>>>({});
 	const [webFetchSaving, setWebFetchSaving] = useState(false);
 
 	const [webDeepSearchActive, setWebDeepSearchActive] = useState<WebDeepSearchProvider>(
@@ -590,19 +586,16 @@ export default function GatewayToolsConfigPage() {
 	);
 	const [webDeepSearchSavedActive, setWebDeepSearchSavedActive] = useState<WebDeepSearchProvider | null>(null);
 	const [webDeepSearchDrafts, setWebDeepSearchDrafts] = useState(emptyDeepSearchDrafts);
-	const [webDeepSearchKeyVisible, setWebDeepSearchKeyVisible] = useState<
-		Partial<Record<WebDeepSearchProvider, boolean>>
-	>({});
 	const [webDeepSearchSaving, setWebDeepSearchSaving] = useState(false);
 
 	const [aiDetectionActive, setAiDetectionActive] =
 		useState<AiDetectionProvider>(DEFAULT_AI_DETECTION_PROVIDER);
 	const [aiDetectionSavedActive, setAiDetectionSavedActive] = useState<AiDetectionProvider | null>(null);
 	const [aiDetectionDrafts, setAiDetectionDrafts] = useState(emptyAiDetectionDrafts);
-	const [aiDetectionKeyVisible, setAiDetectionKeyVisible] = useState<
-		Partial<Record<AiDetectionProvider, boolean>>
-	>({});
 	const [aiDetectionSaving, setAiDetectionSaving] = useState(false);
+
+	/** 全页密钥明文开关；默认隐藏 */
+	const [secretsVisible, setSecretsVisible] = useState(false);
 
 	const clearCardSuccessTimer = useCallback((card: ToolCardKey) => {
 		const timer = successTimersRef.current[card];
@@ -929,12 +922,32 @@ export default function GatewayToolsConfigPage() {
 					<h1 className="text-3xl font-bold text-gray-900">{t('config.title')}</h1>
 					<p className="mt-1 text-sm text-gray-500">{t('config.subtitle')}</p>
 				</div>
-				<Link
-					href="/gateway/tools/invocations"
-					className="text-sm font-medium text-blue-600 hover:underline"
-				>
-					{t('config.viewInvocations')}
-				</Link>
+				<div className="flex flex-wrap items-center gap-3">
+					<button
+						type="button"
+						onClick={() => setSecretsVisible((v) => !v)}
+						className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+						aria-pressed={secretsVisible}
+					>
+						{secretsVisible ? (
+							<>
+								<EyeSlashIcon className="h-4 w-4" aria-hidden />
+								{t('config.hideSecrets')}
+							</>
+						) : (
+							<>
+								<EyeIcon className="h-4 w-4" aria-hidden />
+								{t('config.showSecrets')}
+							</>
+						)}
+					</button>
+					<Link
+						href="/gateway/tools/invocations"
+						className="text-sm font-medium text-blue-600 hover:underline"
+					>
+						{t('config.viewInvocations')}
+					</Link>
+				</div>
 			</div>
 
 			<div className="flex flex-col gap-6">
@@ -1039,45 +1052,20 @@ export default function GatewayToolsConfigPage() {
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<div className="flex min-w-0 items-center gap-2">
-													<input
-														type={webSearchKeyVisible[p] === false ? 'password' : 'text'}
-														value={webSearchDrafts[p].apiKey}
-														onChange={(e) =>
-															setWebSearchDrafts((prev) => ({
-																...prev,
-																[p]: { ...prev[p], apiKey: e.target.value },
-															}))
-														}
-														placeholder={t('webSearch.apiKeyPlaceholder')}
-														autoComplete="off"
-														spellCheck={false}
-														className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
-													/>
-													<button
-														type="button"
-														onClick={() =>
-															setWebSearchKeyVisible((v) => ({
-																...v,
-																[p]: v[p] === false,
-															}))
-														}
-														className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-														aria-pressed={webSearchKeyVisible[p] !== false}
-													>
-														{webSearchKeyVisible[p] === false ? (
-															<>
-																<EyeIcon className="h-4 w-4" aria-hidden />
-																{tCommon('show')}
-															</>
-														) : (
-															<>
-																<EyeSlashIcon className="h-4 w-4" aria-hidden />
-																{tCommon('hide')}
-															</>
-														)}
-													</button>
-												</div>
+												<input
+													type={secretsVisible ? 'text' : 'password'}
+													value={webSearchDrafts[p].apiKey}
+													onChange={(e) =>
+														setWebSearchDrafts((prev) => ({
+															...prev,
+															[p]: { ...prev[p], apiKey: e.target.value },
+														}))
+													}
+													placeholder={t('webSearch.apiKeyPlaceholder')}
+													autoComplete="off"
+													spellCheck={false}
+													className="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+												/>
 											</td>
 										</tr>
 									))}
@@ -1189,45 +1177,20 @@ export default function GatewayToolsConfigPage() {
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<div className="flex min-w-0 items-center gap-2">
-													<input
-														type={webFetchKeyVisible[p] === false ? 'password' : 'text'}
-														value={webFetchDrafts[p].apiKey}
-														onChange={(e) =>
-															setWebFetchDrafts((prev) => ({
-																...prev,
-																[p]: { ...prev[p], apiKey: e.target.value },
-															}))
-														}
-														placeholder={t('webFetch.apiKeyPlaceholder')}
-														autoComplete="off"
-														spellCheck={false}
-														className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
-													/>
-													<button
-														type="button"
-														onClick={() =>
-															setWebFetchKeyVisible((v) => ({
-																...v,
-																[p]: v[p] === false,
-															}))
-														}
-														className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-														aria-pressed={webFetchKeyVisible[p] !== false}
-													>
-														{webFetchKeyVisible[p] === false ? (
-															<>
-																<EyeIcon className="h-4 w-4" aria-hidden />
-																{tCommon('show')}
-															</>
-														) : (
-															<>
-																<EyeSlashIcon className="h-4 w-4" aria-hidden />
-																{tCommon('hide')}
-															</>
-														)}
-													</button>
-												</div>
+												<input
+													type={secretsVisible ? 'text' : 'password'}
+													value={webFetchDrafts[p].apiKey}
+													onChange={(e) =>
+														setWebFetchDrafts((prev) => ({
+															...prev,
+															[p]: { ...prev[p], apiKey: e.target.value },
+														}))
+													}
+													placeholder={t('webFetch.apiKeyPlaceholder')}
+													autoComplete="off"
+													spellCheck={false}
+													className="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+												/>
 											</td>
 										</tr>
 									))}
@@ -1351,45 +1314,20 @@ export default function GatewayToolsConfigPage() {
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<div className="flex min-w-0 items-center gap-2">
-													<input
-														type={webDeepSearchKeyVisible[p] === false ? 'password' : 'text'}
-														value={webDeepSearchDrafts[p].apiKey}
-														onChange={(e) =>
-															setWebDeepSearchDrafts((prev) => ({
-																...prev,
-																[p]: { ...prev[p], apiKey: e.target.value },
-															}))
-														}
-														placeholder={t('webDeepSearch.apiKeyPlaceholder')}
-														autoComplete="off"
-														spellCheck={false}
-														className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
-													/>
-													<button
-														type="button"
-														onClick={() =>
-															setWebDeepSearchKeyVisible((v) => ({
-																...v,
-																[p]: v[p] === false,
-															}))
-														}
-														className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-														aria-pressed={webDeepSearchKeyVisible[p] !== false}
-													>
-														{webDeepSearchKeyVisible[p] === false ? (
-															<>
-																<EyeIcon className="h-4 w-4" aria-hidden />
-																{tCommon('show')}
-															</>
-														) : (
-															<>
-																<EyeSlashIcon className="h-4 w-4" aria-hidden />
-																{tCommon('hide')}
-															</>
-														)}
-													</button>
-												</div>
+												<input
+													type={secretsVisible ? 'text' : 'password'}
+													value={webDeepSearchDrafts[p].apiKey}
+													onChange={(e) =>
+														setWebDeepSearchDrafts((prev) => ({
+															...prev,
+															[p]: { ...prev[p], apiKey: e.target.value },
+														}))
+													}
+													placeholder={t('webDeepSearch.apiKeyPlaceholder')}
+													autoComplete="off"
+													spellCheck={false}
+													className="w-full min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 font-mono text-sm text-gray-900 shadow-sm"
+												/>
 											</td>
 										</tr>
 									))}
@@ -1541,11 +1479,11 @@ export default function GatewayToolsConfigPage() {
 																</span>
 																<input
 																	type={
-																		field === 'email' || aiDetectionKeyVisible[p] === false
-																			? field === 'email'
-																				? 'email'
+																		field === 'email'
+																			? 'email'
+																			: secretsVisible
+																				? 'text'
 																				: 'password'
-																			: 'text'
 																	}
 																	value={draft[field]}
 																	onChange={(e) =>
@@ -1603,29 +1541,6 @@ export default function GatewayToolsConfigPage() {
 																</div>
 															</>
 														)}
-														<button
-															type="button"
-															onClick={() =>
-																setAiDetectionKeyVisible((v) => ({
-																	...v,
-																	[p]: v[p] === false,
-																}))
-															}
-															className="inline-flex w-fit shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-															aria-pressed={aiDetectionKeyVisible[p] !== false}
-														>
-															{aiDetectionKeyVisible[p] === false ? (
-																<>
-																	<EyeIcon className="h-4 w-4" aria-hidden />
-																	{tCommon('show')}
-																</>
-															) : (
-																<>
-																	<EyeSlashIcon className="h-4 w-4" aria-hidden />
-																	{tCommon('hide')}
-																</>
-															)}
-														</button>
 													</div>
 												</td>
 											</tr>

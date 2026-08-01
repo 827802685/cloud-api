@@ -1406,7 +1406,9 @@
 			"saveWebFetch": "Web Fetch を保存",
 			"saveWebDeepSearch": "Web Deep Search を保存",
 			"saveAiDetection": "AI Detection を保存",
-			"testInPlayground": "Playground でテスト"
+			"testInPlayground": "Playground でテスト",
+			"showSecrets": "APIキーを表示",
+			"hideSecrets": "APIキーを隠す"
 		},
 		"webSearch": {
 			"title": "Web Search",
