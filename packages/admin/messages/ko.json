@@ -1544,7 +1544,8 @@
 				"status": "상태",
 				"results": "결과",
 				"cost": "비용",
-				"latency": "지연 시간"
+				"latency": "지연 시간",
+				"provider": "엔진"
 			},
 			"detail": {
 				"request": "요청",

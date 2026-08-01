@@ -81,8 +81,7 @@ aiDetectionRoutes.post('/', async (c) => {
 	}
 
 	const started = Date.now();
-	const logRequestBody = JSON.stringify({ total_chars: totalChars, billing_units: billingUnits });
-	const pricingAuditExtra = { provider };
+	const logRequestBody = JSON.stringify({ total_chars: totalChars, billing_units: billingUnits, provider });
 
 	try {
 		const result = await detectAiRate(trimmed, driver, resolved.config);
@@ -94,13 +93,13 @@ aiDetectionRoutes.post('/', async (c) => {
 			userId: apiKey.userId,
 			userEmail: apiKey.userEmail,
 			toolId: 'tool:ai-detection',
+			toolProvider: provider,
 			meteredCost: totals.metered,
 			standardCost: totals.standard,
 			chargedCost: totals.charged,
 			pricingUnit: 'chars',
 			billingUnits,
 			unitPrices,
-			pricingAuditExtra,
 			latencyMs,
 			requestBody: logRequestBody,
 			// 仅分数汇总，不含 excerpt / 原文
@@ -145,13 +144,13 @@ aiDetectionRoutes.post('/', async (c) => {
 				userId: apiKey.userId,
 				userEmail: apiKey.userEmail,
 				toolId: 'tool:ai-detection',
+				toolProvider: provider,
 				meteredCost: 0,
 				standardCost: 0,
 				chargedCost: 0,
 				pricingUnit: 'chars',
 				billingUnits,
 				unitPrices,
-				pricingAuditExtra,
 				latencyMs,
 				requestBody: logRequestBody,
 				errorMessage: message,

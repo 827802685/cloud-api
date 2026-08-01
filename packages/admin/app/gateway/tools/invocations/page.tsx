@@ -20,7 +20,11 @@ import {
 	GATEWAY_TOOLS,
 	GATEWAY_TOOLS_PROVIDER_ID,
 } from '@/lib/gateway-tools';
-import { parseToolRequestSummary, parseToolResponseSummary } from '@/lib/tool-invocation-detail';
+import {
+	parseToolRequestSummary,
+	parseToolResponseSummary,
+	resolveToolEngineProvider,
+} from '@/lib/tool-invocation-detail';
 import type { GatewayRequestLog } from '@/lib/types';
 import { useBillingCurrency } from '@/lib/use-billing-currency';
 import { useGatewayDateTime } from '@/lib/use-gateway-datetime';
@@ -222,6 +226,7 @@ export default function GatewayToolInvocationsPage() {
 							<tr>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.time')}</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.tool')}</th>
+								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.provider')}</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.query')}</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.user')}</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-600">{t('invocations.columns.status')}</th>
@@ -234,6 +239,7 @@ export default function GatewayToolInvocationsPage() {
 							{logs.map((log) => {
 								const req = parseToolRequestSummary(log.request_body);
 								const res = parseToolResponseSummary(log.raw_usage);
+								const engine = resolveToolEngineProvider(log);
 								const expanded = detailLogId === log.id;
 								return (
 									<Fragment key={log.id}>
@@ -253,6 +259,9 @@ export default function GatewayToolInvocationsPage() {
 												{formatDateTime(log.created_at)}
 											</td>
 											<td className="px-4 py-3 font-mono text-xs text-gray-900">{toolLabel(log.model_id)}</td>
+											<td className="px-4 py-3 font-mono text-xs text-indigo-700" title={engine ?? undefined}>
+												{engine || '—'}
+											</td>
 											<td className="max-w-[18rem] truncate px-4 py-3 text-gray-800" title={req.query ?? ''}>
 												{req.query || '—'}
 											</td>
@@ -284,7 +293,7 @@ export default function GatewayToolInvocationsPage() {
 										</tr>
 										{expanded && (
 											<tr className="bg-slate-50">
-												<td colSpan={8} className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+												<td colSpan={9} className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
 													<div className="grid items-stretch gap-4 lg:grid-cols-2">
 														<div className="flex min-h-[18rem] flex-col">
 															<h3 className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-500">

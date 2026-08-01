@@ -1547,6 +1547,7 @@
 			"columns": {
 				"time": "Time",
 				"tool": "Tool",
+				"provider": "Engine",
 				"query": "Query",
 				"user": "User",
 				"status": "Status",

@@ -1544,7 +1544,8 @@
 				"status": "ステータス",
 				"results": "結果",
 				"cost": "コスト",
-				"latency": "レイテンシ"
+				"latency": "レイテンシ",
+				"provider": "エンジン"
 			},
 			"detail": {
 				"request": "リクエスト",

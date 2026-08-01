@@ -1547,6 +1547,7 @@
 			"columns": {
 				"time": "时间",
 				"tool": "工具",
+				"provider": "引擎",
 				"query": "查询",
 				"user": "用户",
 				"status": "状态",
