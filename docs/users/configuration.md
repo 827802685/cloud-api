@@ -27,9 +27,13 @@ Provider 表示一个上游模型入口。**一个 Provider = 一把上游 API K
 
 Provider 导入模板的维护说明见 [developers/reference/provider-import-presets.md](../developers/reference/provider-import-presets.md)。
 
+![新建 Provider 表单：一个上游账号对应一把 API Key，并可分别配置 OpenAI、Anthropic 与 Gemini 端点](../assets/screenshots/providers.png)
+
 ## 3. 配置模型与 Route
 
 2.0 的 Route 页面按 **Request Surface → Route Pool → Upstream Target** 展示：Surface 表示客户端协议 / operation，Pool 表示一组可故障转移的 Target，Target 才是具体 Provider 与上游模型。完整概念见 [developers/architecture/route-topology.md](../developers/architecture/route-topology.md)。
+
+![Routes 页面：从 Request Surface、route group 与策略连接到 Upstream Target](../assets/screenshots/routes.png)
 
 常见做法：
 

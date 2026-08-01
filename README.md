@@ -50,6 +50,14 @@ Octafuse Gateway 的核心目标是**构建统一超级个体（OPC）或企业�
     - 支持 **Cloudflare Workers + D1 免费部署**
     - 支持 Docker + Postgres / MySQL 部署
 
+## 管理后台一览
+
+| Provider 接入 | Surface → Policy → Upstream 路由拓扑 |
+|---|---|
+| ![新建 Provider：配置单个上游账号的 API Key 与多协议端点](./docs/assets/screenshots/providers.png) | ![Routes：按协议、operation 和 route group 组织路由策略与上游 Target](./docs/assets/screenshots/routes.png) |
+
+Provider 页面负责接入上游账号与协议端点；Routes 页面把客户端 Request Surface、路由策略和 Upstream Target 放在一条可视链路中。完整配置顺序见 [Admin 配置指南](./docs/users/configuration.md)。
+
 ## 与其他开源 AI Gateway 的差异
 
 [New API](https://github.com/QuantumNous/new-api)、[LiteLLM](https://github.com/BerriAI/litellm)、[Sub2API](https://github.com/Wei-Shaw/sub2api) 和 [Bifrost](https://github.com/maximhq/bifrost) 都是成熟且各有所长的开源 AI Gateway。下表以 Octafuse 所强调的 **Agent 能力交付与 AI 资源运营** 为观察视角，将接入、路由、治理、计费和部署能力拆分后进行比较：
