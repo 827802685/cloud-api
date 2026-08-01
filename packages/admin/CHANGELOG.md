@@ -12,9 +12,10 @@
   - 删除网关侧 per-key RPM/TPM/并发软限流与粘性 key 绑定（`models.sticky_config`）
   - `models.sticky_config` 替换为 `models.route_policy`；`model_routes` 新增 `weight`
   - 新增全局 `system_config.ROUTE_STRATEGY`（默认 `affinity`）与四策略：`affinity` / `weighted_random` / `strict` / `round_robin`
+  - 新增路由拓扑 v2：`model_surfaces`（公开请求入口）→ `route_pools`（故障转移池）→ `model_routes`（上游 Target）；Admin Routes 提供 Surface / Pool / Target 流程视图与 Pool 级策略编辑
   - Proxy 调度改为 priority 分层 + 策略排序 + provider 维度熔断；请求日志 `provider_key_*` 列语义改为 provider id/name/fingerprint
 
-  上线前请用 `scripts/db/export-provider-api-keys.mjs` 导出密钥，再应用迁移 `0015_single_provider_key.sql`。详见 `docs/operators/migrations/single-provider-key-cutover.md`。
+  上线前请用 `scripts/db/export-provider-api-keys.mjs` 导出密钥，再依次应用迁移 `0015_single_provider_key.sql` 与 `0016_route_surfaces_pools.sql`。详见 `docs/operators/migrations/single-provider-key-cutover.md`。
 
 ### Patch Changes
 

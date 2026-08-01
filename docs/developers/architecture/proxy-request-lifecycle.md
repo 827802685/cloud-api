@@ -13,6 +13,7 @@
 **相关文档**：
 
 - 运行时状态与配置列概览：[runtime-data.md](./runtime-data.md) § 路由调度运行时状态
+- 路由拓扑：[route-topology.md](./route-topology.md)
 - 路由策略详解：[../reference/route-strategies.md](../reference/route-strategies.md)
 - 用户 API 故障转移摘要：[../api/user.md](../api/user.md) § 提供商故障转移
 - 流式计费与 usage 解析：[../reference/streaming-billing.md](../reference/streaming-billing.md)
@@ -30,7 +31,8 @@ flowchart TB
   end
 
   subgraph preDispatch [调度前]
-    model["resolveModelRouting + selectActiveRouteRows"]
+    model["resolveModelRouting"]
+    surface["resolveRoutesForSurface"]
     budget["用户 budget 校验"]
     sensitive["敏感内容熔断检查"]
     strategy["resolveRouteStrategy"]
@@ -52,7 +54,7 @@ flowchart TB
     usage["usagePromise → recordUsage (异步)"]
   end
 
-  app --> auth --> route --> model --> budget --> sensitive --> strategy --> failover
+  app --> auth --> route --> model --> budget --> surface --> sensitive --> strategy --> failover
   failover --> planner
   planner --> strategies
   planner --> breaker
@@ -64,8 +66,8 @@ flowchart TB
 |------|------|------|
 | App 装配 | `packages/proxy/src/app.ts` | Hono 应用、路由挂载、注入 `repositories` |
 | 鉴权 | `middleware/auth.ts` → `services/api-key-auth.ts` | 提取 sk、校验用户 API Key、懒重置预算周期 |
-| 模型路由 | `resolve-model-route-group.ts`、`route-selection.ts`、`model-router.ts` | 解析 `model` / `:route_group`、查 `model_routes`、JOIN provider（单键 `api_key`） |
-| 策略解析 | `route-strategies/index.ts` → `resolveRouteStrategy` | 五级：capability rule → protocol rule → model → global → `affinity` |
+| 模型与 Surface 路由 | `resolve-model-route-group.ts`、`model-router.ts` | 解析 `model` / `:route_group`，按 request protocol / operation 查精确或 wildcard Surface，再读取 Pool Targets、JOIN provider（单键 `api_key`） |
+| 策略解析 | `route-strategies/index.ts` → `resolveRouteStrategy` | 六级：Pool → capability rule → protocol rule → model → global → `affinity` |
 | 代理入口 | `services/proxy.ts` | 三协议（及 Images / Audio）统一调用 `failoverDispatch` |
 | 故障转移 | `services/failover-dispatch.ts` | 编排 attempt、逐 provider 打上游、熔断与 429 全忙 |
 | 调度计划 | `services/route-attempt-planner.ts` | `buildRouteAttemptPlan`：priority 硬序 + 层内策略排序 + 跳过熔断 provider |
@@ -88,13 +90,13 @@ flowchart TB
 2. **解析 JSON body**：非法 JSON → **400**；缺少 `model` → **400**。
 3. **`resolveModelRouting`**：支持 `baseModelId` 或 `baseModelId:route_group`；模型不存在 → **404**。
 4. **用户预算**：`budgetMax != null && budgetSpent >= budgetMax` → **403**。
-5. **路由行查询**：
-   - `getActiveModelRouteRows` → `selectActiveRouteRows(explicitGroup)`（默认 `default`）
-   - `resolveRouteResultsFromRows` → `RouteResult[]`（携带 `providerEndpoints`、`providerApiKey`、`routePriority`、`routeWeight`；**provider disabled / 无 api_key 的行会被跳过**）
-   - 无有效 route group → **400**
-   - 解析异常 → **502**
-6. **协议过滤**：例如 chat 路由保留 `upstreamProtocol === 'openai'`；无匹配 → **502**。
-7. **`resolveRouteStrategy`**：读 `models.route_policy` + `system_config.ROUTE_STRATEGY`（见 [route-strategies.md](../reference/route-strategies.md)）。
+5. **Surface / Pool 查询**：
+   - `resolveRoutesForSurface` 按 `modelId + routeGroup + requestProtocol + requestOperation` 查精确 Surface，未命中时回退 `request_operation='*'`
+   - Surface 命中后按 `route_pool_id` 读取 active Targets；滚动升级期间若 0016 尚不可用，临时回退旧的 model / group 路径
+   - `resolveRouteResultsFromRows` → `RouteResult[]`（携带 Surface / Pool / Target、operation、`providerApiKey`、`routePriority`、`routeWeight`；**provider disabled / 无 api_key 的行会被跳过**）
+   - 无匹配 Surface、Pool 或 Target → **400 / 502**
+6. **协议 / adapter 过滤**：2.0 保留 `upstreamProtocol === requestProtocol` 且 `adapter === 'passthrough'` 的 Target；无匹配 → **502**。
+7. **`resolveRouteStrategy`**：先读 `route_pools.strategy`，再读 `models.route_policy` + `system_config.ROUTE_STRATEGY`（见 [route-strategies.md](../reference/route-strategies.md)）。
 8. **Driver 出站 URL**：各 driver 按 capability 调用 `resolveUpstreamEndpoint`；Gemini 鉴权与 `alt=sse` 仍由 `prepareGeminiUpstreamFetch` 处理。
 
 ### 2.2 敏感内容熔断（可选，调度前）
@@ -134,7 +136,7 @@ sequenceDiagram
   participant U as Upstream
 
   C->>R: POST /v1/chat/completions
-  R->>R: auth, model, budget, routes, strategy
+  R->>R: auth, model, budget, Surface/Pool, strategy
   R->>R: sensitive circuit check
   R->>F: proxyChatCompletions(affinityKey, strategy)
   F->>S: buildRouteAttemptPlan
@@ -168,7 +170,7 @@ sequenceDiagram
 3. 对每个候选：若 **`getProviderCircuitRemainingMs(providerId) > 0`** → 跳过，记录最早恢复时间。
 4. 高 priority 层全部试完（或跳过）后，才进入下一层。
 
-策略语义、affinityKey / tierKey、五级解析见 [route-strategies.md](../reference/route-strategies.md)。
+策略语义、affinityKey / tierKey、六级解析见 [route-strategies.md](../reference/route-strategies.md)。
 
 ### 3.2 Provider 熔断策略
 
@@ -206,8 +208,8 @@ sequenceDiagram
 | Images edits multipart 非法 | 400 | `Invalid multipart body` | 否 |
 | 模型不存在 | 404 | `Model not found` | 否 |
 | 用户 budget 耗尽 | 403 | `Budget exceeded` | 否 |
-| route group 无 active 路由 | 400 | `No active routes for route group ...` | 否 |
-| 无协议匹配路由 / 无可用 provider | 502 | `No OpenAI route ...` / `No routes configured` 等 | 否 |
+| 无匹配 Surface / active Pool Target | 400 / 502 | `No active routes ...` / `No routes configured` 等 | 否 |
+| 无协议 / adapter 匹配 Target 或无可用 provider | 502 | `No OpenAI route ...` / `No routes configured` 等 | 否 |
 | 敏感内容熔断中 | 429 | 网关生成，含 retry 信息 | 是（error） |
 | 全部 provider 熔断 | 429 | `upstream_capacity_exhausted` + `Retry-After` | 否 |
 
@@ -244,12 +246,14 @@ sequenceDiagram
 | 敏感内容熔断 | per `userId + baseModelId` | 同上 |
 | `ROUTE_STRATEGY` 缓存 | 全局，TTL **30s** | 各 isolate 独立缓存 |
 
-**配置来源**（迁移 **0015**，三库同语义）：
+**配置来源**（迁移 **0015 / 0016**，三库同语义）：
 
 | 列 / 键 | 含义 |
 |---------|------|
 | `providers.api_key` / `providers.status` | 单键；`active` \| `disabled` |
+| `model_surfaces` / `route_pools` | 请求入口映射与故障转移池；Pool 可设策略 |
 | `model_routes.priority` / `weight` | 层（DESC）+ 层内权重（默认 1） |
+| `model_routes.route_pool_id` / `upstream_operation` / `adapter` | Target 所属 Pool、上游 operation 与转换方式 |
 | `models.route_policy` | 可选 per-model / per-capability 策略覆盖 |
 | `system_config.ROUTE_STRATEGY` | 全局缺省（默认 `affinity`） |
 

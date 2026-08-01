@@ -89,6 +89,7 @@ flowchart TB
 - 迁移 **`0012_drop_provider_base_url_columns`**：删除 `base_url_openai` / `base_url_anthropic` / `base_url_gemini`；读写仅以 **`endpoints`** 为准（`parseProviderEndpoints` / Admin 写入）。
 - 形状：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。
 - 迁移 **`0015_single_provider_key`**：`providers` 恢复单列 **`api_key`** + **`status`**；删除 **`provider_api_keys`**；`model_routes.weight`；`models.route_policy` 替换 `sticky_config`；种子 **`ROUTE_STRATEGY`**。切换步骤见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
+- 迁移 **`0016_route_surfaces_pools`**：新增 `model_surfaces` / `route_pools`；`model_routes` 增加 `route_pool_id`、`upstream_operation`、`adapter`；请求日志增加 Surface / Pool / Target 与路由追踪字段。完整模型见 [route-topology.md](./route-topology.md)。
 
 #### Endpoint capability 维护规则
 
@@ -140,23 +141,27 @@ sequenceDiagram
 
 ## 路由调度运行时状态（策略 / 熔断）
 
-> **完整请求处理路径**（鉴权 → 路由 → 策略 → failover → 记账）：见 **[proxy-request-lifecycle.md](./proxy-request-lifecycle.md)**。  
-> **策略语义与五级解析**：见 **[route-strategies.md](../reference/route-strategies.md)**。  
-> **0015 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。
+> **完整请求处理路径**（鉴权 → 路由 → 策略 → failover → 记账）：见 **[proxy-request-lifecycle.md](./proxy-request-lifecycle.md)**。
+> **Surface → Pool → Target 拓扑**：见 **[route-topology.md](./route-topology.md)**。
+> **策略语义与六级解析**：见 **[route-strategies.md](../reference/route-strategies.md)**。
+> **0015 / 0016 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。
 
-### Schema（迁移 **0015**，三库同语义）
+### Schema（迁移 **0015 / 0016**，三库同语义）
 
 | 对象 | 含义 |
 |------|------|
 | **`providers.api_key`** / **`providers.status`** | 一个 Provider = 一把上游密钥；`status` 为 `active` \| `disabled`。**无** `provider_api_keys` 表 |
+| **`model_surfaces`** | 公开请求入口：`model_id + route_group + request_protocol + request_operation` → `route_pool_id` |
+| **`route_pools`** | 一组可故障转移 Target 的容器；`strategy` 可覆盖模型与全局策略 |
 | **`model_routes.priority`** | 硬序分层（**DESC**，数字越大越先试） |
 | **`model_routes.weight`** | 同 priority 层内权重（默认 `1`；策略用） |
+| **`model_routes.route_pool_id` / `upstream_operation` / `adapter`** | Target 所属 Pool、上游 capability 与转换方式；2.0 仅支持 `passthrough` |
 | **`models.route_policy`** | 可选 TEXT JSON：`strategy` + `rules`；`NULL` = 回退全局 |
 | **`system_config.ROUTE_STRATEGY`** | 全局缺省策略（默认 `affinity`；进程内缓存 30s） |
 
 已移除（待后续重设计）：`provider_api_keys`、`limit_config`（网关 RPM/TPM/并发软限流）、`models.sticky_config`（粘性 key 绑定）。
 
-请求日志列 **`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`** 仍保留列名，语义改为 **`providers.id` / `providers.name` / fingerprint(`api_key`)**。
+请求日志列 **`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`** 仍保留列名，语义改为 **`providers.id` / `providers.name` / fingerprint(`api_key`)**。0016 另增加 `request_operation`、`model_surface_id`、`route_pool_id`、`route_target_id`、`upstream_operation`、`adapter`、`route_trace`。
 
 ### 运行时组件（`packages/proxy/src/services/`）
 

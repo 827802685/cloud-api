@@ -102,9 +102,9 @@ docker run --rm -p 8789:8789 \
 
 若将镜像同步到自建 Harbor 或其它私有 OCI registry，可在该侧做 **mirror / retag**，各 `docker/examples/env.*.example` 中注释给出了与发版一致的示例镜像名（固定 tag），格式如：
 
-- `registry.example.com/example-org/octafuse-gateway-proxy:v1.0.0`
-- `registry.example.com/example-org/octafuse-gateway-admin:v1.0.0`
-- `registry.example.com/example-org/octafuse-gateway-migrate:v1.0.0`
+- `registry.example.com/example-org/octafuse-gateway-proxy:v2.0.0`
+- `registry.example.com/example-org/octafuse-gateway-admin:v2.0.0`
+- `registry.example.com/example-org/octafuse-gateway-migrate:v2.0.0`
 
 在 GitHub：**Actions** → **Octafuse Docker Images (GH hosted Ubuntu)** → **Run workflow**（手动路径）。该 workflow 已声明 **`permissions: packages: write`**；若组织策略限制默认 `GITHUB_TOKEN`，请在仓库 **Settings → Actions → General** 中放行对 **Packages** 的写入，或改用具备 `write:packages` 的 **PAT** 并配置为 secret。
 

@@ -1,6 +1,6 @@
 # Octafuse API 文档
 
-OpenAI 兼容的 AI Gateway：用户推理、API Key 与目录管理、用量与日志。实现分布在 **`packages/proxy`**（用户协议）、**`packages/admin`**（管理协议）与共享库 **`packages/core`**。
+多协议 AI 能力网关：提供 OpenAI、Anthropic、Gemini 兼容推理，Images、Audio Transcriptions、Agent Tools、用户 API Key、公开能力目录、用量与日志。实现分布在 **`packages/proxy`**（用户协议）、**`packages/admin`**（管理协议）与共享库 **`packages/core`**。
 
 ## 部署形态与 Base URL
 
@@ -16,6 +16,7 @@ OpenAI 兼容的 AI Gateway：用户推理、API Key 与目录管理、用量与
 ## 扩展文档
 
 - [运行时与数据存储架构](../architecture/runtime-data.md)（Cloudflare / Node，D1 / Postgres / MySQL）
+- [2.0 路由拓扑](../architecture/route-topology.md)（Request Surface → Route Pool → Upstream Target）
 - [渠道模型思考参数配置说明](../reference/provider-thinking-configs.md)
 - [文生图模型（gpt-image-2 / Seedream）](../reference/image-models.md)
 - [路由策略（affinity / weighted_random / …）](../reference/route-strategies.md)
@@ -74,6 +75,7 @@ OpenAI 兼容的 AI Gateway：用户推理、API Key 与目录管理、用量与
 | 场景 | 响应体 |
 |------|--------|
 | **`/v1/*`** | 多为 `{ "error": "..." }` |
+| Provider 全部熔断（429） | `{ "error": { "code": "upstream_capacity_exhausted", "type": "upstream_capacity_exhausted", "message": "...", "retry_after_seconds": 30 } }`，并带 `Retry-After` |
 | **管理接口**：未授权 | 多为 `{ "error": "Unauthorized" }`（401） |
 | **管理接口**：业务失败 | 多为 `{ "success": false, "message": "..." }` |
 

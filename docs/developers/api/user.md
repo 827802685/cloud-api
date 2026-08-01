@@ -40,12 +40,14 @@ Authorization: Bearer sk-xxx...
 
 ### 2. 有效路由组与选路
 
-`selectActiveRouteRows` 使用的 **有效路由组** 为：
+请求使用的 **有效路由组** 为：
 
 - 客户端传入 **`baseId:group`** 且 `group` 非空 → 有效组 = 该 `group`（trim，比较时 **忽略大小写**）。
 - 仅传入 **`baseId`**（整串命中 `models.id`）→ 有效组 = **`default`**。
 
-仅保留 **`model_routes.status = active`** 且 **`route_group`**（库内空值在比较时视为 `default`）与有效组（忽略大小写）一致的行；再按入口协议过滤（如 chat 仅 OpenAI），并跳过 **disabled / 无 api_key** 的 Provider。同组内按 **priority（DESC）分层** + **路由策略 + weight** 做 failover。该有效组下 **无** 活跃路由 → **400**；有路由但当前协议无可用上游 → **502**（例如 `No OpenAI route in route group "free" for this model`，Anthropic / Gemini 同理）。
+2.0 会根据 `model_id + route_group + request_protocol + request_operation` 解析 Request Surface：先查精确 operation，再回退迁移生成的 `*` Surface。Surface 指向一个 Route Pool，Proxy 仅在该 Pool 内选择 active Target，并跳过 **disabled / 无 api_key** 的 Provider。Pool 内按 **priority（DESC）分层** + **有效策略 + weight** 做 failover；Pool 策略优先于模型与全局策略。当前版本只支持 `adapter=passthrough`，因此 Target 的上游协议必须与请求协议一致。
+
+没有匹配 Surface / active Target 或没有当前协议可用上游时，按入口返回 **400** 或 **502**。完整拓扑、operation 列表与迁移兼容路径见 [route-topology.md](../architecture/route-topology.md)。
 
 模型 **`tags` 不参与**选组或计费。需要限定某一组时，请使用 **`baseId:your_group`**。
 
@@ -55,11 +57,11 @@ Authorization: Bearer sk-xxx...
 
 `POST /v1/chat/completions`、`POST /v1/messages` 与 Gemini `POST /v1beta/models/...` 在转发上游前，对 **用户 API Key** 统一执行 **`budget_max` / `budget_spent`** 校验：当 `budget_max` 非空且 `budget_spent >= budget_max` 时返回 **403** `Budget exceeded`。
 
-路由组（`default`、`free` 等）仅影响 **选路与计费快照**（见下文用量日志），**不再**单独绕过预算或走按日免费次数表。一次性试用额度等场景请通过 **`budget_period = 'none'`** 与 `budget_max` / `budget_base` 在密钥上表达（由管理 API / 门户侧写入）。
+路由组（`default`、`free` 等）仅影响 **选路与计费快照**（见下文用量日志），**不再**单独绕过预算或走按日免费次数表。一次性试用额度等场景请通过 **`budget_period = 'none'`** 与 `budget_max` / `budget_base` 在 **User** 上表达（经管理 API / 门户侧更新 `users`；API Key 仅用于鉴权与归集）。
 
 ### 4. 用量日志 `api_key_request_logs`
 
-写入的 **`model_id` 为库内基础模型 ID**（不带 `:group` 后缀）；实际选用的 **`route_group`**、**`upstream_protocol`**（所选路由的上游协议快照）、**`provider_key_id` / `provider_key_label` / `provider_key_fingerprint`**（列名历史兼容：现为 **`providers.id` / `providers.name` / fingerprint(`providers.api_key`)**）等会随请求落库（见 **`api_key_request_logs`**），便于对账与展示（如 Account 用量详情中 free 通道可加 `:free` 说明）。相对目录标准价的倍率请见路由 **`price_override`** 中的 **`charged_factor`** / **`metered_factor`**（及兼容字段 **`provider_factor`**）。**`request_protocol`** 表示客户端调用的 Gateway 入口（`openai` / `anthropic` / `gemini`），与 **`upstream_protocol`** 语义不同。
+写入的 **`model_id` 为库内基础模型 ID**（不带 `:group` 后缀）；实际选用的 **`route_group`**、`request_protocol` / `request_operation`、`model_surface_id`、`route_pool_id`、`route_target_id`、`upstream_protocol` / `upstream_operation`、`adapter` 与 `route_trace` 会随请求落库。`provider_key_id` / `provider_key_label` / `provider_key_fingerprint` 为历史兼容列名，现对应 **`providers.id` / `providers.name` / fingerprint(`providers.api_key`)**。相对目录标准价的倍率请见 Target 的 **`price_override`** 中的 **`charged_factor`** / **`metered_factor`**（及兼容字段 **`provider_factor`**）。
 
 ### 5. 输出长度（`max_tokens` / `maxOutputTokens`）
 
@@ -481,7 +483,7 @@ curl "http://localhost:8787/catalog/models?route_groups=default,web"
 
 ## Web Search（Agent 工具）
 
-协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。
+协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。三个 Agent Tools 当前均按 Active 引擎的固定单价计费，日志中 `metered_cost = standard_cost = charged_cost`，`pricing_audit.kind=fixed_tool_cost`；不应用模型 Route 的价格倍率或时段 schedule。
 
 ### 请求
 
@@ -673,7 +675,7 @@ Authorization: Bearer <USER_API_KEY>
 
 > 模型清单、Provider、参数对照、计费折算与验收清单见权威整理：[文生图模型（Image Models）](../reference/image-models.md)。
 
-OpenAI 兼容 Images API，供桌面 Agent 的 `generate_image` 等工具调用。鉴权与 Chat 相同（用户 API Key）；模型须在目录中配置 **OpenAI 协议**路由，且 `pricing_profile.tiers` 含 Image token 单价（见 Admin 模型页 / 预设 `gpt-image-2`、`doubao-seedream-5-0-*`）。
+OpenAI 兼容 Images API，供桌面 Agent 的 `generate_image` 等工具调用。鉴权与 Chat 相同（用户 API Key）；模型须在目录中配置 **OpenAI 协议**路由及有效的 `image_billing_mode`：`token` 模式需在 `pricing_profile.tiers` 配置 Image token 单价，`per_image` 模式需配置 `pricing_profile.image` 按张单价（见 Admin 模型页与 [文生图模型说明](../reference/image-models.md)）。
 
 ### 生成
 
@@ -897,7 +899,7 @@ GET /v1/me
 | `budget_period` | string | 预算周期: `"none"` \| `"daily"` \| `"weekly"` \| `"monthly"` |
 | `budget_reset_at` | string \| null | 下次预算重置时间 (ISO 8601) |
 | `billing_currency` | string | 计费币种：来自 `system_config.BILLING_CURRENCY` 的 **ISO 4217** 三字码（如 `USD`、`CNY`）；与 `pricing_profile` 单价及本接口预算数值同币；未配置或非法时回退 `USD` |
-| `metadata` | object \| null | Key 元数据（由管理端写入） |
+| `metadata` | object \| null | 优先返回 User metadata，并以 Key metadata 回退或补全（由管理端写入） |
 
 ### 示例
 
@@ -918,9 +920,9 @@ curl http://localhost:8787/v1/me \
 
 ### 定价模型
 
-币种由 **`system_config.BILLING_CURRENCY`** 声明（管理后台 **Gateway Config** 或迁移种子默认 `USD`）。`pricing_profile` 中的单价与 `api_keys` 的预算字段均按该币种计量。
+币种由 **`system_config.BILLING_CURRENCY`** 声明（管理后台 **Gateway Config** 或迁移种子默认 `USD`）。`pricing_profile` 中的单价与 `users` 的预算字段均按该币种计量。
 
-所有价格以每百万 token 为单位（per-million-token pricing）：
+LLM 及 token 模式的价格以每百万 token 为单位（per-million-token pricing）：
 
 ```
 费用 = (常规输入 * input_price
@@ -930,12 +932,13 @@ curl http://localhost:8787/v1/me \
 ```
 
 - `cache_read_price` 和 `cache_write_price` 默认等于 `input_price`
+- Images 还支持 `per_image` 按张计价，Audio 支持 `per_second` 按时长或 `token` 计价，Agent Tools 使用固定按次单价；分别见上文对应章节。
 - 路由 **`price_override`** 以 **`charged_factor` / `metered_factor`**（及可选每日 **`schedule`**）相对目录价计费；嵌套 `metered`/`charged` tiers 忽略。
 - 路由级 **`route_group`** 会写入 `api_key_request_logs` 快照。
-  - **`metered_cost`**：目录价 × `metered_factor` × `schedule.metered`
-  - **`standard_cost`**：仅 `models.pricing_profile`（不乘路由倍率）
-  - **`charged_cost`**：目录价 × `charged_factor` × `schedule.charged`（详见 `docs/developers/reference/streaming-billing.md`）
-- `api_keys.budget_spent` 仅按 `charged_cost` 累加
+  - **`standard_cost`（目录标准价）**：按当前计费模式从 `models.pricing_profile` 计算，不乘路由倍率
+  - **`metered_cost`（供应成本）**：目录价 × `metered_factor` × `schedule.metered`
+  - **`charged_cost`（用户扣费）**：目录价 × `charged_factor` × `schedule.charged`（详见 `docs/developers/reference/streaming-billing.md`）
+- `users.budget_spent` 仅按 `charged_cost` 累加
 
 ### 使用量追踪
 
@@ -944,29 +947,30 @@ curl http://localhost:8787/v1/me \
 - Token 使用量（输入/输出/缓存读取/缓存写入/推理等）
 - `metered_cost` / `standard_cost` / `charged_cost`（目录选档 × 路由倍率；见上）
 - `route_group`（请求时选用的路由快照）
-- `request_protocol`（入口协议）与 `upstream_protocol`（路由级上游协议快照）
+- `request_protocol` / `request_operation` 与 `upstream_protocol` / `upstream_operation`
+- `model_surface_id`、`route_pool_id`、`route_target_id`、`adapter`、`route_trace`
 - 延迟、状态（success/error/incomplete/cancelled 等）
 - 原始 usage（`raw_usage`）
 
 ### 提供商故障转移
 
-同一 `route_group` 内支持多条 **model_routes**（每条指向一个 Provider；**一个 Provider = 一把 `api_key`**）。调度由 `failoverDispatch` + `buildRouteAttemptPlan` 完成；**完整分支与场景表**见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md)；策略细节见 [route-strategies.md](../reference/route-strategies.md)。
+同一 Request Surface 指向一个 Route Pool，Pool 内支持多条 **model_routes** Target（每条指向一个 Provider；**一个 Provider = 一把 `api_key`**）。调度由 `failoverDispatch` + `buildRouteAttemptPlan` 完成；拓扑见 [route-topology.md](../architecture/route-topology.md)，完整分支与场景表见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md)。
 
 **排序与 failover**：
 
 - **层**：按 `model_routes.priority` **降序**（数字越大越先试）。
 - **同层**：按生效策略排序（默认 **`affinity`**：加权 Rendezvous，利于 prompt cache；另有 `weighted_random` / `strict` / `round_robin`），权重为 `model_routes.weight`。
 - **跳过**：`providers.status = disabled`、无 `api_key`，或处于 **provider 熔断** 的候选不参与本次 attempt。
-- **全部不可用**（均熔断）：网关直接返回 **429**，`code: upstream_capacity_exhausted`，带 `Retry-After`；**不调用上游**。
+- **全部不可用**（均熔断）：网关直接返回 **429**，响应体为 `{ "error": { "code": "upstream_capacity_exhausted", ... } }`，并带 `Retry-After`；**不调用上游**。
 - **有可试路由时**：按序打上游；可重试失败则换下一 Provider；全部 attempt 失败则返回**最后一次**上游响应。
 
 **可重试并换 Provider**：上游 `429`、`5xx`、`401`、`403`、网络/`fetch` 失败（524 / fetch 仅同次 failover，不跨请求熔断）。熔断按 **`providers.id`**：429 优先读 `Retry-After` 或递增退避；401/403 约 10min；普通 5xx 连续 3 次后约 10s。
 
 **不重试**（立即返回）：`400`、`404` 等请求本身错误；Images 客户端取消 / Gateway 超时合成的 504。
 
-**策略配置**（运维侧，对客户端透明）：全局 `system_config.ROUTE_STRATEGY`；可选 `models.route_policy` 按协议 / capability × route group 覆盖。解析顺序见 [route-strategies.md](../reference/route-strategies.md)。
+**策略配置**（运维侧，对客户端透明）：Route Pool 可用 `route_pools.strategy` 精确覆盖；其后依次解析 `models.route_policy` 与全局 `system_config.ROUTE_STRATEGY`。解析顺序见 [route-strategies.md](../reference/route-strategies.md)。
 
-用量日志会写入最终选用（或最后失败）的 **`provider_key_id`**（= provider id）、**`provider_key_label`**（= provider name）、**`provider_key_fingerprint`**（密钥指纹，不含明文）。
+用量日志会写入最终选用（或最后失败）的 Surface / Pool / Target，以及 **`provider_key_id`**（= provider id）、**`provider_key_label`**（= provider name）、**`provider_key_fingerprint`**（密钥指纹，不含明文）。
 
 ### Route 默认参数合并
 
