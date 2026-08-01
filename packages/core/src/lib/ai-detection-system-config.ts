@@ -4,11 +4,15 @@
  *
  * 多 provider 架构：catalog 按引擎存凭证并集 + Active 选型；解析时用
  * {@link AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS}（与已实现 driver 对齐）校验。
- * 当前仅实现 `tencent_tms`；新增引擎时扩白名单、凭证声明与 proxy driver 即可。
+ * Catalog 单价为三账本：metered / standard / charged（旧 `cost` 为 charged 别名）。
  */
 
 import type { GatewayRepositories } from '../storage/repositories';
-import { roundGatewayMoney } from './money-precision';
+import {
+	normalizeToolUnitPrices,
+	parseToolMoneyField,
+	toToolPricingFields,
+} from './tool-pricing';
 
 export const AI_DETECTION_ACTIVE_KEY = 'AI_DETECTION_ACTIVE';
 export const AI_DETECTION_CATALOG_KEY = 'AI_DETECTION_CATALOG';
@@ -41,8 +45,11 @@ export type AiDetectionCatalogEntry = {
 	email?: string;
 	region?: string;
 	bizType?: string;
-	/** 每计费单元单价 */
+	/** @deprecated 兼容别名；等于 charged */
 	cost: number;
+	metered: number;
+	standard: number;
+	charged: number;
 	/** 计费粒度（字符）；默认 {@link DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS} */
 	billingUnitChars?: number;
 };
@@ -84,14 +91,7 @@ export function parseAiDetectionActiveInput(raw: string | null | undefined): AiD
 }
 
 export function parseAiDetectionCostInput(raw: string | null | undefined): number | null {
-	if (raw == null || !String(raw).trim()) {
-		return null;
-	}
-	const n = Number(String(raw).trim());
-	if (!Number.isFinite(n) || n < 0) {
-		return null;
-	}
-	return roundGatewayMoney(n);
+	return parseToolMoneyField(raw);
 }
 
 export function parseAiDetectionBillingUnitCharsInput(raw: string | null | undefined): number | null {
@@ -120,22 +120,6 @@ export function entryHasRequiredCredentials(
 		}
 	}
 	return true;
-}
-
-function parseCostField(costRaw: unknown, strict: boolean): number | null {
-	if (costRaw === undefined || costRaw === null || costRaw === '') {
-		return DEFAULT_AI_DETECTION_COST;
-	}
-	if (typeof costRaw === 'number') {
-		if (!Number.isFinite(costRaw) || costRaw < 0) {
-			return null;
-		}
-		return roundGatewayMoney(costRaw);
-	}
-	if (typeof costRaw === 'string') {
-		return parseAiDetectionCostInput(costRaw);
-	}
-	return strict ? null : DEFAULT_AI_DETECTION_COST;
 }
 
 function parseBillingUnitCharsField(raw: unknown, strict: boolean): number | undefined | null {
@@ -167,15 +151,15 @@ function parseOptionalString(raw: unknown): string | undefined {
 }
 
 function parseCatalogEntry(rec: Record<string, unknown>, strict: boolean): AiDetectionCatalogEntry | null {
-	const cost = parseCostField(rec.cost, strict);
-	if (cost == null) {
+	const prices = normalizeToolUnitPrices(rec, DEFAULT_AI_DETECTION_COST, strict);
+	if (!prices) {
 		return null;
 	}
 	const billingUnitChars = parseBillingUnitCharsField(rec.billingUnitChars, strict);
 	if (billingUnitChars === null) {
 		return null;
 	}
-	const entry: AiDetectionCatalogEntry = { cost };
+	const entry: AiDetectionCatalogEntry = { ...toToolPricingFields(prices) };
 	if (billingUnitChars !== undefined) {
 		entry.billingUnitChars = billingUnitChars;
 	}
@@ -270,15 +254,43 @@ export function parseAiDetectionCatalogLenient(raw: string | null | undefined): 
 }
 
 export function serializeAiDetectionCatalog(catalog: AiDetectionCatalog): string {
-	return JSON.stringify(catalog);
+	const normalized: AiDetectionCatalog = {};
+	for (const [key, entry] of Object.entries(catalog) as [
+		AiDetectionProvider,
+		AiDetectionCatalogEntry | undefined,
+	][]) {
+		if (!entry) continue;
+		const { apiKey, secretId, secretKey, email, region, bizType, billingUnitChars, metered, standard, charged, cost } =
+			entry;
+		normalized[key] = {
+			...toToolPricingFields({
+				metered,
+				standard,
+				charged: charged ?? cost,
+			}),
+			...(apiKey !== undefined ? { apiKey } : {}),
+			...(secretId !== undefined ? { secretId } : {}),
+			...(secretKey !== undefined ? { secretKey } : {}),
+			...(email !== undefined ? { email } : {}),
+			...(region !== undefined ? { region } : {}),
+			...(bizType !== undefined ? { bizType } : {}),
+			...(billingUnitChars !== undefined ? { billingUnitChars } : {}),
+		};
+	}
+	return JSON.stringify(normalized);
 }
 
 export type ResolvedAiDetectionConfig = {
 	provider: AiDetectionImplementedProvider;
 	/** 合并后的 catalog entry（含凭证） */
 	entry: AiDetectionCatalogEntry;
-	/** 单价；单位随 `BILLING_CURRENCY` */
+	/**
+	 * @deprecated 等于 {@link charged}；保留给旧调用方。
+	 */
 	cost: number;
+	metered: number;
+	standard: number;
+	charged: number;
 	billingUnitChars: number;
 	sources: {
 		provider: 'system_config' | 'default';
@@ -315,14 +327,19 @@ export function resolveAiDetectionConfigForProvider(
 	if (!entryHasRequiredCredentials(entry, required)) {
 		return { ok: false, reason: 'active_missing_key', provider: parsed };
 	}
-	const cost = entry!.cost;
+	const charged = entry!.charged ?? entry!.cost;
+	const metered = entry!.metered ?? charged;
+	const standard = entry!.standard ?? charged;
 	const billingUnitChars = entry!.billingUnitChars ?? DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS;
 	return {
 		ok: true,
 		config: {
 			provider: parsed,
 			entry: entry!,
-			cost,
+			cost: charged,
+			metered,
+			standard,
+			charged,
 			billingUnitChars,
 			sources: {
 				provider: 'system_config',

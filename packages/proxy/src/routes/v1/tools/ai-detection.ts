@@ -2,7 +2,7 @@
  * 用户路由：`POST /v1/tools/ai-detection` — AI 率检测；按计费单元数 × 单价计入 budget_spent。
  * 引擎/凭证/单价读自 `system_config`（见 `resolveAiDetectionConfig`）。
  */
-import { resolveAiDetectionConfig, roundGatewayMoney } from '@octafuse/core';
+import { resolveAiDetectionConfig, roundGatewayMoney, scaleToolUnitPrices } from '@octafuse/core';
 import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
@@ -40,7 +40,13 @@ aiDetectionRoutes.post('/', async (c) => {
 		return c.json({ error: 'AI detection provider is misconfigured' }, 503);
 	}
 
-	const { provider, cost: unitCost, billingUnitChars } = resolved.config;
+	const {
+		provider,
+		metered: unitMetered,
+		standard: unitStandard,
+		charged: unitCharged,
+		billingUnitChars,
+	} = resolved.config;
 	const driver = getAiDetectionDriver(provider);
 	if (!driver) {
 		console.warn('[Gateway Tools] AI detection driver missing', provider);
@@ -63,18 +69,20 @@ aiDetectionRoutes.post('/', async (c) => {
 
 	const totalChars = [...trimmed].length;
 	const billingUnits = Math.max(1, Math.ceil(totalChars / billingUnitChars));
-	const totalCost = roundGatewayMoney(unitCost * billingUnits);
+	const unitPrices = { metered: unitMetered, standard: unitStandard, charged: unitCharged };
+	const totals = scaleToolUnitPrices(unitPrices, billingUnits);
+	const totalCharged = roundGatewayMoney(totals.charged);
 
 	if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
 		return c.json({ error: 'Budget exceeded' }, 403);
 	}
-	if (!canAffordToolCost(apiKey.budgetMax, apiKey.budgetSpent, totalCost)) {
+	if (!canAffordToolCost(apiKey.budgetMax, apiKey.budgetSpent, totalCharged)) {
 		return c.json({ error: 'Budget exceeded' }, 403);
 	}
 
 	const started = Date.now();
 	const logRequestBody = JSON.stringify({ total_chars: totalChars, billing_units: billingUnits });
-	const pricingAuditExtra = { provider, billing_units: billingUnits };
+	const pricingAuditExtra = { provider };
 
 	try {
 		const result = await detectAiRate(trimmed, driver, resolved.config);
@@ -86,7 +94,13 @@ aiDetectionRoutes.post('/', async (c) => {
 			userId: apiKey.userId,
 			userEmail: apiKey.userEmail,
 			toolId: 'tool:ai-detection',
-			chargedCost: totalCost,
+			meteredCost: totals.metered,
+			standardCost: totals.standard,
+			chargedCost: totals.charged,
+			pricingUnit: 'chars',
+			billingUnits,
+			unitPrices,
+			pricingAuditExtra,
 			latencyMs,
 			requestBody: logRequestBody,
 			// 仅分数汇总，不含 excerpt / 原文
@@ -102,7 +116,6 @@ aiDetectionRoutes.post('/', async (c) => {
 				})),
 			}),
 			status: 'success',
-			pricingAuditExtra,
 		});
 
 		return c.json({
@@ -132,12 +145,17 @@ aiDetectionRoutes.post('/', async (c) => {
 				userId: apiKey.userId,
 				userEmail: apiKey.userEmail,
 				toolId: 'tool:ai-detection',
+				meteredCost: 0,
+				standardCost: 0,
 				chargedCost: 0,
+				pricingUnit: 'chars',
+				billingUnits,
+				unitPrices,
+				pricingAuditExtra,
 				latencyMs,
 				requestBody: logRequestBody,
 				errorMessage: message,
 				status: 'error',
-				pricingAuditExtra,
 			});
 		} catch (logErr) {
 			console.warn('[Gateway Tools] failed to log ai-detection error', logErr);

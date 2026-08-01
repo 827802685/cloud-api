@@ -84,9 +84,15 @@ import {
 	type AiDetectionCatalog,
 	type AiDetectionCatalogEntry,
 } from '@octafuse/core/lib/ai-detection-system-config';
+import { toToolPricingFields } from '@octafuse/core/lib/tool-pricing';
 import { WebSearchProviderGuideModal } from './components/web-search-provider-guide-modal';
 
-type ProviderDraft = { apiKey: string; cost: string };
+type ProviderDraft = {
+	apiKey: string;
+	metered: string;
+	standard: string;
+	charged: string;
+};
 
 type AiDetectionProviderDraft = {
 	apiKey: string;
@@ -95,14 +101,46 @@ type AiDetectionProviderDraft = {
 	email: string;
 	region: string;
 	bizType: string;
-	cost: string;
+	metered: string;
+	standard: string;
+	charged: string;
 	billingUnitChars: string;
 };
+
+function defaultPriceTriple(defaultCost: number): Pick<ProviderDraft, 'metered' | 'standard' | 'charged'> {
+	const s = String(defaultCost);
+	return { metered: s, standard: s, charged: s };
+}
+
+function parseDraftMoney(raw: string): number | null {
+	if (!raw.trim()) return null;
+	const n = Number(raw.trim());
+	if (!Number.isFinite(n) || n < 0) return null;
+	return n;
+}
+
+function draftPricesOk(d: Pick<ProviderDraft, 'metered' | 'standard' | 'charged'>): boolean {
+	return parseDraftMoney(d.metered) != null && parseDraftMoney(d.standard) != null && parseDraftMoney(d.charged) != null;
+}
+
+function entryToDraftPrices(entry: {
+	metered: number;
+	standard: number;
+	charged: number;
+	cost: number;
+}): Pick<ProviderDraft, 'metered' | 'standard' | 'charged'> {
+	const charged = entry.charged ?? entry.cost;
+	return {
+		metered: String(entry.metered ?? charged),
+		standard: String(entry.standard ?? charged),
+		charged: String(charged),
+	};
+}
 
 function emptySearchDrafts(): Record<WebSearchProvider, ProviderDraft> {
 	const out = {} as Record<WebSearchProvider, ProviderDraft>;
 	for (const p of WEB_SEARCH_PROVIDERS) {
-		out[p] = { apiKey: '', cost: String(DEFAULT_WEB_SEARCH_COST) };
+		out[p] = { apiKey: '', ...defaultPriceTriple(DEFAULT_WEB_SEARCH_COST) };
 	}
 	return out;
 }
@@ -110,7 +148,7 @@ function emptySearchDrafts(): Record<WebSearchProvider, ProviderDraft> {
 function emptyFetchDrafts(): Record<WebFetchProvider, ProviderDraft> {
 	const out = {} as Record<WebFetchProvider, ProviderDraft>;
 	for (const p of WEB_FETCH_PROVIDERS) {
-		out[p] = { apiKey: '', cost: String(DEFAULT_WEB_FETCH_COST) };
+		out[p] = { apiKey: '', ...defaultPriceTriple(DEFAULT_WEB_FETCH_COST) };
 	}
 	return out;
 }
@@ -118,7 +156,7 @@ function emptyFetchDrafts(): Record<WebFetchProvider, ProviderDraft> {
 function emptyDeepSearchDrafts(): Record<WebDeepSearchProvider, ProviderDraft> {
 	const out = {} as Record<WebDeepSearchProvider, ProviderDraft>;
 	for (const p of WEB_DEEP_SEARCH_PROVIDERS) {
-		out[p] = { apiKey: '', cost: String(DEFAULT_WEB_DEEP_SEARCH_COST) };
+		out[p] = { apiKey: '', ...defaultPriceTriple(DEFAULT_WEB_DEEP_SEARCH_COST) };
 	}
 	return out;
 }
@@ -133,7 +171,7 @@ function emptyAiDetectionDrafts(): Record<AiDetectionProvider, AiDetectionProvid
 			email: '',
 			region: p === 'tencent_tms' ? 'ap-guangzhou' : '',
 			bizType: '',
-			cost: String(DEFAULT_AI_DETECTION_COST),
+			...defaultPriceTriple(DEFAULT_AI_DETECTION_COST),
 			billingUnitChars: String(DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS),
 		};
 	}
@@ -141,9 +179,12 @@ function emptyAiDetectionDrafts(): Record<AiDetectionProvider, AiDetectionProvid
 }
 
 function draftToAiEntry(d: AiDetectionProviderDraft): AiDetectionCatalogEntry {
-	const entry: AiDetectionCatalogEntry = {
-		cost: Number(d.cost.trim()),
-	};
+	const prices = toToolPricingFields({
+		metered: Number(d.metered.trim()),
+		standard: Number(d.standard.trim()),
+		charged: Number(d.charged.trim()),
+	});
+	const entry: AiDetectionCatalogEntry = { ...prices };
 	const billing = Number(d.billingUnitChars.trim());
 	if (Number.isFinite(billing) && billing >= 1) {
 		entry.billingUnitChars = Math.floor(billing);
@@ -179,7 +220,7 @@ function syncWebSearchFromRows(
 		for (const p of WEB_SEARCH_PROVIDERS) {
 			const entry = catalog[p];
 			if (entry) {
-				drafts[p] = { apiKey: entry.apiKey, cost: String(entry.cost) };
+				drafts[p] = { apiKey: entry.apiKey, ...entryToDraftPrices(entry) };
 			}
 		}
 		const activeRaw = rows.find((r) => r.key === WEB_SEARCH_ACTIVE_KEY)?.value?.trim().toLowerCase() ?? '';
@@ -199,9 +240,12 @@ function syncWebSearchFromRows(
 		: DEFAULT_WEB_SEARCH_PROVIDER;
 	const apiKey = rows.find((r) => r.key === WEB_SEARCH_API_KEY_KEY)?.value ?? '';
 	const costRaw = rows.find((r) => r.key === WEB_SEARCH_COST_KEY)?.value?.trim() ?? '';
+	const legacyCost = costRaw || String(DEFAULT_WEB_SEARCH_COST);
 	drafts[provider] = {
 		apiKey,
-		cost: costRaw || String(DEFAULT_WEB_SEARCH_COST),
+		metered: legacyCost,
+		standard: legacyCost,
+		charged: legacyCost,
 	};
 	return { active: provider, drafts, savedActive: null };
 }
@@ -218,7 +262,7 @@ function syncWebFetchFromRows(
 		for (const p of WEB_FETCH_PROVIDERS) {
 			const entry = catalog[p];
 			if (entry) {
-				drafts[p] = { apiKey: entry.apiKey, cost: String(entry.cost) };
+				drafts[p] = { apiKey: entry.apiKey, ...entryToDraftPrices(entry) };
 			}
 		}
 		const activeRaw = rows.find((r) => r.key === WEB_FETCH_ACTIVE_KEY)?.value?.trim().toLowerCase() ?? '';
@@ -237,9 +281,12 @@ function syncWebFetchFromRows(
 		: DEFAULT_WEB_FETCH_PROVIDER;
 	const apiKey = rows.find((r) => r.key === WEB_FETCH_API_KEY_KEY)?.value ?? '';
 	const costRaw = rows.find((r) => r.key === WEB_FETCH_COST_KEY)?.value?.trim() ?? '';
+	const legacyCost = costRaw || String(DEFAULT_WEB_FETCH_COST);
 	drafts[provider] = {
 		apiKey,
-		cost: costRaw || String(DEFAULT_WEB_FETCH_COST),
+		metered: legacyCost,
+		standard: legacyCost,
+		charged: legacyCost,
 	};
 	return { active: provider, drafts, savedActive: null };
 }
@@ -248,11 +295,17 @@ function buildSearchCatalog(drafts: Record<WebSearchProvider, ProviderDraft>): W
 	const catalog: WebSearchCatalog = {};
 	for (const p of WEB_SEARCH_PROVIDERS) {
 		const d = drafts[p];
-		const costNum = Number(d.cost.trim());
-		if (!d.cost.trim() || !Number.isFinite(costNum) || costNum < 0) {
+		if (!draftPricesOk(d)) {
 			return null;
 		}
-		catalog[p] = { apiKey: d.apiKey.trim(), cost: costNum };
+		catalog[p] = {
+			apiKey: d.apiKey.trim(),
+			...toToolPricingFields({
+				metered: parseDraftMoney(d.metered)!,
+				standard: parseDraftMoney(d.standard)!,
+				charged: parseDraftMoney(d.charged)!,
+			}),
+		};
 	}
 	return catalog;
 }
@@ -261,11 +314,17 @@ function buildFetchCatalog(drafts: Record<WebFetchProvider, ProviderDraft>): Web
 	const catalog: WebFetchCatalog = {};
 	for (const p of WEB_FETCH_PROVIDERS) {
 		const d = drafts[p];
-		const costNum = Number(d.cost.trim());
-		if (!d.cost.trim() || !Number.isFinite(costNum) || costNum < 0) {
+		if (!draftPricesOk(d)) {
 			return null;
 		}
-		catalog[p] = { apiKey: d.apiKey.trim(), cost: costNum };
+		catalog[p] = {
+			apiKey: d.apiKey.trim(),
+			...toToolPricingFields({
+				metered: parseDraftMoney(d.metered)!,
+				standard: parseDraftMoney(d.standard)!,
+				charged: parseDraftMoney(d.charged)!,
+			}),
+		};
 	}
 	return catalog;
 }
@@ -285,7 +344,7 @@ function syncWebDeepSearchFromRows(
 		for (const p of WEB_DEEP_SEARCH_PROVIDERS) {
 			const entry = catalog[p];
 			if (entry) {
-				drafts[p] = { apiKey: entry.apiKey, cost: String(entry.cost) };
+				drafts[p] = { apiKey: entry.apiKey, ...entryToDraftPrices(entry) };
 			}
 		}
 		const activeRaw = rows.find((r) => r.key === WEB_DEEP_SEARCH_ACTIVE_KEY)?.value?.trim().toLowerCase() ?? '';
@@ -306,11 +365,17 @@ function buildDeepSearchCatalog(
 	const catalog: WebDeepSearchCatalog = {};
 	for (const p of WEB_DEEP_SEARCH_PROVIDERS) {
 		const d = drafts[p];
-		const costNum = Number(d.cost.trim());
-		if (!d.cost.trim() || !Number.isFinite(costNum) || costNum < 0) {
+		if (!draftPricesOk(d)) {
 			return null;
 		}
-		catalog[p] = { apiKey: d.apiKey.trim(), cost: costNum };
+		catalog[p] = {
+			apiKey: d.apiKey.trim(),
+			...toToolPricingFields({
+				metered: parseDraftMoney(d.metered)!,
+				standard: parseDraftMoney(d.standard)!,
+				charged: parseDraftMoney(d.charged)!,
+			}),
+		};
 	}
 	return catalog;
 }
@@ -335,7 +400,7 @@ function syncAiDetectionFromRows(rows: SystemConfigRow[]): {
 					email: entry.email ?? '',
 					region: entry.region ?? drafts[p].region,
 					bizType: entry.bizType ?? '',
-					cost: String(entry.cost),
+					...entryToDraftPrices(entry),
 					billingUnitChars: String(
 						entry.billingUnitChars ?? DEFAULT_AI_DETECTION_BILLING_UNIT_CHARS
 					),
@@ -361,8 +426,7 @@ function buildAiDetectionCatalog(
 	const catalog: AiDetectionCatalog = {};
 	for (const p of AI_DETECTION_PROVIDERS) {
 		const d = drafts[p];
-		const costNum = Number(d.cost.trim());
-		if (!d.cost.trim() || !Number.isFinite(costNum) || costNum < 0) {
+		if (!draftPricesOk(d)) {
 			return null;
 		}
 		const unitChars = Number(d.billingUnitChars.trim());
@@ -417,6 +481,78 @@ function CardSaveFeedback({ feedback }: { feedback?: CardFeedback }) {
 		>
 			{feedback.message}
 		</span>
+	);
+}
+
+function isLossPricing(value: Pick<ProviderDraft, 'metered' | 'charged'>): boolean {
+	const metered = parseDraftMoney(value.metered);
+	const charged = parseDraftMoney(value.charged);
+	if (metered == null || charged == null) {
+		return false;
+	}
+	return charged < metered;
+}
+
+function ToolPriceTripleInputs({
+	value,
+	onChange,
+}: {
+	value: Pick<ProviderDraft, 'metered' | 'standard' | 'charged'>;
+	onChange: (patch: Partial<Pick<ProviderDraft, 'metered' | 'standard' | 'charged'>>) => void;
+}) {
+	const t = useTranslations('tools');
+	/** 展示顺序：标准价 → 用户扣费 → 供应价（与 Routes 语义对齐，运营先看目录/扣费） */
+	const fields: Array<{ key: 'standard' | 'charged' | 'metered'; labelKey: 'unitPrices.standard' | 'unitPrices.charged' | 'unitPrices.metered' }> = [
+		{ key: 'standard', labelKey: 'unitPrices.standard' },
+		{ key: 'charged', labelKey: 'unitPrices.charged' },
+		{ key: 'metered', labelKey: 'unitPrices.metered' },
+	];
+	const loss = isLossPricing(value);
+	return (
+		<div
+			className={
+				loss
+					? 'rounded-md border border-amber-400 bg-amber-50/80 p-2 ring-1 ring-amber-300'
+					: 'rounded-md border border-transparent p-2'
+			}
+		>
+			<div className="flex flex-col gap-1.5">
+				{fields.map(({ key, labelKey }) => {
+					const highlightCharged = loss && key === 'charged';
+					const highlightMetered = loss && key === 'metered';
+					return (
+						<label key={key} className="flex items-center gap-1.5">
+							<span
+								className={
+									highlightCharged || highlightMetered
+										? 'w-[4.5rem] shrink-0 text-[10px] font-semibold text-amber-800'
+										: 'w-[4.5rem] shrink-0 text-[10px] font-semibold text-gray-500'
+								}
+							>
+								{t(labelKey)}
+							</span>
+							<input
+								type="number"
+								min={0}
+								step="0.0001"
+								value={value[key]}
+								onChange={(e) => onChange({ [key]: e.target.value })}
+								className={
+									highlightCharged
+										? 'w-full max-w-[7rem] rounded-md border border-amber-500 bg-white px-2 py-1 font-mono text-sm text-amber-950 shadow-sm'
+										: 'w-full max-w-[7rem] rounded-md border border-gray-300 bg-white px-2 py-1 font-mono text-sm shadow-sm'
+								}
+							/>
+						</label>
+					);
+				})}
+			</div>
+			{loss ? (
+				<p className="mt-1.5 text-[10px] font-medium leading-snug text-amber-800">
+					{t('unitPrices.lossHint')}
+				</p>
+			) : null}
+		</div>
 	);
 }
 
@@ -840,22 +976,36 @@ export default function GatewayToolsConfigPage() {
 
 						<div className="overflow-x-auto rounded-md border border-gray-200">
 							{/* table-fixed + 统一 col 宽，与 Web fetch 表对齐 */}
-							<table className="w-full min-w-[40rem] table-fixed text-left text-sm">
+							<table className="w-full min-w-[44rem] table-fixed text-left text-sm">
 								<colgroup>
 									<col className="w-[14rem]" />
-									<col className="w-[10.5rem]" />
+									<col className="w-[15rem]" />
 									<col />
 								</colgroup>
 								<thead className="bg-gray-50 text-xs font-medium text-gray-600">
 									<tr>
 										<th className="px-3 py-2">{t('webSearch.catalogProvider')}</th>
-										<th className="px-3 py-2">{t('webSearch.cost', { currency: billingCurrency })}</th>
+										<th className="px-3 py-2">
+											<div>{t('unitPrices.title', { currency: billingCurrency })}</div>
+											<div className="mt-0.5 font-normal text-[10px] text-gray-500">
+												{t('unitPrices.legend')}
+											</div>
+										</th>
 										<th className="px-3 py-2">{t('webSearch.apiKey')}</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-gray-100">
 									{WEB_SEARCH_PROVIDERS.map((p) => (
-										<tr key={p} className={p === webSearchActive ? 'bg-blue-50/40' : undefined}>
+										<tr
+											key={p}
+											className={
+												isLossPricing(webSearchDrafts[p])
+													? 'bg-amber-50/70'
+													: p === webSearchActive
+														? 'bg-blue-50/40'
+														: undefined
+											}
+										>
 											<td className="px-3 py-2 align-top">
 												<div className="truncate font-medium text-gray-900" title={webSearchProviderOptions.find((o) => o.value === p)?.label ?? p}>
 													{webSearchProviderOptions.find((o) => o.value === p)?.label ?? p}
@@ -878,18 +1028,14 @@ export default function GatewayToolsConfigPage() {
 												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<input
-													type="number"
-													min={0}
-													step="0.0001"
-													value={webSearchDrafts[p].cost}
-													onChange={(e) =>
+												<ToolPriceTripleInputs
+													value={webSearchDrafts[p]}
+													onChange={(patch) =>
 														setWebSearchDrafts((prev) => ({
 															...prev,
-															[p]: { ...prev[p], cost: e.target.value },
+															[p]: { ...prev[p], ...patch },
 														}))
 													}
-													className="w-full max-w-[7rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
@@ -980,22 +1126,36 @@ export default function GatewayToolsConfigPage() {
 
 						<div className="overflow-x-auto rounded-md border border-gray-200">
 							{/* 与 Web search 相同 col 宽，上下两表列对齐 */}
-							<table className="w-full min-w-[40rem] table-fixed text-left text-sm">
+							<table className="w-full min-w-[44rem] table-fixed text-left text-sm">
 								<colgroup>
 									<col className="w-[14rem]" />
-									<col className="w-[10.5rem]" />
+									<col className="w-[15rem]" />
 									<col />
 								</colgroup>
 								<thead className="bg-gray-50 text-xs font-medium text-gray-600">
 									<tr>
 										<th className="px-3 py-2">{t('webFetch.catalogProvider')}</th>
-										<th className="px-3 py-2">{t('webFetch.cost', { currency: billingCurrency })}</th>
+										<th className="px-3 py-2">
+											<div>{t('unitPrices.title', { currency: billingCurrency })}</div>
+											<div className="mt-0.5 font-normal text-[10px] text-gray-500">
+												{t('unitPrices.legend')}
+											</div>
+										</th>
 										<th className="px-3 py-2">{t('webFetch.apiKey')}</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-gray-100">
 									{WEB_FETCH_PROVIDERS.map((p) => (
-										<tr key={p} className={p === webFetchActive ? 'bg-blue-50/40' : undefined}>
+										<tr
+											key={p}
+											className={
+												isLossPricing(webFetchDrafts[p])
+													? 'bg-amber-50/70'
+													: p === webFetchActive
+														? 'bg-blue-50/40'
+														: undefined
+											}
+										>
 											<td className="px-3 py-2 align-top">
 												<div className="truncate font-medium text-gray-900" title={webFetchProviderOptions.find((o) => o.value === p)?.label ?? p}>
 													{webFetchProviderOptions.find((o) => o.value === p)?.label ?? p}
@@ -1018,18 +1178,14 @@ export default function GatewayToolsConfigPage() {
 												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<input
-													type="number"
-													min={0}
-													step="0.0001"
-													value={webFetchDrafts[p].cost}
-													onChange={(e) =>
+												<ToolPriceTripleInputs
+													value={webFetchDrafts[p]}
+													onChange={(patch) =>
 														setWebFetchDrafts((prev) => ({
 															...prev,
-															[p]: { ...prev[p], cost: e.target.value },
+															[p]: { ...prev[p], ...patch },
 														}))
 													}
-													className="w-full max-w-[7rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
@@ -1127,17 +1283,20 @@ export default function GatewayToolsConfigPage() {
 						</div>
 
 						<div className="overflow-x-auto rounded-md border border-gray-200">
-							<table className="w-full min-w-[40rem] table-fixed text-left text-sm">
+							<table className="w-full min-w-[44rem] table-fixed text-left text-sm">
 								<colgroup>
 									<col className="w-[14rem]" />
-									<col className="w-[10.5rem]" />
+									<col className="w-[15rem]" />
 									<col />
 								</colgroup>
 								<thead className="bg-gray-50 text-xs font-medium text-gray-600">
 									<tr>
 										<th className="px-3 py-2">{t('webDeepSearch.catalogProvider')}</th>
 										<th className="px-3 py-2">
-											{t('webDeepSearch.cost', { currency: billingCurrency })}
+											<div>{t('unitPrices.title', { currency: billingCurrency })}</div>
+											<div className="mt-0.5 font-normal text-[10px] text-gray-500">
+												{t('unitPrices.legend')}
+											</div>
 										</th>
 										<th className="px-3 py-2">{t('webDeepSearch.apiKey')}</th>
 									</tr>
@@ -1146,7 +1305,13 @@ export default function GatewayToolsConfigPage() {
 									{WEB_DEEP_SEARCH_PROVIDERS.map((p) => (
 										<tr
 											key={p}
-											className={p === webDeepSearchActive ? 'bg-blue-50/40' : undefined}
+											className={
+												isLossPricing(webDeepSearchDrafts[p])
+													? 'bg-amber-50/70'
+													: p === webDeepSearchActive
+														? 'bg-blue-50/40'
+														: undefined
+											}
 										>
 											<td className="px-3 py-2 align-top">
 												<div
@@ -1175,18 +1340,14 @@ export default function GatewayToolsConfigPage() {
 												</div>
 											</td>
 											<td className="px-3 py-2 align-top">
-												<input
-													type="number"
-													min={0}
-													step="0.0001"
-													value={webDeepSearchDrafts[p].cost}
-													onChange={(e) =>
+												<ToolPriceTripleInputs
+													value={webDeepSearchDrafts[p]}
+													onChange={(patch) =>
 														setWebDeepSearchDrafts((prev) => ({
 															...prev,
-															[p]: { ...prev[p], cost: e.target.value },
+															[p]: { ...prev[p], ...patch },
 														}))
 													}
-													className="w-full max-w-[7rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
 												/>
 											</td>
 											<td className="px-3 py-2 align-top">
@@ -1282,10 +1443,10 @@ export default function GatewayToolsConfigPage() {
 						</div>
 
 						<div className="overflow-x-auto rounded-md border border-gray-200">
-							<table className="w-full min-w-[48rem] table-fixed text-left text-sm">
+							<table className="w-full min-w-[52rem] table-fixed text-left text-sm">
 								<colgroup>
 									<col className="w-[12rem]" />
-									<col className="w-[8rem]" />
+									<col className="w-[15rem]" />
 									<col className="w-[7rem]" />
 									<col />
 								</colgroup>
@@ -1293,7 +1454,10 @@ export default function GatewayToolsConfigPage() {
 									<tr>
 										<th className="px-3 py-2">{t('aiDetection.catalogProvider')}</th>
 										<th className="px-3 py-2">
-											{t('aiDetection.cost', { currency: billingCurrency })}
+											<div>{t('unitPrices.title', { currency: billingCurrency })}</div>
+											<div className="mt-0.5 font-normal text-[10px] text-gray-500">
+												{t('unitPrices.legend')}
+											</div>
 										</th>
 										<th className="px-3 py-2">{t('aiDetection.billingUnitChars')}</th>
 										<th className="px-3 py-2">{t('aiDetection.credentials')}</th>
@@ -1306,7 +1470,13 @@ export default function GatewayToolsConfigPage() {
 										return (
 											<tr
 												key={p}
-												className={p === aiDetectionActive ? 'bg-blue-50/40' : undefined}
+												className={
+													isLossPricing(draft)
+														? 'bg-amber-50/70'
+														: p === aiDetectionActive
+															? 'bg-blue-50/40'
+															: undefined
+												}
 											>
 												<td className="px-3 py-2 align-top">
 													<div
@@ -1337,18 +1507,14 @@ export default function GatewayToolsConfigPage() {
 													</div>
 												</td>
 												<td className="px-3 py-2 align-top">
-													<input
-														type="number"
-														min={0}
-														step="0.0001"
-														value={draft.cost}
-														onChange={(e) =>
+													<ToolPriceTripleInputs
+														value={draft}
+														onChange={(patch) =>
 															setAiDetectionDrafts((prev) => ({
 																...prev,
-																[p]: { ...prev[p], cost: e.target.value },
+																[p]: { ...prev[p], ...patch },
 															}))
 														}
-														className="w-full max-w-[7rem] rounded-md border border-gray-300 px-2 py-1.5 font-mono text-sm shadow-sm"
 													/>
 												</td>
 												<td className="px-3 py-2 align-top">

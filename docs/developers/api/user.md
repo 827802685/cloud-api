@@ -483,7 +483,7 @@ curl "http://localhost:8787/catalog/models?route_groups=default,web"
 
 ## Web Search（Agent 工具）
 
-协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。Agent Tools 按 Active 引擎的固定单价计费（联网类按次；AI 检测按计费字符单元），日志中 `metered_cost = standard_cost = charged_cost`，`pricing_audit.kind=fixed_tool_cost`；不应用模型 Route 的价格倍率或时段 schedule。
+协议无关的产品 API（与 `/v1/me` 同类），供桌面 agent 在模型发起 `web_search` tool call 后调用。**不是** OpenAI / Anthropic / Gemini 推理协议的一部分。Agent Tools 按 Active 引擎的**三账本绝对单价**计费（联网类按次；AI 检测按计费字符单元 × 单价）：catalog 存 `metered` / `standard` / `charged`（旧键 `cost` 为 `charged` 别名；仅有 `cost` 时三列相等）。成功写入日志三列；**仅 `charged_cost` 累加 `budget_spent`**。`pricing_audit` 为 v4 `fixed_tool_cost`（含 `unit_prices` / `totals`）；不应用模型 Route 的价格倍率或时段 schedule。失败请求三列均为 0。
 
 ### 请求
 
@@ -514,10 +514,10 @@ Authorization: Bearer <USER_API_KEY>
 1. 校验用户 API Key；`budget_max` 非空且额度不足 → **403** `{ "error": "Budget exceeded" }`
 2. 从 Admin `system_config` 读取搜索配置（无环境变量回退）：
    - `WEB_SEARCH_ACTIVE`（白名单：`bocha` | `tavily` | `cleversee` | `tencent_wsa`；非法值 → **503**）
-   - `WEB_SEARCH_CATALOG`（JSON：按引擎存 `{ "apiKey", "cost" }`；Active 引擎必须有非空 `apiKey`，否则 **503**）
-   - 默认单价（catalog 未写 cost 时）**0.001**，单位随 `BILLING_CURRENCY`
+   - `WEB_SEARCH_CATALOG`（JSON：按引擎存 `{ "apiKey", "metered", "standard", "charged" }`；可带兼容键 `cost`（= charged）；Active 引擎必须有非空 `apiKey`，否则 **503**）
+   - 默认单价（catalog 未写价格时）三列均为 **0.001**，单位随 `BILLING_CURRENCY`
    - 兼容：若尚无 `WEB_SEARCH_CATALOG`，仍可读旧三键 `WEB_SEARCH_PROVIDER` / `WEB_SEARCH_API_KEY` / `WEB_SEARCH_COST`（仅读取，Admin 不再写入）
-3. 调用 Active 引擎；**仅成功**后按该引擎单价计入 `users.budget_spent`
+3. 调用 Active 引擎；**仅成功**后按该引擎 **charged** 单价计入 `users.budget_spent`
 4. 上游失败不扣费
 
 运营侧在 Admin → **Tools → Configuration** 按引擎维护 catalog 并选择 Active；调用记录见 **Tools → Invocations**（与 Request Logs 同源，`provider_id=octafuse-tools`）。
@@ -574,8 +574,8 @@ Authorization: Bearer <USER_API_KEY>
 1. 校验用户 API Key；`budget_max` 非空且额度不足 → **403** `{ "error": "Budget exceeded" }`
 2. 从 Admin `system_config` 读取抓取配置（无环境变量回退）：
    - `WEB_FETCH_ACTIVE`（白名单：`firecrawl` | `tavily` | `jina`；默认 `firecrawl`；非法值 → **503**）
-   - `WEB_FETCH_CATALOG`（JSON：按引擎存 `{ "apiKey", "cost" }`；Active 引擎必须有非空 `apiKey`，否则 **503**）
-   - 默认单价（catalog 未写 cost 时）**0.002**，单位随 `BILLING_CURRENCY`
+   - `WEB_FETCH_CATALOG`（JSON：按引擎存 `{ "apiKey", "metered", "standard", "charged" }`；可带兼容键 `cost`；Active 引擎必须有非空 `apiKey`，否则 **503**）
+   - 默认单价（catalog 未写价格时）三列均为 **0.002**，单位随 `BILLING_CURRENCY`
    - 兼容：若尚无 `WEB_FETCH_CATALOG`，仍可读旧三键 `WEB_FETCH_PROVIDER` / `WEB_FETCH_API_KEY` / `WEB_FETCH_COST`（仅读取，Admin 不再写入）
 3. URL 校验失败 → **400**
 4. 调用 Active 引擎；**仅成功**后按该引擎单价计入 `users.budget_spent`
@@ -637,8 +637,8 @@ Authorization: Bearer <USER_API_KEY>
 1. 校验用户 API Key；额度不足 → **403** `{ "error": "Budget exceeded" }`
 2. 从 Admin `system_config` 读取配置（无环境变量回退）：
    - `WEB_DEEP_SEARCH_ACTIVE`（白名单：`firecrawl` \| `jina`；非法值 → **503**）
-   - `WEB_DEEP_SEARCH_CATALOG`（JSON：按引擎 `{ "apiKey", "cost" }`；Active 必须有非空 `apiKey`，否则 **503**）
-   - 默认单价 **0.01**（catalog 未写 cost 时），单位随 `BILLING_CURRENCY`
+   - `WEB_DEEP_SEARCH_CATALOG`（JSON：按引擎 `{ "apiKey", "metered", "standard", "charged" }`；可带兼容键 `cost`；Active 必须有非空 `apiKey`，否则 **503**）
+   - 默认单价三列均为 **0.01**（catalog 未写价格时），单位随 `BILLING_CURRENCY`
 3. 调用 Active 引擎；**仅成功**后按该引擎单价计入 `users.budget_spent`
 4. 上游失败不扣费；上游 **401/403** 映射为 **502**
 
@@ -681,9 +681,10 @@ Authorization: Bearer <USER_API_KEY>
 |------|------|
 | 上游调用次数 | `ceil(总字数 / driver.segmentMaxChars)`（技术分段，随 Active 引擎变化） |
 | 计费单元数 | `ceil(总字数 / billingUnitChars)`（默认 2000；与引擎无关） |
-| 扣费 | `计费单元数 × cost` |
+| 扣费（用户） | `计费单元数 × charged`（`budget_spent` 仅累加此项） |
+| 供应 / 目录 | 同理分别写 `metered_cost` / `standard_cost` |
 
-换引擎时只需调 `cost`，价格量纲保持一致。响应**不暴露** Active 引擎名，避免客户端产生引擎耦合。
+换引擎时调整三账本单价即可，价格量纲保持一致。响应**不暴露** Active 引擎名，避免客户端产生引擎耦合；响应体 `cost` 字段仍为本次 **charged** 总额。
 
 ### 引擎支持矩阵
 
@@ -719,11 +720,11 @@ Authorization: Bearer <USER_API_KEY>
 1. 校验用户 API Key；额度不足支付预计费用 → **403** `{ "error": "Budget exceeded" }`
 2. 从 Admin `system_config` 读取配置：
    - `AI_DETECTION_ACTIVE`（白名单当前：`tencent_tms`；须为已实现引擎）
-   - `AI_DETECTION_CATALOG`（JSON：按引擎存可选凭证字段并集 + `cost` + 可选 `billingUnitChars`）
-   - 默认单价 **0.01**、默认计费粒度 **2000** 字符，单位随 `BILLING_CURRENCY`
+   - `AI_DETECTION_CATALOG`（JSON：按引擎存可选凭证字段并集 + `metered` / `standard` / `charged`（或兼容 `cost`）+ 可选 `billingUnitChars`）
+   - 默认单价三列均为 **0.01**、默认计费粒度 **2000** 字符，单位随 `BILLING_CURRENCY`
 3. 按 Active 引擎切段并并发检测（并发 10）；字符加权得 `overall_score`（0–100）
-4. **仅成功**后按计费单元数扣费；上游失败写 error 日志、**不扣费**
-5. 请求日志不含原文 / excerpt：`requestBody` 仅 `{ total_chars, billing_units }`；`pricing_audit` 另记 `provider` 与 `billing_units`
+4. **仅成功**后按计费单元数 × 三账本单价写入日志，并仅用 **charged** 扣费；上游失败写 error 日志、**不扣费**
+5. 请求日志不含原文 / excerpt：`requestBody` 仅 `{ total_chars, billing_units }`；`pricing_audit`（v4 `fixed_tool_cost`）含 `unit_prices` / `totals` / `provider` / `billing_units`
 
 运营侧在 Admin → **Tools → Configuration** 配置；调用记录见 **Tools → Invocations**（`model_id=tool:ai-detection`）。
 
@@ -770,10 +771,10 @@ Authorization: Bearer <USER_API_KEY>
   "data": {
     "billing_currency": "USD",
     "tools": [
-      { "id": "web-search", "unit": "request", "cost": 0.001 },
-      { "id": "web-fetch", "unit": "request", "cost": 0.002 },
-      { "id": "web-deep-search", "unit": "request", "cost": 0.01 },
-      { "id": "ai-detection", "unit": "chars", "unit_chars": 2000, "cost": 0.01 }
+      { "id": "web-search", "unit": "request", "cost": 0.001, "metered": 0.001, "standard": 0.001, "charged": 0.001 },
+      { "id": "web-fetch", "unit": "request", "cost": 0.002, "metered": 0.002, "standard": 0.002, "charged": 0.002 },
+      { "id": "web-deep-search", "unit": "request", "cost": 0.01, "metered": 0.01, "standard": 0.01, "charged": 0.01 },
+      { "id": "ai-detection", "unit": "chars", "unit_chars": 2000, "cost": 0.01, "metered": 0.01, "standard": 0.01, "charged": 0.01 }
     ]
   }
 }
@@ -784,7 +785,9 @@ Authorization: Bearer <USER_API_KEY>
 | `billing_currency` | 与 `system_config.BILLING_CURRENCY` 一致 |
 | `tools[].unit` | `request`（按次）或 `chars`（按字符计费单元） |
 | `tools[].unit_chars` | 仅 `ai-detection`：计费粒度字符数 |
-| `tools[].cost` | Active 引擎单价；未配置时回退代码默认值 |
+| `tools[].charged` | Active 引擎用户单价（扣费） |
+| `tools[].metered` / `standard` | 供应成本 / 目录标准单价 |
+| `tools[].cost` | 兼容别名，等于 `charged`；未配置时回退代码默认值 |
 
 ---
 

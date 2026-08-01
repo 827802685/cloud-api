@@ -40,7 +40,13 @@ webSearchRoutes.post('/', async (c) => {
 		return c.json({ error: 'Web search provider is misconfigured' }, 503);
 	}
 
-	const { provider, apiKey: providerApiKey, cost: toolCost } = resolved.config;
+	const {
+		provider,
+		apiKey: providerApiKey,
+		metered: unitMetered,
+		standard: unitStandard,
+		charged: unitCharged,
+	} = resolved.config;
 	if (!providerApiKey) {
 		return c.json({ error: 'Web search is not configured' }, 503);
 	}
@@ -48,7 +54,7 @@ webSearchRoutes.post('/', async (c) => {
 	if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
 		return c.json({ error: 'Budget exceeded' }, 403);
 	}
-	if (!canAffordToolCost(apiKey.budgetMax, apiKey.budgetSpent, toolCost)) {
+	if (!canAffordToolCost(apiKey.budgetMax, apiKey.budgetSpent, unitCharged)) {
 		return c.json({ error: 'Budget exceeded' }, 403);
 	}
 
@@ -90,7 +96,13 @@ webSearchRoutes.post('/', async (c) => {
 			userId: apiKey.userId,
 			userEmail: apiKey.userEmail,
 			toolId: 'tool:web-search',
-			chargedCost: toolCost,
+			meteredCost: unitMetered,
+			standardCost: unitStandard,
+			chargedCost: unitCharged,
+			pricingUnit: 'request',
+			billingUnits: 1,
+			unitPrices: { metered: unitMetered, standard: unitStandard, charged: unitCharged },
+			pricingAuditExtra: { provider },
 			latencyMs,
 			requestBody: JSON.stringify({
 				query,
@@ -130,7 +142,13 @@ webSearchRoutes.post('/', async (c) => {
 				userId: apiKey.userId,
 				userEmail: apiKey.userEmail,
 				toolId: 'tool:web-search',
+				meteredCost: 0,
+				standardCost: 0,
 				chargedCost: 0,
+				pricingUnit: 'request',
+				billingUnits: 1,
+				unitPrices: { metered: unitMetered, standard: unitStandard, charged: unitCharged },
+				pricingAuditExtra: { provider },
 				latencyMs,
 				requestBody: JSON.stringify({ query, provider }),
 				errorMessage: message,
