@@ -227,13 +227,17 @@ export async function failoverDispatch(
 		} catch (err) {
 			timing?.markAttemptError(timingAttempt, err);
 			if (hasNextAttempt) timing?.markAttemptFailover(timingAttempt);
+			const errMessage = err instanceof Error ? err.message : String(err);
 			console.warn(
-				`[Gateway Proxy] fetch failed providerId=${route.providerId} error=${err instanceof Error ? err.message : String(err)}`
+				`[Gateway Proxy] fetch failed providerId=${route.providerId} error=${errMessage}`
 			);
+			// 与 route_resolution_failed 一致：把 fetch 层原文带给客户端（DNS/TLS/abort 等，不含凭据）
 			lastResponse = gatewayErrorResponse({
 				status: 502,
 				code: GatewayErrorCode.upstreamRequestFailed,
-				message: 'Upstream request failed',
+				message: errMessage.trim()
+					? `Upstream request failed: ${errMessage.trim()}`
+					: 'Upstream request failed',
 			});
 			lastRoute = route;
 			continue;

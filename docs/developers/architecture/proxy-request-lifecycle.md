@@ -77,6 +77,8 @@ flowchart TB
 | 错误码 | `services/gateway-error-codes.ts` / `gateway-error-response.ts` | `gateway.*` / `circuit.*` / `upstream.*` + `X-OctaFuse-Error-Code` |
 | 用量记账 | `services/usage-tracker.ts` | 流结束后写 `api_key_request_logs`、累加 `budget_spent` |
 
+> **客户端约定**：非 2xx 时以响应头 **`X-OctaFuse-Error-Code`**（及网关自造错误 body 顶层 / 嵌套 `code`）为**分类权威**；`error` / `error.message` 仍保留人类可读原文（上游透传或固定英文短句）。SoloEnt Agent 优先按该点分 code 归一化，再回退英文文案正则。
+
 > **已移除（待后续重设计）**：provider key pool、粘性 key 绑定（`sticky_config`）、网关侧 RPM/TPM/并发软限流（`limit_config`）。一个 Provider = 一把 `api_key` + `status`。
 
 ---
