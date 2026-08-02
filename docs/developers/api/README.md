@@ -78,8 +78,8 @@
 |------|--------|
 | **`/v1/*` 网关自造** | `{ "error": "...", "code": "gateway.*" }`（`error` **保持字符串**；另加响应头 `X-OctaFuse-Error-Code`） |
 | Provider 全部熔断（429） | `{ "error": { "code": "circuit.upstream_capacity_exhausted", "type": "upstream_capacity_exhausted", "message": "...", "retry_after_seconds": 30 } }`，并带 `Retry-After` |
-| 敏感内容熔断（429） | `{ "error": { "code": "circuit.sensitive_content", ... } }` + `Retry-After` |
-| 上游 400 客户端错误熔断（400） | `{ "error": { "code": "circuit.client_error", "type": "upstream_client_error_circuit_open", "message": "<回放原文>", ... } }` |
+| 敏感内容熔断（429） | `{ "error": { "code": "circuit.sensitive_content", ... } }` + `Retry-After`（LLM / images / audio 均可能） |
+| 上游 400 客户端错误熔断（400） | `{ "error": { "code": "circuit.client_error", "type": "upstream_client_error_circuit_open", "message": "<回放原文>", ... } }`（**仅** chat / messages / gemini；images / audio **不会**出现此短路） |
 | 上游透传非 2xx | **body 不改**；响应头 `X-OctaFuse-Error-Code: upstream.*` |
 | **管理接口**：未授权 | 多为 `{ "error": "Unauthorized" }`（401） |
 | **管理接口**：业务失败 | 多为 `{ "success": false, "message": "..." }` |
@@ -94,4 +94,4 @@
 | `circuit.*` | 熔断短路（未打上游） | `circuit.sensitive_content`、`circuit.client_error`、`circuit.upstream_capacity_exhausted` |
 | `upstream.*` | 已打上游，网关分类 | `upstream.content_filter`（敏感 400）、`upstream.invalid_request`（其他 400）、`upstream.rate_limited`、`upstream.auth_failed`、`upstream.not_found`、`upstream.server_error`、`upstream.timeout` |
 
-常见 HTTP 状态码：400 参数错误 / 上游客户端错误熔断；401 认证失败；403 预算/配额；404 资源不存在；429 敏感内容熔断或全部 provider 熔断；500 服务器错误；502 路由/上游错误。
+常见 HTTP 状态码：400 参数错误 / 上游客户端错误熔断（chat 等）；401 认证失败；403 预算/配额；404 资源不存在；429 敏感内容熔断或全部 provider 熔断；500 服务器错误；502 路由/上游错误。熔断策略细节见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md) §2.2 / §3.2。

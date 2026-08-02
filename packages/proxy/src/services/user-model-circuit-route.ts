@@ -27,6 +27,20 @@ export type UserModelCircuitRouteContext = {
 	requestProtocol: 'openai' | 'anthropic' | 'gemini';
 	startMs: number;
 	timing?: RequestTimingCollector | null;
+	/**
+	 * 是否因普通上游 400（`client_error`）短路。省略视为 true。
+	 * images / audio 设为 false，避免 agent 修正参数后重试被误挡；
+	 * 仍会因 `sensitive_content` 短路。
+	 */
+	clientErrorCircuitEnabled?: boolean;
+};
+
+export type UserModelCircuitTriggerOptions = {
+	/**
+	 * 是否因普通上游 400 写入 `client_error` 熔断。省略视为 true。
+	 * images / audio 设为 false；敏感内容仍会触发。
+	 */
+	clientErrorCircuitEnabled?: boolean;
 };
 
 /**
@@ -40,6 +54,10 @@ export function maybeBlockUserModelCircuit(
 ): Response | null {
 	const open = getUserModelCircuitOpen(apiKey.userId, ctx.baseModelId);
 	if (!open) {
+		return null;
+	}
+	// images / audio：忽略其它协议路由可能写入的 client_error 状态
+	if (ctx.clientErrorCircuitEnabled === false && open.reason === 'client_error') {
 		return null;
 	}
 	const latencyMs = Date.now() - ctx.startMs;
@@ -80,6 +98,7 @@ export const maybeBlockSensitiveContentCircuit = maybeBlockUserModelCircuit;
 /**
  * 上游非 2xx：敏感词或普通 400 → 同一套 user+model 递增退避；
  * 仅 `reason` / 短路 code 区分类别。
+ * `options.clientErrorCircuitEnabled === false` 时跳过普通 400（仍记 sensitive）。
  */
 export function maybeTriggerUserModelCircuitFromUpstream(
 	userId: string,
@@ -87,15 +106,21 @@ export function maybeTriggerUserModelCircuitFromUpstream(
 	status: number,
 	contentType: string | null,
 	errorBodyText: string | null | undefined,
-	errorMessageForLog?: string
+	errorMessageForLog?: string,
+	options?: UserModelCircuitTriggerOptions
 ): GatewayCircuitAlertEvent | null {
 	if (errorBodyText == null) {
 		return null;
 	}
 
 	const sensitive = isSensitiveUpstreamResponse(status, contentType, errorBodyText);
-	if (!sensitive && status !== 400) {
-		return null;
+	if (!sensitive) {
+		if (status !== 400) {
+			return null;
+		}
+		if (options?.clientErrorCircuitEnabled === false) {
+			return null;
+		}
 	}
 
 	const reason = sensitive ? 'sensitive_content' : 'client_error';

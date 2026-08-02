@@ -1084,7 +1084,12 @@ LLM 及 token 模式的价格以每百万 token 为单位（per-million-token pr
 - **全部不可用**（均熔断）：网关直接返回 **429**，响应体为 `{ "error": { "code": "upstream_capacity_exhausted", ... } }`，并带 `Retry-After`；**不调用上游**。
 - **有可试路由时**：按序打上游；可重试失败则换下一 Provider；全部 attempt 失败则返回**最后一次**上游响应。
 
-**可重试并换 Provider**：上游 `429`、`5xx`、`401`、`403`、网络/`fetch` 失败（524 / fetch 仅同次 failover，不跨请求熔断）。熔断按 **`providers.id`**：429 优先读 `Retry-After` 或递增退避；401/403 约 **5min**；普通 5xx 连续 3 次后约 10s。上游 **400** 不换 Provider，但会按 **user + model** 进入独立短递增熔断（见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md) §2.2）。
+**可重试并换 Provider**：上游 `429`、`5xx`、`401`、`403`、网络/`fetch` 失败（524 / fetch 仅同次 failover，不跨请求熔断）。熔断按 **`providers.id`**：429 优先读 `Retry-After` 或递增退避；401/403 约 **5min**；普通 5xx 连续 3 次后约 10s。
+
+**User+model 熔断**（与 provider 熔断独立，按 `userId + modelId`，退避 **20s → 1min → 3min → 5min → 10min**；见 [proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md) §2.2）：
+
+- **敏感内容**（上游错误文案命中内容安全关键词）：chat / messages / gemini / images / audio **均**触发；短路 **429** `circuit.sensitive_content`。
+- **普通上游 400**：chat / messages / gemini 触发；短路 **400** `circuit.client_error`（回放原文）。**`/v1/images/*`、`/v1/audio/transcriptions` 不记、不短路**普通 400，便于客户端修正尺寸/格式等后立即重试。
 
 **不重试**（立即返回）：`400`、`404` 等请求本身错误；Images 客户端取消 / Gateway 超时合成的 504。
 

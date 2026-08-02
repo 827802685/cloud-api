@@ -584,7 +584,8 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 				response.status,
 				response.headers.get('content-type'),
 				errorBodyText
-			)
+			),
+			{ clientErrorCircuitEnabled: false }
 		);
 	}
 	const alertCircuitEvents = userModelCircuitEvent
@@ -809,6 +810,7 @@ imageRoutes.post('/generations', async (c) => {
 		requestProtocol: 'openai',
 		startMs: start,
 		timing,
+		clientErrorCircuitEnabled: false,
 	});
 	if (circuitBlocked) {
 		return circuitBlocked;
@@ -975,6 +977,7 @@ imageRoutes.post('/edits', async (c) => {
 		requestProtocol: 'openai',
 		startMs: start,
 		timing,
+		clientErrorCircuitEnabled: false,
 	});
 	if (circuitBlocked) {
 		return circuitBlocked;

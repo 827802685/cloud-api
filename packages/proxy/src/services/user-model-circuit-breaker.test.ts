@@ -152,4 +152,47 @@ describe('user-model-circuit-breaker — trigger helper', () => {
 		assert.equal(clientErr?.reason, 'client_error');
 		assert.equal(clientErr?.cooldownMs, 20_000);
 	});
+
+	it('skips ordinary 400 when clientErrorCircuitEnabled is false (images/audio)', () => {
+		const skipped = maybeTriggerUserModelCircuitFromUpstream(
+			'user-1',
+			'gpt-image-1',
+			400,
+			'application/json',
+			JSON.stringify({ error: { message: 'Invalid size' } }),
+			'HTTP 400: Invalid size',
+			{ clientErrorCircuitEnabled: false }
+		);
+		assert.equal(skipped, null);
+		assert.equal(getUserModelCircuitOpen('user-1', 'gpt-image-1'), null);
+	});
+
+	it('still records sensitive_content when clientErrorCircuitEnabled is false', () => {
+		const sensitive = maybeTriggerUserModelCircuitFromUpstream(
+			'user-1',
+			'gpt-image-1',
+			400,
+			'application/json',
+			JSON.stringify({ error: { message: 'sensitive content blocked' } }),
+			'HTTP 400: sensitive content blocked',
+			{ clientErrorCircuitEnabled: false }
+		);
+		assert.equal(sensitive?.kind, 'user_model');
+		assert.equal(sensitive?.reason, 'sensitive_content');
+		assert.equal(sensitive?.cooldownMs, 20_000);
+		assert.equal(getUserModelCircuitOpen('user-1', 'gpt-image-1')!.reason, 'sensitive_content');
+	});
+
+	it('default (no options) still records ordinary 400 as client_error', () => {
+		const clientErr = maybeTriggerUserModelCircuitFromUpstream(
+			'user-1',
+			'glm-5.2',
+			400,
+			'application/json',
+			JSON.stringify({ error: { message: 'invalid temperature' } }),
+			'HTTP 400: invalid temperature'
+		);
+		assert.equal(clientErr?.reason, 'client_error');
+		assert.ok(getUserModelCircuitOpen('user-1', 'glm-5.2'));
+	});
 });

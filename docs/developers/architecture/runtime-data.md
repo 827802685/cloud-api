@@ -168,7 +168,7 @@ sequenceDiagram
 - **`route-strategies/*`** — 同层排序：`affinity`（加权 Rendezvous）、`weighted_random`、`strict`、`round_robin`。
 - **`route-attempt-planner.ts`（`buildRouteAttemptPlan`）** — priority 硬序 → 层内策略 → 过滤熔断中的 provider。
 - **`provider-circuit-breaker.ts`** — 按 **`providerId`**：429（`Retry-After` 或 5s→60s）、401/403（**5min**）、普通 5xx（连续 3 次后 10s）；524 / fetch 不跨请求熔断。
-- **`user-model-circuit-breaker.ts`** — 按 **user + model**：敏感内容与普通上游 400 **共用**递增退避 **20s → 1min → 3min → 5min → 10min**（成功清零）；短路仅用 `circuit.sensitive_content` / `circuit.client_error` 区分。
+- **`user-model-circuit-breaker.ts`** — 按 **user + model**：敏感内容与普通上游 400 **共用**递增退避 **20s → 1min → 3min → 5min → 10min**（成功清零）；短路仅用 `circuit.sensitive_content` / `circuit.client_error` 区分。**Images / Audio** 不参与普通 400（`client_error`）熔断，仍参与敏感内容熔断（见 [proxy-request-lifecycle.md](./proxy-request-lifecycle.md) §2.2）。
 - **`failover-dispatch.ts`** — `attempts` 为空时 **429** + `Retry-After`（`circuit.upstream_capacity_exhausted`）；循环内复查已熔断 provider；否则按序打上游，全部失败返回最后一次上游响应。
 
 > **一致性注意**：熔断与 round-robin 计数均为**单实例进程内存**。Cloudflare Workers 多 isolate 各自独立，属软状态；Node 单进程更接近精确。默认 **`affinity`** 在协议粒度上稳定首选 provider，以利于上游 prompt cache（affinityKey **不含** capability）。

@@ -330,6 +330,7 @@ audioRoutes.post('/transcriptions', async (c) => {
 		requestProtocol: 'openai',
 		startMs: start,
 		timing,
+		clientErrorCircuitEnabled: false,
 	});
 	if (circuitBlocked) {
 		return circuitBlocked;
@@ -431,7 +432,8 @@ async function finalizeAudioResponse(params: {
 				response.status,
 				response.headers.get('content-type'),
 				errorBodyText
-			)
+			),
+			{ clientErrorCircuitEnabled: false }
 		);
 	}
 	const alertCircuitEvents = userModelCircuitEvent

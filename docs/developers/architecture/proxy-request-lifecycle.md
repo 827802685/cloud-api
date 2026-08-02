@@ -110,6 +110,16 @@ Gateway 策略统一保护 provider；**退避不区分**敏感 / 普通 400，�
 - 上游触发（敏感词命中，或非敏感 `status === 400`）：共用递增退避 **20s → 1min → 3min → 5min → 10min**（窗口内不累加；`reason` 记最近一次触发类别）
 - **2xx** → `markUserModelSuccess` 清零该 user+model 状态
 - 与 provider 熔断 **独立**；**不**按请求体内容区分
+- **Images / Audio 例外**：`/v1/images/*`、`/v1/audio/transcriptions` 传 `clientErrorCircuitEnabled: false`——**不**因普通上游 400 写入或短路 `client_error`（尺寸/格式等可修正错误常见，agent 改参后应立即重试）；**仍**参与 `sensitive_content` 熔断。chat / messages / gemini 默认开启普通 400 熔断。
+
+**敏感内容识别**（`sensitive-content-detector.ts`）：对上游错误原文 / 格式化摘要做**大小写不敏感**子串匹配，命中任一即记 `sensitive_content`（不限 HTTP 状态码为 400，但实务上多为 400）。关键词包括：
+
+| 语言 | 子串（节选） |
+|------|----------------|
+| 英文 | `sensitive content`、`unsafe or sensitive`、`inappropriate content`、`datainspectionfailed` / `data inspection failed`、`content policy`、`policy violation`、`safety filter`、`blocked by safety`、`moderation` |
+| 中文 | `敏感内容`、`不安全或敏感`、`内容安全`、`内容审核`、`违规内容`、`不适宜内容` |
+
+实现以代码清单为准；增补关键词时同步更新本表与单测 `sensitive-content-detector.test.ts`。
 
 ### 2.3 Provider 调度与上游调用
 
@@ -219,7 +229,7 @@ sequenceDiagram
 | 无匹配 Surface / active Pool Target | 400 / 502 | `No active routes ...` / `No routes configured` 等 | 否 |
 | 无协议 / adapter 匹配 Target 或无可用 provider | 502 | `No OpenAI route ...` / `No routes configured` 等 | 否 |
 | 敏感内容熔断中 | 429 | `circuit.sensitive_content` + `Retry-After`（退避档位与普通 400 相同） | 是（error） |
-| 上游 400 客户端错误熔断中 | 400 | `circuit.client_error`（回放原文） | 是（error） |
+| 上游 400 客户端错误熔断中 | 400 | `circuit.client_error`（回放原文）；**images / audio 不短路此 reason** | 是（error） |
 | 全部 provider 熔断 | 429 | `circuit.upstream_capacity_exhausted` + `Retry-After` | 否 |
 
 ### 4.2 调度后 / 上游交互
@@ -231,7 +241,7 @@ sequenceDiagram
 | 上游普通 5xx | 累计；连续 3 次后 10s 熔断，换 provider | 最后上游 5xx 或后续成功 |
 | 上游 401/403 | 5min 熔断 + warn 日志，换 provider | 最后上游响应或后续成功 |
 | 上游 400（敏感） | fail_immediately + user+model 粗粒度熔断 | 透传 400；响应头 `upstream.content_filter` |
-| 上游 400（其他） | fail_immediately + user+model 短递增熔断 | 透传 400；响应头 `upstream.invalid_request` |
+| 上游 400（其他） | fail_immediately；chat/messages/gemini → user+model 短递增熔断；**images/audio 不记 `client_error`** | 透传 400；响应头 `upstream.invalid_request` |
 | 上游 404 等 | **fail_immediately**，不重试 | 直接透传该 4xx |
 | fetch 网络错误 / 524 | 同次换 provider，不跨请求熔断 | 全失败时最后 502 或上游响应 |
 | Images 客户端取消 / Gateway 超时 | 合成 504，**禁止** failover | 504 |
