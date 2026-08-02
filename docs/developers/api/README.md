@@ -76,9 +76,22 @@
 
 | 场景 | 响应体 |
 |------|--------|
-| **`/v1/*`** | 多为 `{ "error": "..." }` |
-| Provider 全部熔断（429） | `{ "error": { "code": "upstream_capacity_exhausted", "type": "upstream_capacity_exhausted", "message": "...", "retry_after_seconds": 30 } }`，并带 `Retry-After` |
+| **`/v1/*` 网关自造** | `{ "error": "...", "code": "gateway.*" }`（`error` **保持字符串**；另加响应头 `X-OctaFuse-Error-Code`） |
+| Provider 全部熔断（429） | `{ "error": { "code": "circuit.upstream_capacity_exhausted", "type": "upstream_capacity_exhausted", "message": "...", "retry_after_seconds": 30 } }`，并带 `Retry-After` |
+| 敏感内容熔断（429） | `{ "error": { "code": "circuit.sensitive_content", ... } }` + `Retry-After` |
+| 上游 400 客户端错误熔断（400） | `{ "error": { "code": "circuit.client_error", "type": "upstream_client_error_circuit_open", "message": "<回放原文>", ... } }` |
+| 上游透传非 2xx | **body 不改**；响应头 `X-OctaFuse-Error-Code: upstream.*` |
 | **管理接口**：未授权 | 多为 `{ "error": "Unauthorized" }`（401） |
 | **管理接口**：业务失败 | 多为 `{ "success": false, "message": "..." }` |
 
-常见 HTTP 状态码：400 参数错误；401 认证失败；403 预算/配额；404 资源不存在；500 服务器错误；502 路由/上游错误。
+### 固定错误 code（Agent 对接契约）
+
+响应头 **`X-OctaFuse-Error-Code`** 覆盖所有非 2xx。网关自造错误另在 body 顶层（或嵌套 `error.code`）带同一值。
+
+| 前缀 | 含义 | 示例 |
+|------|------|------|
+| `gateway.*` | 请求未出网关 | `gateway.budget_exceeded`、`gateway.invalid_json`、`gateway.model_not_found`、`gateway.auth_failed`、`gateway.no_route`、`gateway.route_resolution_failed`、`gateway.invalid_request`、`gateway.upstream_request_failed` |
+| `circuit.*` | 熔断短路（未打上游） | `circuit.sensitive_content`、`circuit.client_error`、`circuit.upstream_capacity_exhausted` |
+| `upstream.*` | 已打上游，网关分类 | `upstream.content_filter`（敏感 400）、`upstream.invalid_request`（其他 400）、`upstream.rate_limited`、`upstream.auth_failed`、`upstream.not_found`、`upstream.server_error`、`upstream.timeout` |
+
+常见 HTTP 状态码：400 参数错误 / 上游客户端错误熔断；401 认证失败；403 预算/配额；404 资源不存在；429 敏感内容熔断或全部 provider 熔断；500 服务器错误；502 路由/上游错误。

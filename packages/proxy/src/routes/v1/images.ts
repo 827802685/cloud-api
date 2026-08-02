@@ -47,9 +47,12 @@ import {
 	materializeNonOkResponse,
 } from '../../services/request-log-record-status';
 import {
-	maybeBlockSensitiveContentCircuit,
-	maybeTriggerSensitiveContentCircuitFromUpstream,
-} from '../../services/sensitive-content-circuit-route';
+	maybeBlockUserModelCircuit,
+	maybeTriggerUserModelCircuitFromUpstream,
+	markUserModelSuccess,
+} from '../../services/user-model-circuit-route';
+import { GatewayErrorCode } from '../../services/gateway-error-codes';
+import { gatewayErrorJson } from '../../services/gateway-error-response';
 import { RequestTimingCollector } from '../../services/request-timing';
 import { scheduleBackgroundWork } from '../../runtime/schedule-background-work';
 
@@ -202,7 +205,18 @@ function rejectImageRequest(
 		referenceCount: diag.referenceCount ?? null,
 		totalUploadBytes: diag.totalUploadBytes ?? null,
 	});
-	return c.json({ error }, status);
+	return gatewayErrorJson(c, {
+		status,
+		code:
+			status === 403
+				? GatewayErrorCode.budgetExceeded
+				: status === 404
+					? GatewayErrorCode.modelNotFound
+					: status === 502
+						? GatewayErrorCode.routeResolutionFailed
+						: GatewayErrorCode.invalidRequest,
+		message: error,
+	});
 }
 
 type MultipartEditsParseResult =
@@ -556,9 +570,11 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 		responseText = await response.clone().text();
 	}
 
-	let sensitiveCircuitEvent = null;
-	if (errorBodyText != null) {
-		sensitiveCircuitEvent = maybeTriggerSensitiveContentCircuitFromUpstream(
+	let userModelCircuitEvent = null;
+	if (response.ok) {
+		markUserModelSuccess(apiKey.userId, baseModelId);
+	} else if (errorBodyText != null) {
+		userModelCircuitEvent = maybeTriggerUserModelCircuitFromUpstream(
 			apiKey.userId,
 			baseModelId,
 			response.status,
@@ -571,8 +587,8 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 			)
 		);
 	}
-	const alertCircuitEvents = sensitiveCircuitEvent
-		? [...circuitEvents, sensitiveCircuitEvent]
+	const alertCircuitEvents = userModelCircuitEvent
+		? [...circuitEvents, userModelCircuitEvent]
 		: circuitEvents;
 
 	const status: 'success' | 'error' = response.ok && validImages > 0 ? 'success' : 'error';
@@ -786,7 +802,7 @@ imageRoutes.post('/generations', async (c) => {
 		})
 	);
 
-	const circuitBlocked = maybeBlockSensitiveContentCircuit(c, repos, apiKey, {
+	const circuitBlocked = maybeBlockUserModelCircuit(c, repos, apiKey, {
 		baseModelId,
 		modelNameForLog,
 		requestBodyForLog,
@@ -952,7 +968,7 @@ imageRoutes.post('/edits', async (c) => {
 		})
 	);
 
-	const circuitBlocked = maybeBlockSensitiveContentCircuit(c, repos, apiKey, {
+	const circuitBlocked = maybeBlockUserModelCircuit(c, repos, apiKey, {
 		baseModelId,
 		modelNameForLog,
 		requestBodyForLog,

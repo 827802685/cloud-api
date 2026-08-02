@@ -73,7 +73,8 @@ flowchart TB
 | 调度计划 | `services/route-attempt-planner.ts` | `buildRouteAttemptPlan`：priority 硬序 + 层内策略排序 + 跳过熔断 provider |
 | Provider 熔断 | `services/provider-circuit-breaker.ts` | 按 `providers.id`：429 / 401 / 403 / 5xx |
 | 失败分类 | `services/upstream-failure-classifier.ts` | 决定 retry（换 provider）vs fail_immediately |
-| 敏感内容熔断 | `services/sensitive-content-circuit-*.ts` | 独立于 provider，按 user + model 短路 |
+| User+model 熔断 | `services/user-model-circuit-*.ts` | 敏感 / 普通 400 共用短递增（user+model）；code 区分 |
+| 错误码 | `services/gateway-error-codes.ts` / `gateway-error-response.ts` | `gateway.*` / `circuit.*` / `upstream.*` + `X-OctaFuse-Error-Code` |
 | 用量记账 | `services/usage-tracker.ts` | 流结束后写 `api_key_request_logs`、累加 `budget_spent` |
 
 > **已移除（待后续重设计）**：provider key pool、粘性 key 绑定（`sticky_config`）、网关侧 RPM/TPM/并发软限流（`limit_config`）。一个 Provider = 一把 `api_key` + `status`。
@@ -99,20 +100,27 @@ flowchart TB
 7. **`resolveRouteStrategy`**：先读 `route_pools.strategy`，再读 `models.route_policy` + `system_config.ROUTE_STRATEGY`（见 [route-strategies.md](../reference/route-strategies.md)）。
 8. **Driver 出站 URL**：各 driver 按 capability 调用 `resolveUpstreamEndpoint`；Gemini 鉴权与 `alt=sse` 仍由 `prepareGeminiUpstreamFetch` 处理。
 
-### 2.2 敏感内容熔断（可选，调度前）
+### 2.2 User+model 熔断（调度前）
 
-- **`maybeBlockSensitiveContentCircuit`**：若 `userId + baseModelId` 处于熔断窗口（默认 **180s**），**不打上游**，返回 **429**，并异步记 error 日志。
-- 上游 4xx 响应体命中敏感内容规则时，**`maybeTriggerSensitiveContentCircuitFromUpstream`** 写入熔断窗口；与 provider 熔断 **独立**。
+Gateway 策略统一保护 provider；**退避不区分**敏感 / 普通 400，客户端靠 code 分流。
+
+- **`maybeBlockUserModelCircuit`**：查 `userId + baseModelId`。
+  - **敏感内容**短路 → **429** `circuit.sensitive_content` + `Retry-After`
+  - **普通 400**短路 → **400** `circuit.client_error`（回放缓存的上游错误原文，无 `Retry-After`）
+- 上游触发（敏感词命中，或非敏感 `status === 400`）：共用递增退避 **20s → 1min → 3min → 5min → 10min**（窗口内不累加；`reason` 记最近一次触发类别）
+- **2xx** → `markUserModelSuccess` 清零该 user+model 状态
+- 与 provider 熔断 **独立**；**不**按请求体内容区分
 
 ### 2.3 Provider 调度与上游调用
 
 **`proxyChatCompletions` → `failoverDispatch`**：
 
 1. 再次按 `expectedProtocol` 过滤 routes。
-2. 无可用 route → **502** `No routes configured`。
+2. 无可用 route → **502** `No routes configured`（`gateway.no_route`）。
 3. **`buildRouteAttemptPlan`**：按 priority 分层 → 层内策略排序 → 跳过熔断中的 provider（见 §3）。
-4. **`plan.attempts.length === 0`**（全部熔断）→ **429** `upstream_capacity_exhausted` + `Retry-After`（**零上游调用**）。
+4. **`plan.attempts.length === 0`**（全部熔断）→ **429** `circuit.upstream_capacity_exhausted` + `Retry-After`（**零上游调用**）。
 5. **逐 attempt 执行**：
+   - **循环开头复查** `getProviderCircuitRemainingMs`：本次请求内刚被熔断的同 `providerId` 多 target 直接跳过
    - 调用协议 driver（`fetch` 上游）
    - **成功 (2xx)**：`markProviderSuccess` → 返回响应
    - **fetch 异常**：内部记 502 → **换下一 provider**（同次 failover；**不**写跨请求熔断）
@@ -179,7 +187,7 @@ sequenceDiagram
 | 失败类别 | 触发 | 冷却 |
 |----------|------|------|
 | `rate_limit` | 上游 **429** | 优先 `Retry-After`（封顶 15min）；否则连续 429 递增：**5s → 15s → 30s → 60s（封顶）** |
-| `auth` | **401 / 403** | 固定 **10min** + 告警日志 |
+| `auth` | **401 / 403** | 固定 **5min** + 告警日志 |
 | `server` | 普通 **5xx** | 连续 **3** 次后短熔断 **10s** |
 
 - **524** 与 **fetch 抛错**：仅同次请求内 failover，**不**写入跨请求熔断。
@@ -210,8 +218,9 @@ sequenceDiagram
 | 用户 budget 耗尽 | 403 | `Budget exceeded` | 否 |
 | 无匹配 Surface / active Pool Target | 400 / 502 | `No active routes ...` / `No routes configured` 等 | 否 |
 | 无协议 / adapter 匹配 Target 或无可用 provider | 502 | `No OpenAI route ...` / `No routes configured` 等 | 否 |
-| 敏感内容熔断中 | 429 | 网关生成，含 retry 信息 | 是（error） |
-| 全部 provider 熔断 | 429 | `upstream_capacity_exhausted` + `Retry-After` | 否 |
+| 敏感内容熔断中 | 429 | `circuit.sensitive_content` + `Retry-After`（退避档位与普通 400 相同） | 是（error） |
+| 上游 400 客户端错误熔断中 | 400 | `circuit.client_error`（回放原文） | 是（error） |
+| 全部 provider 熔断 | 429 | `circuit.upstream_capacity_exhausted` + `Retry-After` | 否 |
 
 ### 4.2 调度后 / 上游交互
 
@@ -220,8 +229,10 @@ sequenceDiagram
 | 首个 attempt 2xx | 成功返回 | 上游 2xx + stream |
 | 上游 429 | 熔断该 provider，换下一 route | 若后续成功 → 2xx；全失败 → 最后上游 429 |
 | 上游普通 5xx | 累计；连续 3 次后 10s 熔断，换 provider | 最后上游 5xx 或后续成功 |
-| 上游 401/403 | 10min 熔断 + warn 日志，换 provider | 最后上游响应或后续成功 |
-| 上游 400/404 等 | **fail_immediately**，不重试 | 直接透传该 4xx |
+| 上游 401/403 | 5min 熔断 + warn 日志，换 provider | 最后上游响应或后续成功 |
+| 上游 400（敏感） | fail_immediately + user+model 粗粒度熔断 | 透传 400；响应头 `upstream.content_filter` |
+| 上游 400（其他） | fail_immediately + user+model 短递增熔断 | 透传 400；响应头 `upstream.invalid_request` |
+| 上游 404 等 | **fail_immediately**，不重试 | 直接透传该 4xx |
 | fetch 网络错误 / 524 | 同次换 provider，不跨请求熔断 | 全失败时最后 502 或上游响应 |
 | Images 客户端取消 / Gateway 超时 | 合成 504，**禁止** failover | 504 |
 | 流式 usage 5min 未就绪 | **不**触发 provider 熔断 | 2xx 仍返回；日志 `incomplete` |
@@ -230,7 +241,7 @@ sequenceDiagram
 
 | 来源 | 含义 | Body 特征 |
 |------|------|-----------|
-| **网关生成** | 调度阶段无任何可试 provider | `code: upstream_capacity_exhausted`，**未调用上游** |
+| **网关生成** | 调度阶段无任何可试 provider | `code: circuit.upstream_capacity_exhausted`，**未调用上游** |
 | **上游返回** | 某 provider 被供应商限流 | 换 provider 重试；全失败则**透传最后上游 429** |
 
 ---
@@ -243,7 +254,7 @@ sequenceDiagram
 |------|--------|-------------------|
 | Provider 熔断 | per `providerId` | 各 isolate 独立 → **软限制** |
 | Round-robin 计数 | per `tierKey` | 同上 |
-| 敏感内容熔断 | per `userId + baseModelId` | 同上 |
+| User+model 熔断 | per `userId + modelId` | 同上 |
 | `ROUTE_STRATEGY` 缓存 | 全局，TTL **30s** | 各 isolate 独立缓存 |
 
 **配置来源**（迁移 **0015 / 0016**，三库同语义）：
@@ -303,9 +314,10 @@ packages/proxy/src/
     ├── route-attempt-planner.ts    # buildRouteAttemptPlan
     ├── route-strategies/           # affinity / weighted_random / strict / round_robin
     ├── provider-circuit-breaker.ts
+    ├── user-model-circuit-breaker.ts / user-model-circuit-route.ts
+    ├── gateway-error-codes.ts / gateway-error-response.ts / upstream-error-code.ts
     ├── upstream-failure-classifier.ts
-    ├── sensitive-content-circuit-route.ts
     └── usage-tracker.ts
 ```
 
-单测契约见 `packages/proxy/src/services/*.test.ts`（`failover-dispatch.test.ts`、`route-attempt-planner.test.ts`、`route-strategies/*.test.ts` 等）。
+单测契约见 `packages/proxy/src/services/*.test.ts`（`failover-dispatch.test.ts`、`user-model-circuit-breaker.test.ts`、`gateway-error-response.test.ts`、`route-attempt-planner.test.ts` 等）。
