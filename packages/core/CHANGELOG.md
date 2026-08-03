@@ -1,16 +1,20 @@
 # @octafuse/core
 
-## 2.2.0
+## 2.1.1
 
-### Minor Changes
+### Patch Changes
 
-- [`ee22e1d`](https://github.com/OctaFuse/octafuse-gateway/commit/ee22e1d191de4ca1f94583c3ae8e966385f7bbe6) Thanks [@dyc87112](https://github.com/dyc87112)! - ### Proxy
+- [`8e1f634`](https://github.com/OctaFuse/octafuse-gateway/commit/8e1f634d846cc97da4e1e47456e141103fc1d7e6) Thanks [@dyc87112](https://github.com/dyc87112)! - ### Proxy
 
   - **User+model 熔断**：敏感内容与普通上游 400 共用 `20s → 1m → 3m → 5m → 10m` 退避（不区分请求体）；短路用 code 区分类别（`circuit.sensitive_content` / `circuit.client_error`）。替换原独立 sensitive-content 熔断实现。
   - **Images / Audio**：退出普通 400（`client_error`）熔断，仅保留 sensitive_content 触发。
   - **Failover**：循环内复查已熔断 provider；401/403 provider 冷却由 10min 调整为 5min。
   - **错误码契约**：网关自造 / 熔断 / 上游分类错误增加固定 `code`（`gateway.*` / `circuit.*` / `upstream.*`）与响应头 `X-OctaFuse-Error-Code`；body 既有 `error` 形状纯增量。
   - **诊断**：`gateway.upstream_request_failed` 的 message 附带原始 fetch 错误摘要（与 `route_resolution_failed` 一致），便于客户端与 Langfuse 排查。
+
+  ### Admin
+
+  - **阿里云模型预设**：新增正式版 `qwen3.8-max` 与 `qwen3.7-flash`；同步修正 `qwen3.8-max-preview` 的缓存价 / 模态 / 输出上限；`qwen3.7-plus` / `qwen3.7-max` 的 `max_tokens` 对齐为 `128000`。
 
   ### 文档
 
