@@ -195,6 +195,8 @@ export interface GatewayRequestLog {
   user_id?: string | null;
   api_key_id: string | null;
   user_email: string | null;
+  /** 用户所属外部系统；全局日志接口通过 user_id 关联 users。 */
+  external_system?: string | null;
   model_id: string | null;
   provider_id: string | null;
   /** 展示名快照（`api_key_request_logs.model_name`，读接口不 JOIN catalog） */

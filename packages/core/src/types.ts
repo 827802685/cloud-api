@@ -144,6 +144,8 @@ export interface RequestLogRow {
 	user_id: string | null;
 	api_key_id: string | null;
 	user_email: string | null;
+	/** 管理端全局日志查询从 users 关联得到；物理日志行本身不存储。 */
+	external_system?: string | null;
   model_id: string | null;
   provider_id: string | null;
   /** 请求当时转发到上游的模型名；升级前列不存在或旧行为 null */

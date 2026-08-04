@@ -316,15 +316,15 @@
 			"copyApiKey": "Copy API key",
 			"apiKey": "API Key",
 			"supportedEndpoints": "Supported endpoints",
-			"editProvider": "Edit provider",
+			"editProvider": "Edit provider: {name}",
 			"baseWithOverrides": "Base + {count} overrides",
 			"endpointCount": "{count} independent endpoints",
 			"showEndpointDetails": "Show endpoint details",
 			"hideEndpointDetails": "Hide endpoint details",
 			"derived": "derived",
 			"override": "override",
-			"providerEnabled": "Provider enabled (uncheck to disable)",
-			"providerDisabled": "Provider disabled (check to enable)",
+			"providerEnabled": "Provider enabled; click to disable",
+			"providerDisabled": "Provider disabled; click to enable",
 			"capabilitiesTitle": "{label}: {caps} · {url}",
 			"capabilitiesSr": "{label} capabilities: {caps}",
 			"cap": {
@@ -1157,11 +1157,16 @@
 		"headers": {
 			"statusTime": "Status · Time",
 			"user": "User",
+			"userSystem": "User · System",
 			"model": "Model",
 			"route": "Route",
 			"tokens": "Tokens",
 			"cost": "Cost ({currency})",
 			"profit": "Profit ({currency})"
+		},
+		"identity": {
+			"user": "User",
+			"system": "System"
 		},
 		"titles": {
 			"model": "Gateway model name, protocol, and route group",

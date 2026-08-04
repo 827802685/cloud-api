@@ -316,15 +316,15 @@
 			"copyApiKey": "API キーをコピー",
 			"apiKey": "API キー",
 			"supportedEndpoints": "対応エンドポイント",
-			"editProvider": "Provider を編集",
+			"editProvider": "Provider を編集：{name}",
 			"baseWithOverrides": "共通 Base + {count} 件の上書き",
 			"endpointCount": "{count} 件の独立エンドポイント",
 			"showEndpointDetails": "エンドポイント詳細を表示",
 			"hideEndpointDetails": "エンドポイント詳細を非表示",
 			"derived": "派生",
 			"override": "上書き",
-			"providerEnabled": "プロバイダー有効（チェックを外すと無効）",
-			"providerDisabled": "プロバイダー無効（チェックで有効）",
+			"providerEnabled": "プロバイダーは有効です。クリックして無効化",
+			"providerDisabled": "プロバイダーは無効です。クリックして有効化",
 			"capabilitiesTitle": "{label}: {caps} · {url}",
 			"capabilitiesSr": "{label} 能力: {caps}",
 			"cap": {
@@ -1157,11 +1157,16 @@
 		"headers": {
 			"statusTime": "ステータス · 時刻",
 			"user": "ユーザー",
+			"userSystem": "ユーザー · システム",
 			"model": "モデル",
 			"route": "Route",
 			"tokens": "Token",
 			"cost": "コスト（{currency}）",
 			"profit": "利益（{currency}）"
+		},
+		"identity": {
+			"user": "ユーザー",
+			"system": "システム"
 		},
 		"titles": {
 			"model": "Gateway モデル名、プロトコル、Route Group",
