@@ -630,12 +630,34 @@
 			"routeDisabled": "路由已禁用（勾选以启用）",
 			"priorityTitle": "优先级（故障转移顺序）",
 			"factorsAria": "计费与计量目录系数",
-			"chargedFactorAria": "计费系数 {value}",
-			"meteredFactorAria": "计量系数 {value}",
+			"chargedFactorAria": "计费系数 {value}：{status}",
+			"meteredFactorAria": "计量系数 {value}：{status}",
 			"scheduleBadge": "时段",
 			"scheduleAria": "每日时段：{windows}",
-			"chargedTooltip": "计费系数：{value} · 相对目录价格的客户计费乘数",
-			"meteredTooltip": "计量系数：{value} · 相对目录价格的供应商成本乘数"
+			"chargedTooltip": "计费系数：{value} · {status} · 相对目录价格的客户计费乘数",
+			"meteredTooltip": "计量系数：{value} · {status} · 相对目录价格的供应商成本乘数",
+			"baseInversionBadge": "倒挂",
+			"baseInversionTooltip": "基础计费系数低于基础成本系数，可能存在利润倒挂；时段系数未计入此判断",
+			"factorStatus": {
+				"charged": {
+					"invalid": "无效配置",
+					"zero": "免费计费，请确认配置",
+					"veryLow": "大幅折扣，请关注收入",
+					"low": "低于目录价",
+					"baseline": "接近目录基准",
+					"high": "高于目录价",
+					"veryHigh": "大幅高于目录价，请确认配置"
+				},
+				"metered": {
+					"invalid": "无效配置",
+					"zero": "零成本，请确认配置",
+					"veryLow": "显著成本优势",
+					"low": "低于目录成本",
+					"baseline": "接近目录基准",
+					"high": "成本偏高",
+					"veryHigh": "成本显著偏高，请确认配置"
+				}
+			}
 		},
 		"modal": {
 			"editTitle": "编辑路由",

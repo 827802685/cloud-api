@@ -27,9 +27,11 @@ import type { RouteModelGroup } from '../route-utils';
 import {
 	compareRoutesWithinPriorityLayer,
 	factorChipClassForValue,
+	factorLevelForValue,
 	formatFactorMultiplier,
 	formatFactorMultiplierForChip,
 	formatScheduleWindowsHint,
+	hasBasePricingInversion,
 	parseModelTagsList,
 	protocolBadgeClass,
 	resolveEffectiveRouteStrategy,
@@ -91,6 +93,11 @@ function RouteTarget({
 	const schedule = parseRoutePricingSchedule(route.price_override);
 	const scheduleHint =
 		formatScheduleWindowsHint(schedule.charged) || formatScheduleWindowsHint(schedule.metered);
+	const chargedLevel = factorLevelForValue(chargedValue);
+	const meteredLevel = factorLevelForValue(meteredValue);
+	const chargedStatus = tList(`factorStatus.charged.${chargedLevel}`);
+	const meteredStatus = tList(`factorStatus.metered.${meteredLevel}`);
+	const hasPricingInversion = hasBasePricingInversion(chargedValue, meteredValue);
 	const enabled = route.status === 'active';
 	const providerDisabled = provider?.status === 'disabled';
 	const configuredUpstreamOperation = route.upstream_operation ?? '*';
@@ -171,17 +178,39 @@ function RouteTarget({
 				</div>
 				<div className="ml-auto flex flex-wrap items-center justify-end gap-1">
 					<span
-						className={factorChipClassForValue(chargedValue)}
-						title={tList('chargedTooltip', { value: formatFactorMultiplier(chargedValue) })}
+						className={factorChipClassForValue(chargedValue, 'charged')}
+						title={tList('chargedTooltip', {
+							value: formatFactorMultiplier(chargedValue),
+							status: chargedStatus,
+						})}
+						aria-label={tList('chargedFactorAria', {
+							value: formatFactorMultiplier(chargedValue),
+							status: chargedStatus,
+						})}
 					>
 						{t('chargedShort')} {formatFactorMultiplierForChip(chargedValue)}
 					</span>
 					<span
-						className={factorChipClassForValue(meteredValue)}
-						title={tList('meteredTooltip', { value: formatFactorMultiplier(meteredValue) })}
+						className={factorChipClassForValue(meteredValue, 'metered')}
+						title={tList('meteredTooltip', {
+							value: formatFactorMultiplier(meteredValue),
+							status: meteredStatus,
+						})}
+						aria-label={tList('meteredFactorAria', {
+							value: formatFactorMultiplier(meteredValue),
+							status: meteredStatus,
+						})}
 					>
 						{t('meteredShort')} {formatFactorMultiplierForChip(meteredValue)}
 					</span>
+					{hasPricingInversion ? (
+						<span
+							className={`${FACTOR_CHIP_BASE} w-auto bg-rose-100 text-rose-950 ring-rose-300/90`}
+							title={tList('baseInversionTooltip')}
+						>
+							{tList('baseInversionBadge')}
+						</span>
+					) : null}
 					{scheduleHint ? (
 						<span className={`${FACTOR_CHIP_BASE} w-auto bg-sky-50 text-sky-800 ring-sky-200`} title={scheduleHint}>
 							{t('scheduled')}

@@ -630,12 +630,34 @@
 			"routeDisabled": "Route は無効です（チェックすると有効化）",
 			"priorityTitle": "優先度（failover 順序）",
 			"factorsAria": "請求・計量カタログ係数",
-			"chargedFactorAria": "請求係数 {value}",
-			"meteredFactorAria": "計量係数 {value}",
+			"chargedFactorAria": "請求係数 {value}：{status}",
+			"meteredFactorAria": "計量係数 {value}：{status}",
 			"scheduleBadge": "時間帯",
 			"scheduleAria": "日次スケジュール：{windows}",
-			"chargedTooltip": "請求係数：{value} · カタログ価格に対する顧客請求倍率",
-			"meteredTooltip": "計量係数：{value} · カタログ価格に対する Provider コスト倍率"
+			"chargedTooltip": "請求係数：{value} · {status} · カタログ価格に対する顧客請求倍率",
+			"meteredTooltip": "計量係数：{value} · {status} · カタログ価格に対する Provider コスト倍率",
+			"baseInversionBadge": "逆ざや",
+			"baseInversionTooltip": "基本請求係数が基本コスト係数を下回っており、逆ざやの可能性があります。時間帯係数はこの判定に含まれません。",
+			"factorStatus": {
+				"charged": {
+					"invalid": "無効な設定",
+					"zero": "無料請求です。設定を確認してください",
+					"veryLow": "大幅割引です。収益を確認してください",
+					"low": "カタログ価格未満",
+					"baseline": "カタログ基準付近",
+					"high": "カタログ価格超過",
+					"veryHigh": "カタログ価格を大幅に超えています。設定を確認してください"
+				},
+				"metered": {
+					"invalid": "無効な設定",
+					"zero": "コストがゼロです。設定を確認してください",
+					"veryLow": "大きなコスト優位性",
+					"low": "カタログコスト未満",
+					"baseline": "カタログ基準付近",
+					"high": "コストが高め",
+					"veryHigh": "コストが大幅に高くなっています。設定を確認してください"
+				}
+			}
 		},
 		"modal": {
 			"editTitle": "Route を編集",

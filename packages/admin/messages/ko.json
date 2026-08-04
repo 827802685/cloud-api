@@ -630,12 +630,34 @@
 			"routeDisabled": "Route 비활성화됨 (체크하여 활성화)",
 			"priorityTitle": "우선순위 (Failover 순서)",
 			"factorsAria": "청구 및 계측 카탈로그 배수",
-			"chargedFactorAria": "청구 배수 {value}",
-			"meteredFactorAria": "계측 배수 {value}",
+			"chargedFactorAria": "청구 배수 {value}: {status}",
+			"meteredFactorAria": "계측 배수 {value}: {status}",
 			"scheduleBadge": "시간대",
 			"scheduleAria": "일일 일정: {windows}",
-			"chargedTooltip": "청구 배수: {value} · 카탈로그 가격 대비 고객 청구 배수",
-			"meteredTooltip": "계측 배수: {value} · 카탈로그 가격 대비 Provider 비용 배수"
+			"chargedTooltip": "청구 배수: {value} · {status} · 카탈로그 가격 대비 고객 청구 배수",
+			"meteredTooltip": "계측 배수: {value} · {status} · 카탈로그 가격 대비 Provider 비용 배수",
+			"baseInversionBadge": "역마진",
+			"baseInversionTooltip": "기본 청구 계수가 기본 비용 계수보다 낮아 역마진이 발생할 수 있습니다. 시간대 계수는 이 판단에 포함되지 않습니다.",
+			"factorStatus": {
+				"charged": {
+					"invalid": "잘못된 설정",
+					"zero": "무료 청구입니다. 설정을 확인하세요",
+					"veryLow": "할인 폭이 큽니다. 수익을 확인하세요",
+					"low": "카탈로그 가격보다 낮음",
+					"baseline": "카탈로그 기준에 근접",
+					"high": "카탈로그 가격보다 높음",
+					"veryHigh": "카탈로그 가격보다 매우 높습니다. 설정을 확인하세요"
+				},
+				"metered": {
+					"invalid": "잘못된 설정",
+					"zero": "비용이 0입니다. 설정을 확인하세요",
+					"veryLow": "비용 우위가 큼",
+					"low": "카탈로그 비용보다 낮음",
+					"baseline": "카탈로그 기준에 근접",
+					"high": "비용이 높음",
+					"veryHigh": "비용이 매우 높습니다. 설정을 확인하세요"
+				}
+			}
 		},
 		"modal": {
 			"editTitle": "Route 편집",

@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import {
+	factorChipClassForValue,
+	factorLevelForValue,
+	hasBasePricingInversion,
 	requestOperationsForModel,
 	upstreamOperationsForProviderModel,
 } from './route-utils';
@@ -86,5 +89,37 @@ describe('route form capability filters', () => {
 			),
 			['images.edits']
 		);
+	});
+});
+
+describe('route factor presentation', () => {
+	it('classifies distance from the catalog baseline', () => {
+		assert.equal(factorLevelForValue(Number.NaN), 'invalid');
+		assert.equal(factorLevelForValue(-1), 'invalid');
+		assert.equal(factorLevelForValue(0), 'zero');
+		assert.equal(factorLevelForValue(0.79), 'veryLow');
+		assert.equal(factorLevelForValue(0.8), 'low');
+		assert.equal(factorLevelForValue(0.95), 'baseline');
+		assert.equal(factorLevelForValue(1.05), 'baseline');
+		assert.equal(factorLevelForValue(1.06), 'high');
+		assert.equal(factorLevelForValue(1.2), 'high');
+		assert.equal(factorLevelForValue(1.21), 'veryHigh');
+	});
+
+	it('uses different low-factor semantics for charged price and metered cost', () => {
+		assert.match(factorChipClassForValue(0.9, 'charged'), /bg-sky-100/);
+		assert.match(factorChipClassForValue(0.9, 'metered'), /bg-emerald-100/);
+		assert.match(factorChipClassForValue(0.5, 'charged'), /bg-orange-100/);
+		assert.match(factorChipClassForValue(0.5, 'metered'), /bg-emerald-200/);
+		assert.match(factorChipClassForValue(1, 'charged'), /bg-zinc-100/);
+		assert.match(factorChipClassForValue(1.1, 'metered'), /bg-amber-100/);
+		assert.match(factorChipClassForValue(1.5, 'metered'), /bg-rose-100/);
+	});
+
+	it('flags a base-price inversion only when charged is below metered', () => {
+		assert.equal(hasBasePricingInversion(0.9, 1), true);
+		assert.equal(hasBasePricingInversion(1, 1), false);
+		assert.equal(hasBasePricingInversion(1.1, 1), false);
+		assert.equal(hasBasePricingInversion(Number.NaN, 1), false);
 	});
 });

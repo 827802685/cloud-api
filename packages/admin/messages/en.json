@@ -630,12 +630,34 @@
 			"routeDisabled": "Route disabled (check to enable)",
 			"priorityTitle": "Priority (failover order)",
 			"factorsAria": "Charged and metered catalog factors",
-			"chargedFactorAria": "Charged factor {value}",
-			"meteredFactorAria": "Metered factor {value}",
+			"chargedFactorAria": "Charged factor {value}: {status}",
+			"meteredFactorAria": "Metered factor {value}: {status}",
 			"scheduleBadge": "Sched",
 			"scheduleAria": "Daily schedule: {windows}",
-			"chargedTooltip": "Charged factor: {value} · customer billing multiplier vs catalog price",
-			"meteredTooltip": "Metered factor: {value} · provider cost multiplier vs catalog price"
+			"chargedTooltip": "Charged factor: {value} · {status} · customer billing multiplier vs catalog price",
+			"meteredTooltip": "Metered factor: {value} · {status} · provider cost multiplier vs catalog price",
+			"baseInversionBadge": "Margin",
+			"baseInversionTooltip": "Base charged factor is below base metered factor; margin may be inverted. Schedule factors are not included in this check.",
+			"factorStatus": {
+				"charged": {
+					"invalid": "Invalid configuration",
+					"zero": "Free billing; verify configuration",
+					"veryLow": "Deep discount; review revenue",
+					"low": "Below catalog price",
+					"baseline": "Near catalog baseline",
+					"high": "Above catalog price",
+					"veryHigh": "Far above catalog price; verify configuration"
+				},
+				"metered": {
+					"invalid": "Invalid configuration",
+					"zero": "Zero cost; verify configuration",
+					"veryLow": "Strong cost advantage",
+					"low": "Below catalog cost",
+					"baseline": "Near catalog baseline",
+					"high": "Elevated cost",
+					"veryHigh": "Significantly elevated cost; verify configuration"
+				}
+			}
 		},
 		"modal": {
 			"editTitle": "Edit Route",

@@ -276,17 +276,65 @@ export function meteredFactorTooltip(value: number | null): string {
 	return `Metered factor: ${formatFactorMultiplier(value)} · provider cost multiplier vs catalog price`;
 }
 
-export function factorChipClassForValue(n: number): string {
-	if (!Number.isFinite(n)) {
+export type RouteFactorKind = 'charged' | 'metered';
+
+export type RouteFactorLevel =
+	| 'invalid'
+	| 'zero'
+	| 'veryLow'
+	| 'low'
+	| 'baseline'
+	| 'high'
+	| 'veryHigh';
+
+/**
+ * Keep small pricing fluctuations visually quiet, then increase emphasis when a
+ * factor moves farther away from the catalog baseline.
+ */
+export function factorLevelForValue(n: number): RouteFactorLevel {
+	if (!Number.isFinite(n) || n < 0) return 'invalid';
+	if (n === 0) return 'zero';
+	if (n < 0.8) return 'veryLow';
+	if (n < 0.95) return 'low';
+	if (n <= 1.05) return 'baseline';
+	if (n <= 1.2) return 'high';
+	return 'veryHigh';
+}
+
+export function factorChipClassForValue(n: number, kind: RouteFactorKind): string {
+	const level = factorLevelForValue(n);
+	if (level === 'invalid' || level === 'zero') {
+		return `${FACTOR_CHIP_BASE} bg-rose-100 text-rose-950 ring-rose-300/90`;
+	}
+	if (level === 'baseline') {
 		return `${FACTOR_CHIP_BASE} bg-zinc-100 text-zinc-700 ring-zinc-200/90`;
 	}
-	if (Math.abs(n - 1) < 1e-6) {
-		return `${FACTOR_CHIP_BASE} bg-zinc-100 text-zinc-700 ring-zinc-200/90`;
+	if (level === 'veryHigh') {
+		return `${FACTOR_CHIP_BASE} bg-rose-100 text-rose-950 ring-rose-300/90`;
 	}
-	if (n > 1) {
-		return `${FACTOR_CHIP_BASE} bg-amber-100 text-amber-950 ring-amber-200/90`;
+	if (level === 'high') {
+		return `${FACTOR_CHIP_BASE} bg-amber-100 text-amber-950 ring-amber-300/90`;
 	}
-	return `${FACTOR_CHIP_BASE} bg-emerald-100 text-emerald-900 ring-emerald-200/90`;
+
+	if (kind === 'charged') {
+		return level === 'veryLow'
+			? `${FACTOR_CHIP_BASE} bg-orange-100 text-orange-950 ring-orange-300/90`
+			: `${FACTOR_CHIP_BASE} bg-sky-100 text-sky-900 ring-sky-300/90`;
+	}
+	return level === 'veryLow'
+		? `${FACTOR_CHIP_BASE} bg-emerald-200 text-emerald-950 ring-emerald-400/80`
+		: `${FACTOR_CHIP_BASE} bg-emerald-100 text-emerald-900 ring-emerald-300/90`;
+}
+
+/** Base factors only; schedule windows may change the effective relationship. */
+export function hasBasePricingInversion(charged: number, metered: number): boolean {
+	return (
+		Number.isFinite(charged) &&
+		Number.isFinite(metered) &&
+		charged >= 0 &&
+		metered >= 0 &&
+		charged + 1e-6 < metered
+	);
 }
 
 function parseNonNegativeFactorText(text: string, fieldLabel: string): number {
