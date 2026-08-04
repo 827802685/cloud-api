@@ -590,7 +590,8 @@
 			"chargedShort": "计费",
 			"meteredShort": "成本",
 			"scheduled": "时段",
-			"defaults": "默认参数",
+			"customParams": "参数",
+			"customParamsTooltip": "自定义请求参数（深度合并到上游请求体；客户端字段优先）",
 			"providerDisabled": "供应商停用",
 			"editRoute": "编辑此路由"
 		},

@@ -590,7 +590,8 @@
 			"chargedShort": "청구",
 			"meteredShort": "비용",
 			"scheduled": "시간대",
-			"defaults": "기본값",
+			"customParams": "파라미터",
+			"customParamsTooltip": "사용자 지정 요청 파라미터(업스트림 본문에 Deep merge; 클라이언트 필드 우선)",
 			"providerDisabled": "공급자 중지",
 			"editRoute": "이 라우트 편집"
 		},

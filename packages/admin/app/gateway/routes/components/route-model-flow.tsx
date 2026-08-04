@@ -141,46 +141,53 @@ function RouteTarget({
 					</p>
 				</button>
 			</div>
-			<div className={`flex flex-wrap items-center gap-1 border-t bg-white/55 px-2.5 py-1.5 ${
+			<div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t bg-white/55 px-2.5 py-1.5 ${
 				enabled ? 'border-emerald-200' : 'border-red-200'
 			}`}>
-				{showUpstreamMapping ? (
-					<span className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${protocolBadgeClass(route.upstream_protocol)}`}>
-						<UpstreamProtocolBrandIcon protocol={route.upstream_protocol} />
-						{route.upstream_protocol}.{effectiveUpstreamOperation}
+				<div className="flex min-w-0 flex-wrap items-center gap-1">
+					{showUpstreamMapping ? (
+						<span className={`inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${protocolBadgeClass(route.upstream_protocol)}`}>
+							<UpstreamProtocolBrandIcon protocol={route.upstream_protocol} />
+							{route.upstream_protocol}.{effectiveUpstreamOperation}
+						</span>
+					) : null}
+					<span className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+						{t('weight', { value: route.weight ?? 1 })}
 					</span>
-				) : null}
-				<span className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
-					{t('weight', { value: route.weight ?? 1 })}
-				</span>
-				<span
-					className={factorChipClassForValue(chargedValue)}
-					title={tList('chargedTooltip', { value: formatFactorMultiplier(chargedValue) })}
-				>
-					{t('chargedShort')} {formatFactorMultiplierForChip(chargedValue)}
-				</span>
-				<span
-					className={factorChipClassForValue(meteredValue)}
-					title={tList('meteredTooltip', { value: formatFactorMultiplier(meteredValue) })}
-				>
-					{t('meteredShort')} {formatFactorMultiplierForChip(meteredValue)}
-				</span>
-				{scheduleHint ? (
-					<span className={`${FACTOR_CHIP_BASE} w-auto bg-sky-50 text-sky-800 ring-sky-200`} title={scheduleHint}>
-						{t('scheduled')}
+					{route.custom_params ? (
+						<span
+							className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-200"
+							title={t('customParamsTooltip')}
+						>
+							{t('customParams')}
+						</span>
+					) : null}
+					{providerDisabled ? (
+						<span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+							<ExclamationTriangleIcon className="h-3 w-3" />
+							{t('providerDisabled')}
+						</span>
+					) : null}
+				</div>
+				<div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+					<span
+						className={factorChipClassForValue(chargedValue)}
+						title={tList('chargedTooltip', { value: formatFactorMultiplier(chargedValue) })}
+					>
+						{t('chargedShort')} {formatFactorMultiplierForChip(chargedValue)}
 					</span>
-				) : null}
-				{route.custom_params ? (
-					<span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
-						{t('defaults')}
+					<span
+						className={factorChipClassForValue(meteredValue)}
+						title={tList('meteredTooltip', { value: formatFactorMultiplier(meteredValue) })}
+					>
+						{t('meteredShort')} {formatFactorMultiplierForChip(meteredValue)}
 					</span>
-				) : null}
-				{providerDisabled ? (
-					<span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-						<ExclamationTriangleIcon className="h-3 w-3" />
-						{t('providerDisabled')}
-					</span>
-				) : null}
+					{scheduleHint ? (
+						<span className={`${FACTOR_CHIP_BASE} w-auto bg-sky-50 text-sky-800 ring-sky-200`} title={scheduleHint}>
+							{t('scheduled')}
+						</span>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);

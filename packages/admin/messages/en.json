@@ -590,7 +590,8 @@
 			"chargedShort": "C",
 			"meteredShort": "M",
 			"scheduled": "Schedule",
-			"defaults": "Defaults",
+			"customParams": "Params",
+			"customParamsTooltip": "Custom request params (deep-merged; client fields win)",
 			"providerDisabled": "Provider off",
 			"editRoute": "Edit this route"
 		},

@@ -590,7 +590,8 @@
 			"chargedShort": "課金",
 			"meteredShort": "原価",
 			"scheduled": "時間帯",
-			"defaults": "既定値",
+			"customParams": "パラメーター",
+			"customParamsTooltip": "カスタムリクエストパラメーター（アップストリーム Body にディープマージ；クライアント側の項目が優先）",
 			"providerDisabled": "プロバイダー停止中",
 			"editRoute": "このルートを編集"
 		},
