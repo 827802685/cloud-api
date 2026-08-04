@@ -189,9 +189,32 @@ export function splitRoutesByProtocolAndRouteGroup<
 	});
 }
 
+/** Same-priority layer: active first, then weight DESC, then name / id. */
+export function compareRoutesWithinPriorityLayer(
+	a: Pick<GatewayModelRoute, 'status' | 'weight' | 'provider_model_name' | 'id'>,
+	b: Pick<GatewayModelRoute, 'status' | 'weight' | 'provider_model_name' | 'id'>
+): number {
+	const enabledA = a.status === 'active' ? 1 : 0;
+	const enabledB = b.status === 'active' ? 1 : 0;
+	if (enabledB !== enabledA) return enabledB - enabledA;
+	const dw = (b.weight ?? 1) - (a.weight ?? 1);
+	if (dw !== 0) return dw;
+	const nameCmp = a.provider_model_name.localeCompare(b.provider_model_name, undefined, {
+		sensitivity: 'base',
+	});
+	if (nameCmp !== 0) return nameCmp;
+	return a.id.localeCompare(b.id, undefined, { sensitivity: 'base' });
+}
+
 export function compareModelRoutesForCardDisplay(
-	a: Pick<GatewayModelRoute, 'upstream_protocol' | 'priority' | 'provider_model_name' | 'id'>,
-	b: Pick<GatewayModelRoute, 'upstream_protocol' | 'priority' | 'provider_model_name' | 'id'>
+	a: Pick<
+		GatewayModelRoute,
+		'upstream_protocol' | 'priority' | 'status' | 'weight' | 'provider_model_name' | 'id'
+	>,
+	b: Pick<
+		GatewayModelRoute,
+		'upstream_protocol' | 'priority' | 'status' | 'weight' | 'provider_model_name' | 'id'
+	>
 ): number {
 	const knownA = isUpstreamProtocol(a.upstream_protocol);
 	const knownB = isUpstreamProtocol(b.upstream_protocol);
@@ -209,11 +232,7 @@ export function compareModelRoutesForCardDisplay(
 	}
 	const dp = b.priority - a.priority;
 	if (dp !== 0) return dp;
-	const nameCmp = a.provider_model_name.localeCompare(b.provider_model_name, undefined, {
-		sensitivity: 'base',
-	});
-	if (nameCmp !== 0) return nameCmp;
-	return a.id.localeCompare(b.id, undefined, { sensitivity: 'base' });
+	return compareRoutesWithinPriorityLayer(a, b);
 }
 
 export function compareModelVendorsForDisplay(a: string, b: string): number {

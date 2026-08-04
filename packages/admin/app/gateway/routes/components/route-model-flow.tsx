@@ -25,6 +25,7 @@ import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import { tagBadgeClass } from '../../models/model-utils';
 import type { RouteModelGroup } from '../route-utils';
 import {
+	compareRoutesWithinPriorityLayer,
 	factorChipClassForValue,
 	formatFactorMultiplier,
 	formatFactorMultiplierForChip,
@@ -414,7 +415,11 @@ function FlowBranch({
 		layer.push(route);
 		map.set(route.priority, layer);
 		return map;
-	}, new Map<number, RouteListRow[]>())].sort(([a], [b]) => b - a);
+	}, new Map<number, RouteListRow[]>())]
+		.sort(([a], [b]) => b - a)
+		.map(([priority, routes]) =>
+			[priority, [...routes].sort(compareRoutesWithinPriorityLayer)] as const
+		);
 	const railClass =
 		branchIndex === 0
 			? 'top-1/2 bottom-0'
