@@ -80,12 +80,12 @@ WHERE lower(upstream_protocol) = 'gemini'
 -- 5) Rewrite auto-generated pool names that match ensureModelSurfacePool pattern.
 UPDATE route_pools
 SET
-  name = 'gemini.models.generate · ' || substr(name FROM length('gemini.generateContent · ') + 1),
+  name = 'gemini.models.generate · ' || substr(name, length('gemini.generateContent · ') + 1),
   updated_at = CURRENT_TIMESTAMP
 WHERE name LIKE 'gemini.generateContent · %';
 
 UPDATE route_pools
 SET
-  name = 'gemini.models.generate · ' || substr(name FROM length('gemini.streamGenerateContent · ') + 1),
+  name = 'gemini.models.generate · ' || substr(name, length('gemini.streamGenerateContent · ') + 1),
   updated_at = CURRENT_TIMESTAMP
 WHERE name LIKE 'gemini.streamGenerateContent · %';
