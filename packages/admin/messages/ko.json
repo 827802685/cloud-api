@@ -1442,10 +1442,27 @@
 			"showSecrets": "API 키 표시",
 			"hideSecrets": "API 키 숨기기"
 		},
+		"providerCards": {
+			"active": "활성",
+			"editing": "편집 중",
+			"unsaved": "저장 안 됨",
+			"missingCredentials": "자격 증명 없음",
+			"unavailable": "사용 불가",
+			"lossPricing": "손실 가격",
+			"configured": "구성됨",
+			"priceLegend": "S 표준가 · C 사용자 과금 · M 원가",
+			"selectHint": "Provider를 클릭하면 오른쪽 구성 서랍이 열립니다. 저장해야 적용됩니다.",
+			"detailTitle": "{name} 구성",
+			"activeSummary": "활성 · {name}",
+			"noActive": "활성 Provider 없음",
+			"saveConfig": "구성 저장",
+			"saveAndActivate": "저장 후 활성화",
+			"saveConfigOnly": "구성만 저장"
+		},
 		"webSearch": {
 			"title": "Web Search",
 			"description": "POST /v1/tools/web-search에 사용됩니다. 구현된 엔진만 선택할 수 있으며 자유 텍스트는 거부됩니다. API Key를 비운 채 저장하면 Key가 삭제되고, 다시 설정할 때까지 엔드포인트가 503을 반환합니다.",
-			"descriptionCatalog": "POST /v1/tools/web-search용. 엔진별로 API 키와 삼중 단가(metered / standard / charged)를 설정한 뒤 Active를 선택합니다. 사용자 예산에는 charged만 반영됩니다. 키가 없는 엔진은 활성화할 수 없습니다.",
+			"descriptionCatalog": "POST /v1/tools/web-search용. 엔진별로 API 키와 삼중 단가를 설정한 뒤 카드를 「저장 후 활성화」합니다. 사용자 예산에는 charged만 반영됩니다. 키가 없는 엔진은 활성화할 수 없습니다.",
 			"provider": "검색 엔진",
 			"active": "Active 엔진",
 			"catalogProvider": "엔진",
@@ -1504,7 +1521,7 @@
 		"webFetch": {
 			"title": "Web Fetch",
 			"description": "POST /v1/tools/web-fetch에 사용됩니다. 구현된 Scraper만 선택할 수 있으며 자유 텍스트는 거부됩니다. API Key를 비운 채 저장하면 Key가 삭제되고, 다시 설정할 때까지 엔드포인트가 503을 반환합니다.",
-			"descriptionCatalog": "POST /v1/tools/web-fetch용. 스크레이퍼별로 API 키와 삼중 단가를 설정한 뒤 Active를 선택합니다. 사용자 예산에는 charged만 반영됩니다.",
+			"descriptionCatalog": "POST /v1/tools/web-fetch용. 스크레이퍼별로 API 키와 삼중 단가를 설정한 뒤 카드를 「저장 후 활성화」합니다. 사용자 예산에는 charged만 반영됩니다.",
 			"provider": "Fetch Provider",
 			"active": "Active Provider",
 			"catalogProvider": "Provider",
@@ -1523,7 +1540,7 @@
 		},
 		"webDeepSearch": {
 			"title": "Web Deep Search",
-			"descriptionCatalog": "POST /v1/tools/web-deep-search용. 검색+읽기 엔진(Firecrawl Search / Jina Search). 프로바이더별 키와 삼중 단가를 설정한 뒤 Active를 선택합니다.",
+			"descriptionCatalog": "POST /v1/tools/web-deep-search용. 검색+읽기 엔진(Firecrawl Search / Jina Search). 프로바이더별로 설정한 뒤 카드를 「저장 후 활성화」합니다.",
 			"active": "Active Provider",
 			"catalogProvider": "Provider",
 			"noKey": "Key 없음",
@@ -1539,7 +1556,7 @@
 		},
 		"aiDetection": {
 			"title": "AI Detection",
-			"descriptionCatalog": "POST /v1/tools/ai-detection용. 엔진별 자격 증명과 삼중 단가를 설정한 뒤 Active를 선택합니다. 문자 단위(billingUnitChars)로 세 열을 스케일합니다. 현재 Tencent Cloud TMS만 구현됨.",
+			"descriptionCatalog": "POST /v1/tools/ai-detection용. 엔진별 자격 증명과 삼중 단가를 설정한 뒤 카드를 「저장 후 활성화」합니다. 문자 단위(billingUnitChars)로 세 열을 스케일합니다. 현재 Tencent Cloud TMS만 구현됨.",
 			"active": "Active 엔진",
 			"catalogProvider": "엔진",
 			"noKey": "자격 증명 없음",

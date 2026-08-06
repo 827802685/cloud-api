@@ -1442,6 +1442,23 @@
 			"saveAiDetection": "保存 AI 率检测",
 			"testInPlayground": "在 Playground 测试"
 		},
+		"providerCards": {
+			"active": "已启用",
+			"editing": "正在编辑",
+			"unsaved": "未保存",
+			"missingCredentials": "缺少凭证",
+			"unavailable": "暂不可用",
+			"lossPricing": "存在亏损",
+			"configured": "已配置",
+			"priceLegend": "S 标准价 · C 用户扣费 · M 供应价",
+			"selectHint": "点击 Provider 打开右侧配置抽屉；需保存后才会生效。",
+			"detailTitle": "配置 {name}",
+			"activeSummary": "已启用 · {name}",
+			"noActive": "未启用任何引擎",
+			"saveConfig": "保存配置",
+			"saveAndActivate": "保存并启用",
+			"saveConfigOnly": "仅保存配置"
+		},
 		"unitPrices": {
 			"title": "单价（{currency}）",
 			"legend": "标准价 → 用户扣费 → 供应价",
@@ -1453,7 +1470,7 @@
 		"webSearch": {
 			"title": "Web Search",
 			"description": "供 POST /v1/tools/web-search 使用。仅可选已实现的引擎，禁止自由文本。留空 API Key 并保存将清除密钥（未配置时接口返回 503）。",
-			"descriptionCatalog": "供 POST /v1/tools/web-search 使用。为每个引擎分别配置 API Key 与三账本单价（供应 / 目录 / 用户），再选择 Active。仅 charged 计入用户额度；未配置 Key 的引擎不可激活。",
+			"descriptionCatalog": "供 POST /v1/tools/web-search 使用。为每个引擎分别配置 API Key 与三账本单价，再「保存并启用」其中一张卡片。仅 charged 计入用户额度；未配置 Key 的引擎不可激活。",
 			"provider": "搜索引擎",
 			"active": "当前 Active 引擎",
 			"catalogProvider": "引擎",
@@ -1512,7 +1529,7 @@
 		"webFetch": {
 			"title": "Web Fetch",
 			"description": "供 POST /v1/tools/web-fetch 使用。仅可选已实现的抓取引擎，禁止自由文本。留空 API Key 并保存将清除密钥（未配置时接口返回 503）。",
-			"descriptionCatalog": "供 POST /v1/tools/web-fetch 使用。为每个抓取引擎分别配置 API Key 与三账本单价（供应 / 目录 / 用户），再选择 Active。仅 charged 计入用户额度；未配置 Key 的引擎不可激活。",
+			"descriptionCatalog": "供 POST /v1/tools/web-fetch 使用。为每个抓取引擎分别配置 API Key 与三账本单价，再「保存并启用」其中一张卡片。仅 charged 计入用户额度；未配置 Key 的引擎不可激活。",
 			"provider": "抓取引擎",
 			"active": "当前 Active 引擎",
 			"catalogProvider": "引擎",
@@ -1531,7 +1548,7 @@
 		},
 		"webDeepSearch": {
 			"title": "Web Deep Search",
-			"descriptionCatalog": "供 POST /v1/tools/web-deep-search 使用。搜+读一体引擎（Firecrawl Search / Jina Search），结果含页面正文，比普通 Web Search 更重、更贵。为每个引擎配置 Key 与三账本单价后选择 Active。",
+			"descriptionCatalog": "供 POST /v1/tools/web-deep-search 使用。搜+读一体引擎（Firecrawl Search / Jina Search），结果含页面正文，比普通 Web Search 更重、更贵。为每个引擎配置后「保存并启用」其中一张卡片。",
 			"active": "当前 Active 引擎",
 			"catalogProvider": "引擎",
 			"noKey": "无 Key",
@@ -1547,7 +1564,7 @@
 		},
 		"aiDetection": {
 			"title": "AI 率检测",
-			"descriptionCatalog": "供 POST /v1/tools/ai-detection 使用。多引擎 catalog：为每个引擎配置凭证与三账本单价后选择 Active。计费按字符单元（billingUnitChars）缩放三列金额。当前仅实现腾讯云 TMS。",
+			"descriptionCatalog": "供 POST /v1/tools/ai-detection 使用。多引擎 catalog：为每个引擎配置凭证与三账本单价后「保存并启用」一张卡片。计费按字符单元（billingUnitChars）缩放三列金额。当前仅实现腾讯云 TMS。",
 			"active": "当前 Active 引擎",
 			"catalogProvider": "引擎",
 			"noKey": "无凭证",

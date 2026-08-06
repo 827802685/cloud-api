@@ -1442,6 +1442,23 @@
 			"saveAiDetection": "Save AI detection",
 			"testInPlayground": "Test in Playground"
 		},
+		"providerCards": {
+			"active": "Active",
+			"editing": "Editing",
+			"unsaved": "Unsaved",
+			"missingCredentials": "Missing credentials",
+			"unavailable": "Unavailable",
+			"lossPricing": "Loss pricing",
+			"configured": "Configured",
+			"priceLegend": "S Standard · C Charged · M Metered",
+			"selectHint": "Click a provider to open the configuration drawer. Changes apply only after you save.",
+			"detailTitle": "Configure {name}",
+			"activeSummary": "Active · {name}",
+			"noActive": "No active provider",
+			"saveConfig": "Save configuration",
+			"saveAndActivate": "Save & activate",
+			"saveConfigOnly": "Save config only"
+		},
 		"unitPrices": {
 			"title": "Unit prices ({currency})",
 			"legend": "Standard → Charged → Metered",
@@ -1453,7 +1470,7 @@
 		"webSearch": {
 			"title": "Web search",
 			"description": "Powers POST /v1/tools/web-search. Choose an implemented engine only—free text is rejected. Leave the API key empty and save to clear it (endpoint returns 503 until set again).",
-			"descriptionCatalog": "Powers POST /v1/tools/web-search. Configure API key and three unit prices (metered / standard / charged) per engine, then pick Active. Only charged hits user budget. Engines without a key cannot be activated.",
+			"descriptionCatalog": "Powers POST /v1/tools/web-search. Configure each engine’s API key and three unit prices, then save & activate one card. Only charged hits user budget. Engines without a key cannot be activated.",
 			"provider": "Search engine",
 			"active": "Active engine",
 			"catalogProvider": "Engine",
@@ -1512,7 +1529,7 @@
 		"webFetch": {
 			"title": "Web fetch",
 			"description": "Powers POST /v1/tools/web-fetch. Choose an implemented scraper only—free text is rejected. Leave the API key empty and save to clear it (endpoint returns 503 until set again).",
-			"descriptionCatalog": "Powers POST /v1/tools/web-fetch. Configure API key and three unit prices (metered / standard / charged) per scraper, then pick Active. Only charged hits user budget. Scrapers without a key cannot be activated.",
+			"descriptionCatalog": "Powers POST /v1/tools/web-fetch. Configure each scraper’s API key and three unit prices, then save & activate one card. Only charged hits user budget. Scrapers without a key cannot be activated.",
 			"provider": "Fetch provider",
 			"active": "Active provider",
 			"catalogProvider": "Provider",
@@ -1531,7 +1548,7 @@
 		},
 		"webDeepSearch": {
 			"title": "Web deep search",
-			"descriptionCatalog": "Powers POST /v1/tools/web-deep-search. Search-and-read engines (Firecrawl Search / Jina Search) return page content with results—heavier and costlier than plain web search. Configure per-provider key and three unit prices, then pick Active.",
+			"descriptionCatalog": "Powers POST /v1/tools/web-deep-search. Search-and-read engines (Firecrawl Search / Jina Search) return page content with results—heavier and costlier than plain web search. Configure each provider, then save & activate one card.",
 			"active": "Active provider",
 			"catalogProvider": "Provider",
 			"noKey": "no key",
@@ -1547,7 +1564,7 @@
 		},
 		"aiDetection": {
 			"title": "AI detection",
-			"descriptionCatalog": "Powers POST /v1/tools/ai-detection. Multi-provider catalog: configure credentials and three unit prices per engine, then pick Active. Billing is by character units (billingUnitChars); totals scale metered/standard/charged. Currently only Tencent Cloud TMS is implemented.",
+			"descriptionCatalog": "Powers POST /v1/tools/ai-detection. Multi-provider catalog: configure credentials and three unit prices per engine, then save & activate one card. Billing is by character units (billingUnitChars); totals scale metered/standard/charged. Currently only Tencent Cloud TMS is implemented.",
 			"active": "Active engine",
 			"catalogProvider": "Engine",
 			"noKey": "no credentials",

@@ -1442,10 +1442,27 @@
 			"showSecrets": "APIキーを表示",
 			"hideSecrets": "APIキーを隠す"
 		},
+		"providerCards": {
+			"active": "有効",
+			"editing": "編集中",
+			"unsaved": "未保存",
+			"missingCredentials": "認証情報なし",
+			"unavailable": "利用不可",
+			"lossPricing": "赤字価格",
+			"configured": "設定済み",
+			"priceLegend": "S 標準価格 · C ユーザー課金 · M 原価",
+			"selectHint": "Provider をクリックして右の設定ドロワーを開きます。保存するまで反映されません。",
+			"detailTitle": "{name} を設定",
+			"activeSummary": "有効 · {name}",
+			"noActive": "有効な Provider なし",
+			"saveConfig": "設定を保存",
+			"saveAndActivate": "保存して有効化",
+			"saveConfigOnly": "設定のみ保存"
+		},
 		"webSearch": {
 			"title": "Web Search",
 			"description": "POST /v1/tools/web-search を提供します。実装済みのエンジンのみ選択でき、自由入力は拒否されます。API Key を空欄にして保存すると削除されます（再設定するまでエンドポイントは 503 を返します）。",
-			"descriptionCatalog": "POST /v1/tools/web-search 用。エンジンごとに API キーと三帳簿単価（metered / standard / charged）を設定し Active を選びます。ユーザー予算に加算されるのは charged のみです。キー未設定のエンジンは有効化できません。",
+			"descriptionCatalog": "POST /v1/tools/web-search 用。エンジンごとに API キーと三帳簿単価を設定し、カードを「保存して有効化」します。ユーザー予算に加算されるのは charged のみです。キー未設定のエンジンは有効化できません。",
 			"provider": "検索エンジン",
 			"active": "Active エンジン",
 			"catalogProvider": "エンジン",
@@ -1504,7 +1521,7 @@
 		"webFetch": {
 			"title": "Web Fetch",
 			"description": "POST /v1/tools/web-fetch を提供します。実装済みのスクレイパーのみ選択でき、自由入力は拒否されます。API Key を空欄にして保存すると削除されます（再設定するまでエンドポイントは 503 を返します）。",
-			"descriptionCatalog": "POST /v1/tools/web-fetch 用。スクレイパーごとに API キーと三帳簿単価を設定し Active を選びます。ユーザー予算に加算されるのは charged のみです。",
+			"descriptionCatalog": "POST /v1/tools/web-fetch 用。スクレイパーごとに API キーと三帳簿単価を設定し、カードを「保存して有効化」します。ユーザー予算に加算されるのは charged のみです。",
 			"provider": "Fetch Provider",
 			"active": "Active Provider",
 			"catalogProvider": "Provider",
@@ -1523,7 +1540,7 @@
 		},
 		"webDeepSearch": {
 			"title": "Web Deep Search",
-			"descriptionCatalog": "POST /v1/tools/web-deep-search 用。検索+読取エンジン（Firecrawl Search / Jina Search）。プロバイダーごとにキーと三帳簿単価を設定して Active を選びます。",
+			"descriptionCatalog": "POST /v1/tools/web-deep-search 用。検索+読取エンジン（Firecrawl Search / Jina Search）。プロバイダーごとに設定し、カードを「保存して有効化」します。",
 			"active": "Active Provider",
 			"catalogProvider": "Provider",
 			"noKey": "Key なし",
@@ -1539,7 +1556,7 @@
 		},
 		"aiDetection": {
 			"title": "AI Detection",
-			"descriptionCatalog": "POST /v1/tools/ai-detection 用。エンジンごとに認証情報と三帳簿単価を設定し Active を選びます。課金は文字ユニット（billingUnitChars）で三列をスケール。現在は Tencent Cloud TMS のみ実装。",
+			"descriptionCatalog": "POST /v1/tools/ai-detection 用。エンジンごとに認証情報と三帳簿単価を設定し、カードを「保存して有効化」します。課金は文字ユニット（billingUnitChars）で三列をスケール。現在は Tencent Cloud TMS のみ実装。",
 			"active": "Active エンジン",
 			"catalogProvider": "エンジン",
 			"noKey": "認証情報なし",
