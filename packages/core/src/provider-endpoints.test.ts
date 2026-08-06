@@ -53,10 +53,10 @@ describe('resolveUpstreamEndpoint', () => {
 		assert.equal(url, 'https://vendor.example/custom/chat');
 	});
 
-	it('fills gemini {model} in template', () => {
+	it('fills gemini {model} in legacy per-action template', () => {
 		const url = resolveUpstreamEndpoint(
 			'gemini',
-			'generateContent',
+			'models.generate',
 			{
 				gemini: {
 					endpoints: {
@@ -64,9 +64,39 @@ describe('resolveUpstreamEndpoint', () => {
 					},
 				},
 			},
-			{ model: 'gemini-2.0-flash' }
+			{ model: 'gemini-2.0-flash', action: 'generateContent' }
 		);
 		assert.equal(url, 'https://x.example/models/gemini-2.0-flash:generateContent');
+	});
+
+	it('prefers models.generate family template over legacy per-action', () => {
+		const url = resolveUpstreamEndpoint(
+			'gemini',
+			'models.generate',
+			{
+				gemini: {
+					endpoints: {
+						'models.generate': 'https://family.example/models/{model}:{action}',
+						generateContent: 'https://legacy.example/models/{model}:generateContent',
+					},
+				},
+			},
+			{ model: 'gemini-2.0-flash', action: 'streamGenerateContent' }
+		);
+		assert.equal(url, 'https://family.example/models/gemini-2.0-flash:streamGenerateContent');
+	});
+
+	it('derives gemini URL from base when no templates exist', () => {
+		const url = resolveUpstreamEndpoint(
+			'gemini',
+			'models.generate',
+			{ gemini: { base: 'https://generativelanguage.googleapis.com/v1beta/models' } },
+			{ model: 'gemini-2.0-flash', action: 'generateContent' }
+		);
+		assert.equal(
+			url,
+			'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+		);
 	});
 });
 
@@ -95,6 +125,34 @@ describe('validateAndNormalizeProviderEndpoints', () => {
 					},
 				}),
 			/must include \{model\}/
+		);
+	});
+
+	it('accepts legacy gemini per-action keys on write', () => {
+		const map = validateAndNormalizeProviderEndpoints({
+			gemini: {
+				endpoints: {
+					generateContent: 'https://x.example/models/{model}:generateContent',
+				},
+			},
+		});
+		assert.equal(
+			map.gemini?.endpoints?.generateContent,
+			'https://x.example/models/{model}:generateContent'
+		);
+	});
+
+	it('rejects models.generate template without {action}', () => {
+		assert.throws(
+			() =>
+				validateAndNormalizeProviderEndpoints({
+					gemini: {
+						endpoints: {
+							'models.generate': 'https://x.example/models/{model}:generateContent',
+						},
+					},
+				}),
+			/must include \{action\}/
 		);
 	});
 });
@@ -141,5 +199,21 @@ describe('listConfiguredCapabilities', () => {
 
 	it('returns empty array when protocol is not configured', () => {
 		assert.deepEqual(listConfiguredCapabilities({}, 'anthropic'), []);
+	});
+
+	it('maps any gemini override key to models.generate', () => {
+		assert.deepEqual(
+			listConfiguredCapabilities(
+				{
+					gemini: {
+						endpoints: {
+							generateContent: 'https://x.example/models/{model}:generateContent',
+						},
+					},
+				},
+				'gemini'
+			),
+			['models.generate']
+		);
 	});
 });

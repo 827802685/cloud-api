@@ -10,6 +10,7 @@ export type ProviderCapabilityBadge =
 	| 'images'
 	| 'audio'
 	| 'messages'
+	| 'modelsGenerate'
 	| 'generateContent'
 	| 'streamGenerateContent';
 
@@ -41,6 +42,12 @@ export type ProviderProtocolSummary = {
 	}>;
 };
 
+/** Preserved when legacy per-action Gemini URLs cannot safely collapse into one `{action}` template. */
+export type GeminiLegacyPerActionEndpoints = {
+	generateContent: string;
+	streamGenerateContent: string;
+};
+
 /** 单协议表单：base + Advanced capability 覆盖 */
 export type ProtocolEndpointForm = {
 	base: string;
@@ -49,8 +56,14 @@ export type ProtocolEndpointForm = {
 	images_edits: string;
 	audio_transcriptions: string;
 	messages: string;
+	/** Canonical Gemini family override (`models.generate`, must include `{model}` + `{action}`). */
+	modelsGenerate: string;
+	/** @deprecated Prefer modelsGenerate; kept for display of uncollapsed legacy rows. */
 	generateContent: string;
+	/** @deprecated Prefer modelsGenerate; kept for display of uncollapsed legacy rows. */
 	streamGenerateContent: string;
+	/** When set, save must round-trip these keys unchanged (do not invent a merged template). */
+	legacyPerAction?: GeminiLegacyPerActionEndpoints | null;
 };
 
 export type ProviderFormData = {
@@ -78,8 +91,10 @@ export const EMPTY_PROTOCOL_FORM: ProtocolEndpointForm = {
 	images_edits: '',
 	audio_transcriptions: '',
 	messages: '',
+	modelsGenerate: '',
 	generateContent: '',
 	streamGenerateContent: '',
+	legacyPerAction: null,
 };
 
 export const EMPTY_PROVIDER_FORM: ProviderFormData = {

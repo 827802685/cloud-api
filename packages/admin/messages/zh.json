@@ -333,7 +333,8 @@
 				"audio": "audio",
 				"messages": "messages",
 				"generateContent": "generate",
-				"streamGenerateContent": "stream"
+				"streamGenerateContent": "stream",
+				"modelsGenerate": "generate"
 			}
 		},
 		"import": {
@@ -395,7 +396,9 @@
 			"apiKeyHint": "该供应商的上游凭证。",
 			"apiKeyEditHint": "留空保持当前密钥；填写新值则替换。",
 			"statusEnabled": "启用供应商",
-			"statusHint": "禁用后不会参与路由与 Playground。"
+			"statusHint": "禁用后不会参与路由与 Playground。",
+			"capModelsGenerate": "models.generate (/v1beta/models/{model}:{action}) — 流式 + 非流式",
+			"legacyPerActionNotice": "该 Provider 仍保留无法安全合并的 generateContent / streamGenerateContent 覆盖项。保存时原样写回。复核后可改为单一 {action} 模板。"
 		}
 	},
 	"models": {
@@ -732,7 +735,8 @@
 			"audioPricePerSecond": "每秒价格",
 			"audioMinimumSeconds": "最低秒数",
 			"weight": "权重",
-			"weightHint": "同 priority 层内权重（≥ 1）。加权策略下数值越大流量越多。"
+			"weightHint": "同 priority 层内权重（≥ 1）。加权策略下数值越大流量越多。",
+			"operationModelsGenerate": "models.generate · Generate Content（流式 + 非流式）"
 		},
 		"kindAudio": "音频",
 		"strategy": {

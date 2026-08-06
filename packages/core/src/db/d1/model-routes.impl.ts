@@ -160,5 +160,18 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 			const deleted = await raw.prepare('DELETE FROM model_routes WHERE id = ?').bind(id).run();
 			return deleted.meta.changes;
 		},
+
+		async deleteRoutePoolIfEmpty(poolId: string): Promise<boolean> {
+			const remaining = await raw
+				.prepare('SELECT 1 AS ok FROM model_routes WHERE route_pool_id = ? LIMIT 1')
+				.bind(poolId)
+				.first<{ ok: number }>();
+			if (remaining) return false;
+			await raw.batch([
+				raw.prepare('DELETE FROM model_surfaces WHERE route_pool_id = ?').bind(poolId),
+				raw.prepare('DELETE FROM route_pools WHERE id = ?').bind(poolId),
+			]);
+			return true;
+		},
 	};
 }

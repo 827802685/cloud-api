@@ -333,7 +333,8 @@
 				"audio": "audio",
 				"messages": "messages",
 				"generateContent": "generate",
-				"streamGenerateContent": "stream"
+				"streamGenerateContent": "stream",
+				"modelsGenerate": "generate"
 			}
 		},
 		"import": {
@@ -395,7 +396,9 @@
 			"apiKeyHint": "このプロバイダーの上流認証情報。",
 			"apiKeyEditHint": "空欄で現行キーを維持。新しい値を入力すると置換します。",
 			"statusEnabled": "プロバイダーを有効化",
-			"statusHint": "無効なプロバイダーはルーティングと Playground から除外されます。"
+			"statusHint": "無効なプロバイダーはルーティングと Playground から除外されます。",
+			"capModelsGenerate": "models.generate (/v1beta/models/{model}:{action}) — ストリーム + 非ストリーム",
+			"legacyPerActionNotice": "このプロバイダーには安全に統合できない generateContent / streamGenerateContent の個別上書きが残っています。保存時はそのまま保持されます。確認後に単一の {action} テンプレートへ変更してください。"
 		}
 	},
 	"models": {
@@ -732,7 +735,8 @@
 			"audioPricePerSecond": "1 秒あたりの料金",
 			"audioMinimumSeconds": "最低秒数",
 			"weight": "重み",
-			"weightHint": "同一 priority 層の重み（≥ 1）。加重戦略では大きいほど流量が増えます。"
+			"weightHint": "同一 priority 層の重み（≥ 1）。加重戦略では大きいほど流量が増えます。",
+			"operationModelsGenerate": "models.generate · Generate Content（ストリーム + 非ストリーム）"
 		},
 		"kindAudio": "音声",
 		"strategy": {

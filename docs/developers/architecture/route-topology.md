@@ -36,9 +36,11 @@ model + route_group + request protocol + operation
 |----------|-----------|
 | OpenAI | `chat`、`responses`、`images.generations`、`images.edits`、`audio.transcriptions` |
 | Anthropic | `messages` |
-| Gemini | `generateContent`、`streamGenerateContent` |
+| Gemini | **`models.generate`**（generate-content 家族，覆盖流式与非流式） |
 
 `*` 是迁移兼容值。运行时先查精确 operation Surface，查不到时再回退同协议的 `*` Surface。
+
+> **Gemini v2.2.0**：Public / Upstream 配置只认 `models.generate`。客户端 URL 仍为 `POST /v1beta/models/{model}:{generateContent|streamGenerateContent}`；Proxy 用 wire action 派生上游 URL，并把真实 action 写入 `route_trace.gemini.action`。历史 `generateContent` / `streamGenerateContent` Surface 由迁移 `0017_gemini_models_generate.sql` 合并。详见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
 
 > `responses` 已作为拓扑标识保留，但 2.0 的 Proxy 尚未挂载 `/v1/responses` 用户入口；配置该 Surface 不会自动新增 HTTP endpoint。当前实际开放接口以 [用户 API](../api/user.md) 为准。
 
@@ -88,8 +90,12 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool，适合让 Chat 保�
 - `adapter`
 - `route_trace`
 
-排障时先确认 Surface 是否匹配，再确认 Pool 是否 active、是否存在 active Target，最后检查 Provider 状态、密钥和熔断。2.0 的 `route_trace` 是 `{ surface, pool, target }` JSON 快照，记录最终选中（或最后失败）的拓扑标识，不是完整 attempt 列表。
+排障时先确认 Surface 是否匹配，再确认 Pool 是否 active、是否存在 active Target，最后检查 Provider 状态、密钥和熔断。`route_trace` 是 JSON 快照，至少包含 `{ surface, pool, target }`；Gemini 请求另含 `gemini.action`（真实 wire action）。它记录最终选中（或最后失败）的拓扑标识，不是完整 attempt 列表。
+
+Admin 在删除 Target、或 Target 迁移到新 Pool 后，会调用 `deleteRoutePoolIfEmpty`：若旧 Pool 已无任何 Target，则删除其 Surface 与 Pool（避免空 Pool / 孤儿 Surface 泄漏）。
 
 ## 升级兼容
 
 迁移 0016 会按历史 `model_id + route_group + upstream_protocol` 建立 Pool，为每个 Pool 建立 `request_operation='*'` 的兼容 Surface，并把历史 `model_routes` 关联进去。升级步骤与验收清单见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
+
+迁移 **0017** 将 Gemini 的 `generateContent` / `streamGenerateContent` Surface 合并为 `models.generate`；冲突 Pool 降级为 inactive 并加 `[v220-conflict]` 前缀。切换步骤见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。

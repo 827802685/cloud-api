@@ -130,6 +130,8 @@ export async function recordUsage(
 		route_pool_id?: string | null;
 		route_target_id?: string | null;
 		adapter?: string | null;
+		/** Gemini wire action from URL (`generateContent` / `streamGenerateContent`); stored in route_trace. */
+		gemini_wire_action?: string | null;
 		usage: UsageFromStream;
 		model_pricing_profile?: string | null;
 		route_price_override_json?: string | null;
@@ -271,6 +273,9 @@ export async function recordUsage(
 				surface: params.model_surface_id ?? null,
 				pool: params.route_pool_id ?? null,
 				target: params.route_target_id ?? null,
+				...(params.gemini_wire_action
+					? { gemini: { action: params.gemini_wire_action } }
+					: {}),
 			}),
 			inputTokens: params.usage.input_tokens,
 			outputTokens: params.usage.output_tokens,

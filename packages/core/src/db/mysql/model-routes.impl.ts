@@ -171,5 +171,26 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 			const [result] = await pool.execute<ResultSetHeader>('DELETE FROM model_routes WHERE id = ?', [id]);
 			return result.affectedRows;
 		},
+
+		async deleteRoutePoolIfEmpty(poolId: string): Promise<boolean> {
+			const [rows] = await pool.query<Array<{ ok: number }>>(
+				'SELECT 1 AS ok FROM model_routes WHERE route_pool_id = ? LIMIT 1',
+				[poolId]
+			);
+			if (rows.length > 0) return false;
+			const conn = await pool.getConnection();
+			try {
+				await conn.beginTransaction();
+				await conn.execute('DELETE FROM model_surfaces WHERE route_pool_id = ?', [poolId]);
+				await conn.execute('DELETE FROM route_pools WHERE id = ?', [poolId]);
+				await conn.commit();
+				return true;
+			} catch (error) {
+				await conn.rollback();
+				throw error;
+			} finally {
+				conn.release();
+			}
+		},
 	};
 }

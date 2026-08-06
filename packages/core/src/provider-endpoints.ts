@@ -7,6 +7,11 @@ import {
 	type GeminiContentAction,
 } from './gemini-upstream-url';
 import {
+	GEMINI_GENERATE_OPERATION,
+	GEMINI_LEGACY_GENERATE_OPERATIONS,
+	canonicalizeRequestOperation,
+} from './route-topology';
+import {
 	buildOpenAiCompatibleImagesUrl,
 	type UpstreamProtocol,
 	UPSTREAM_PROTOCOLS,
@@ -19,6 +24,7 @@ export type ProviderEndpointCapability =
 	| 'images.edits'
 	| 'audio.transcriptions'
 	| 'messages'
+	| 'models.generate'
 	| 'generateContent'
 	| 'streamGenerateContent';
 
@@ -31,9 +37,14 @@ export const OPENAI_ENDPOINT_CAPABILITIES = [
 
 export const ANTHROPIC_ENDPOINT_CAPABILITIES = ['messages'] as const satisfies readonly ProviderEndpointCapability[];
 
+/** Canonical Gemini capability (drives UI / listConfiguredCapabilities). */
 export const GEMINI_ENDPOINT_CAPABILITIES = [
-	'generateContent',
-	'streamGenerateContent',
+	GEMINI_GENERATE_OPERATION,
+] as const satisfies readonly ProviderEndpointCapability[];
+
+/** Legacy per-action Gemini endpoint keys still accepted on read/write. */
+export const GEMINI_LEGACY_ENDPOINT_CAPABILITIES = [
+	...GEMINI_LEGACY_GENERATE_OPERATIONS,
 ] as const satisfies readonly ProviderEndpointCapability[];
 
 const CAPABILITIES_BY_PROTOCOL: Record<UpstreamProtocol, readonly ProviderEndpointCapability[]> = {
@@ -42,10 +53,21 @@ const CAPABILITIES_BY_PROTOCOL: Record<UpstreamProtocol, readonly ProviderEndpoi
 	gemini: GEMINI_ENDPOINT_CAPABILITIES,
 };
 
+/** Write-side whitelist: gemini accepts canonical + legacy keys. */
+export const WRITABLE_CAPABILITIES_BY_PROTOCOL: Record<
+	UpstreamProtocol,
+	readonly ProviderEndpointCapability[]
+> = {
+	openai: OPENAI_ENDPOINT_CAPABILITIES,
+	anthropic: ANTHROPIC_ENDPOINT_CAPABILITIES,
+	gemini: [...GEMINI_ENDPOINT_CAPABILITIES, ...GEMINI_LEGACY_ENDPOINT_CAPABILITIES],
+};
+
 const ALL_CAPABILITIES = new Set<string>([
 	...OPENAI_ENDPOINT_CAPABILITIES,
 	...ANTHROPIC_ENDPOINT_CAPABILITIES,
 	...GEMINI_ENDPOINT_CAPABILITIES,
+	...GEMINI_LEGACY_ENDPOINT_CAPABILITIES,
 ]);
 
 /** 单协议配置：`base` 与/或按 capability 的完整 URL 模板。 */
@@ -204,7 +226,7 @@ export function validateAndNormalizeProviderEndpoints(raw: unknown): ProviderEnd
 		if (!isPlainObject(protoRaw)) {
 			throw new Error(`endpoints.${protocol} must be an object`);
 		}
-		const allowed = new Set<string>(CAPABILITIES_BY_PROTOCOL[protocol]);
+		const allowed = new Set<string>(WRITABLE_CAPABILITIES_BY_PROTOCOL[protocol]);
 		const base = nonEmptyTrimmed(protoRaw.base);
 		if (base) assertHttpUrl(base, `endpoints.${protocol}.base`);
 
@@ -223,10 +245,17 @@ export function validateAndNormalizeProviderEndpoints(raw: unknown): ProviderEnd
 				const url = nonEmptyTrimmed(urlRaw);
 				if (!url) continue;
 				assertHttpUrl(url.replace(/\{model\}/g, 'm').replace(/\{action\}/g, 'a'), `endpoints.${protocol}.endpoints.${cap}`);
-				if (protocol === 'gemini' && !url.includes('{model}')) {
-					throw new Error(
-						`endpoints.${protocol}.endpoints.${cap} must include {model} placeholder`
-					);
+				if (protocol === 'gemini') {
+					if (!url.includes('{model}')) {
+						throw new Error(
+							`endpoints.${protocol}.endpoints.${cap} must include {model} placeholder`
+						);
+					}
+					if (cap === GEMINI_GENERATE_OPERATION && !url.includes('{action}')) {
+						throw new Error(
+							`endpoints.${protocol}.endpoints.${cap} must include {action} placeholder`
+						);
+					}
 				}
 				mapped[cap as ProviderEndpointCapability] = url;
 			}
@@ -261,8 +290,25 @@ export type ResolveUpstreamEndpointOptions = {
 	providerId?: string;
 };
 
+function resolveGeminiWireAction(
+	capability: ProviderEndpointCapability,
+	options: ResolveUpstreamEndpointOptions
+): GeminiContentAction {
+	const fromOptions = options.action?.trim();
+	if (fromOptions === 'generateContent' || fromOptions === 'streamGenerateContent') {
+		return fromOptions;
+	}
+	if (capability === 'generateContent' || capability === 'streamGenerateContent') {
+		return capability;
+	}
+	throw new Error(
+		'Gemini upstream endpoint requires action (generateContent or streamGenerateContent)'
+	);
+}
+
 /**
  * 解析实际上游完整 URL：capability 模板优先，否则用 `base` 按协议派生。
+ * Gemini：`models.generate` 模板 → 旧 per-action 模板 → base 派生。
  */
 export function resolveUpstreamEndpoint(
 	protocol: UpstreamProtocol,
@@ -270,28 +316,64 @@ export function resolveUpstreamEndpoint(
 	providerEndpoints: ProviderEndpointsMap,
 	options: ResolveUpstreamEndpointOptions = {}
 ): string {
-	const allowed = CAPABILITIES_BY_PROTOCOL[protocol];
-	if (!(allowed as readonly string[]).includes(capability)) {
+	const canonicalCapability = canonicalizeRequestOperation(
+		protocol,
+		capability
+	) as ProviderEndpointCapability;
+	const writable = WRITABLE_CAPABILITIES_BY_PROTOCOL[protocol];
+	if (!(writable as readonly string[]).includes(capability) &&
+		!(CAPABILITIES_BY_PROTOCOL[protocol] as readonly string[]).includes(canonicalCapability)) {
 		throw new Error(
 			`Capability ${JSON.stringify(capability)} is not valid for protocol "${protocol}"`
 		);
 	}
 
 	const cfg = providerEndpoints[protocol];
-	const template = cfg?.endpoints?.[capability];
+
+	if (protocol === 'gemini') {
+		const action = resolveGeminiWireAction(capability, options);
+		const model = options.model;
+		const familyTemplate = cfg?.endpoints?.[GEMINI_GENERATE_OPERATION];
+		if (familyTemplate) {
+			if (!model) throw new Error('Gemini upstream endpoint requires model name');
+			return fillEndpointTemplate(familyTemplate, { model, action });
+		}
+		const legacyTemplate = cfg?.endpoints?.[action];
+		if (legacyTemplate) {
+			if (!model) throw new Error('Gemini upstream endpoint requires model name');
+			return fillEndpointTemplate(legacyTemplate, { model, action });
+		}
+		const base = cfg?.base;
+		if (base) {
+			if (!model) throw new Error('Gemini upstream endpoint requires model name');
+			return buildGeminiUpstreamActionUrl(trimSlash(base), model, action);
+		}
+		const who =
+			options.providerId != null && options.providerId !== ''
+				? `provider_id=${JSON.stringify(options.providerId)}`
+				: 'provider';
+		throw new Error(
+			`${who}: no upstream endpoint for protocol "gemini" capability "${GEMINI_GENERATE_OPERATION}" (configure providers.endpoints.gemini)`
+		);
+	}
+
+	const resolvedCapability = canonicalCapability;
+	const allowed = CAPABILITIES_BY_PROTOCOL[protocol];
+	if (!(allowed as readonly string[]).includes(resolvedCapability)) {
+		throw new Error(
+			`Capability ${JSON.stringify(capability)} is not valid for protocol "${protocol}"`
+		);
+	}
+
+	const template = cfg?.endpoints?.[resolvedCapability];
 	if (template) {
-		const action =
-			options.action ??
-			(capability === 'generateContent' || capability === 'streamGenerateContent'
-				? capability
-				: undefined);
-		return fillEndpointTemplate(template, { model: options.model, action });
+		return fillEndpointTemplate(template, { model: options.model, action: options.action });
 	}
 
 	const base = cfg?.base;
 	if (base) {
 		const root = trimSlash(base);
-		switch (capability) {
+		switch (resolvedCapability) {
 			case 'chat':
 				return `${root}/chat/completions`;
 			case 'images.generations':
@@ -302,18 +384,8 @@ export function resolveUpstreamEndpoint(
 				return `${root}/audio/transcriptions`;
 			case 'messages':
 				return `${root}/v1/messages`;
-			case 'generateContent':
-			case 'streamGenerateContent': {
-				const model = options.model;
-				if (!model) {
-					throw new Error('Gemini upstream endpoint requires model name');
-				}
-				const action = (options.action ?? capability) as GeminiContentAction;
-				return buildGeminiUpstreamActionUrl(root, model, action);
-			}
 			default: {
-				const _exhaustive: never = capability;
-				throw new Error(`Unhandled capability: ${JSON.stringify(_exhaustive)}`);
+				throw new Error(`Unhandled capability: ${JSON.stringify(resolvedCapability)}`);
 			}
 		}
 	}
@@ -323,7 +395,7 @@ export function resolveUpstreamEndpoint(
 			? `provider_id=${JSON.stringify(options.providerId)}`
 			: 'provider';
 	throw new Error(
-		`${who}: no upstream endpoint for protocol "${protocol}" capability "${capability}" (configure providers.endpoints.${protocol})`
+		`${who}: no upstream endpoint for protocol "${protocol}" capability "${resolvedCapability}" (configure providers.endpoints.${protocol})`
 	);
 }
 
@@ -360,8 +432,8 @@ export function providerSupportsUpstreamProtocol(
 
 /**
  * 列出某协议在配置下可用的 capability（与 {@link resolveUpstreamEndpoint} 语义一致）：
- * - 有 `base` → 该协议全部 capability
- * - 无 `base`、仅有 overrides → 仅已配置的那些
+ * - 有 `base` → 该协议全部 canonical capability
+ * - 无 `base`、仅有 overrides → 仅已配置的那些（gemini：任一 family/legacy 键 → models.generate）
  * - 未配置协议 → 空数组
  */
 export function listConfiguredCapabilities(
@@ -374,5 +446,12 @@ export function listConfiguredCapabilities(
 	if (cfg.base) return [...all];
 	const endpoints = cfg.endpoints;
 	if (!endpoints) return [];
+	if (protocol === 'gemini') {
+		const hasAny =
+			Boolean(endpoints[GEMINI_GENERATE_OPERATION]) ||
+			Boolean(endpoints.generateContent) ||
+			Boolean(endpoints.streamGenerateContent);
+		return hasAny ? [GEMINI_GENERATE_OPERATION] : [];
+	}
 	return all.filter((cap) => Boolean(endpoints[cap]));
 }

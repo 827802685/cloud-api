@@ -13,6 +13,7 @@ import {
 	ANTHROPIC_ENDPOINT_CAPABILITIES,
 	GEMINI_ENDPOINT_CAPABILITIES,
 	OPENAI_ENDPOINT_CAPABILITIES,
+	listConfiguredCapabilities,
 	parseProviderEndpoints,
 	type ProviderEndpointCapability,
 } from '@octafuse/core/provider-endpoints';
@@ -504,11 +505,9 @@ export function upstreamOperationsForProviderModel(
 	protocol: UpstreamProtocol
 ): readonly string[] {
 	if (!provider) return [];
-	const config = parseProviderEndpoints(provider)[protocol];
-	if (!config) return [];
-	const providerOperations = config.base
-		? CAPABILITIES_BY_PROTOCOL[protocol] ?? []
-		: Object.keys(config.endpoints ?? {});
+	const map = parseProviderEndpoints(provider);
+	if (!map[protocol]) return [];
+	const providerOperations = listConfiguredCapabilities(map, protocol);
 	const modelOperations = new Set(requestOperationsForModel(model, protocol));
 	return providerOperations.filter((operation) => modelOperations.has(operation));
 }
@@ -518,6 +517,7 @@ export function isPromptCacheSensitiveCapability(capability: string): boolean {
 	return (
 		capability === 'chat' ||
 		capability === 'messages' ||
+		capability === 'models.generate' ||
 		capability === 'generateContent' ||
 		capability === 'streamGenerateContent'
 	);

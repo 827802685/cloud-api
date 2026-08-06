@@ -204,6 +204,8 @@ export interface ModelRoutesRepository {
 	updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number>;
 	updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number>;
 	deleteModelRouteById(id: string): Promise<number>;
+	/** Delete pool (and its surfaces) only when it has no model_routes targets. */
+	deleteRoutePoolIfEmpty(poolId: string): Promise<boolean>;
 }
 
 export interface ProvidersRepository {

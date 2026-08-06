@@ -335,6 +335,11 @@ function requestSurfacePath(
 		return operation === '*' ? '/v1/*' : '/v1/messages';
 	}
 	if (protocol === 'gemini') {
+		// `models.generate` is the routing-family operation, not the URL wire action.
+		// Real client paths use generateContent / streamGenerateContent after the last `:`.
+		if (operation === 'models.generate') {
+			return `/v1beta/models/${modelId}:{generateContent|streamGenerateContent}`;
+		}
 		return `/v1beta/models/${modelId}:${operation}`;
 	}
 	return operation === '*' ? '/*' : `/${operation}`;

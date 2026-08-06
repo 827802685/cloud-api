@@ -145,21 +145,21 @@ describe('resolveRouteStrategy five-level', () => {
 		);
 	});
 
-	it('resolves generateContent and streamGenerateContent independently when rules differ', async () => {
+	it('aliases both legacy Gemini capability rules onto models.generate (generateContent wins)', async () => {
 		const raw = JSON.stringify({
 			rules: {
-				'gemini.generateContent:default': { strategy: 'strict' },
 				'gemini.streamGenerateContent:default': { strategy: 'weighted_random' },
+				'gemini.generateContent:default': { strategy: 'strict' },
 			},
 		});
 		const gen = await resolveRouteStrategy({
 			routePolicyRaw: raw,
 			protocol: 'gemini',
-			capability: 'generateContent',
+			capability: 'models.generate',
 			routeGroup: 'default',
 			repos: mockRepos('affinity'),
 		});
-		const stream = await resolveRouteStrategy({
+		const streamAlias = await resolveRouteStrategy({
 			routePolicyRaw: raw,
 			protocol: 'gemini',
 			capability: 'streamGenerateContent',
@@ -167,7 +167,7 @@ describe('resolveRouteStrategy five-level', () => {
 			repos: mockRepos('affinity'),
 		});
 		assert.equal(gen, 'strict');
-		assert.equal(stream, 'weighted_random');
+		assert.equal(streamAlias, 'strict');
 	});
 
 	it('keeps same affinity order for generateContent and streamGenerateContent when policy is shared', async () => {

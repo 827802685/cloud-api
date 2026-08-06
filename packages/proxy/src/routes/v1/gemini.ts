@@ -1,6 +1,7 @@
 /**
  * 用户路由：`POST /v1beta/models/{model}:{generateContent|streamGenerateContent}`（Gemini 风格路径）。
  */
+import { GEMINI_GENERATE_OPERATION } from '@octafuse/core';
 import { Hono } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';
@@ -171,7 +172,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
       modelId: baseModelId,
       routeGroup: effectiveRouteGroup,
       requestProtocol: 'gemini',
-      requestOperation: action,
+      requestOperation: GEMINI_GENERATE_OPERATION,
     });
     routes = resolvedSurface.routes;
     poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
@@ -214,7 +215,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
     routePolicyRaw: model.route_policy ?? null,
     poolStrategy,
     protocol: 'gemini',
-    capability: action,
+    capability: GEMINI_GENERATE_OPERATION,
     routeGroup: effectiveRouteGroup,
     repos,
   });
@@ -315,13 +316,14 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
           request_body: requestBodyForLog,
           upstream_request_body: upstreamRequestBodyForLog,
           request_protocol: 'gemini',
-          request_operation: action,
+          request_operation: GEMINI_GENERATE_OPERATION,
           upstream_protocol: chosenRoute.upstreamProtocol,
           upstream_operation: chosenRoute.upstreamOperation,
           model_surface_id: chosenRoute.modelSurfaceId,
           route_pool_id: chosenRoute.routePoolId,
           route_target_id: chosenRoute.targetId,
           adapter: chosenRoute.adapter,
+          gemini_wire_action: action,
           usage: usageCollected,
           model_pricing_profile: model.pricing_profile ?? null,
           route_price_override_json: chosenRoute.priceOverrideRaw,

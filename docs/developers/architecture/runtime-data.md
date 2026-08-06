@@ -90,6 +90,7 @@ flowchart TB
 - 形状：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。
 - 迁移 **`0015_single_provider_key`**：`providers` 恢复单列 **`api_key`** + **`status`**；删除 **`provider_api_keys`**；`model_routes.weight`；`models.route_policy` 替换 `sticky_config`；种子 **`ROUTE_STRATEGY`**。切换步骤见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
 - 迁移 **`0016_route_surfaces_pools`**：新增 `model_surfaces` / `route_pools`；`model_routes` 增加 `route_pool_id`、`upstream_operation`、`adapter`；请求日志增加 Surface / Pool / Target 与路由追踪字段。完整模型见 [route-topology.md](./route-topology.md)。
+- 迁移 **`0017_gemini_models_generate`**：将 Gemini `generateContent` / `streamGenerateContent` Surface 合并为家族 operation **`models.generate`**；规范化 `model_routes.upstream_operation`；冲突 Pool 降级为 `inactive` 并加 `[v220-conflict]` 名字前缀。切换步骤见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
 
 #### Endpoint capability 维护规则
 
@@ -144,9 +145,10 @@ sequenceDiagram
 > **完整请求处理路径**（鉴权 → 路由 → 策略 → failover → 记账）：见 **[proxy-request-lifecycle.md](./proxy-request-lifecycle.md)**。
 > **Surface → Pool → Target 拓扑**：见 **[route-topology.md](./route-topology.md)**。
 > **策略语义与六级解析**：见 **[route-strategies.md](../reference/route-strategies.md)**。
-> **0015 / 0016 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。
+> **0015 / 0016 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。  
+> **0017 Gemini `models.generate` 切换步骤**：见 **[gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)**。
 
-### Schema（迁移 **0015 / 0016**，三库同语义）
+### Schema（迁移 **0015 / 0016 / 0017**，三库同语义）
 
 | 对象 | 含义 |
 |------|------|

@@ -222,5 +222,17 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			const deleted = await drizzle.delete(pgMr).where(eq(pgMr.id, id)).returning({ id: pgMr.id });
 			return deleted.length;
 		},
+
+		async deleteRoutePoolIfEmpty(poolId: string): Promise<boolean> {
+			const remaining = await pg<Array<{ ok: number }>>`
+				SELECT 1 AS ok FROM model_routes WHERE route_pool_id = ${poolId} LIMIT 1
+			`;
+			if (remaining[0]) return false;
+			await pg.begin(async (tx) => {
+				await tx`DELETE FROM model_surfaces WHERE route_pool_id = ${poolId}`;
+				await tx`DELETE FROM route_pools WHERE id = ${poolId}`;
+			});
+			return true;
+		},
 	};
 }

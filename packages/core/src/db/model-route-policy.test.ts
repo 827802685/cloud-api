@@ -47,21 +47,18 @@ describe('parseModelRoutePolicy', () => {
 		assert.equal(config!.rules.get('openai.chat:default')?.strategy, 'strict');
 	});
 
-	it('accepts camelCase Gemini capabilities case-insensitively', () => {
+	it('aliases legacy Gemini capabilities onto models.generate with generateContent preferred', () => {
 		const config = parseModelRoutePolicy(
 			JSON.stringify({
 				rules: {
-					'gemini.generateContent:default': { strategy: 'strict' },
 					'gemini.streamGenerateContent:default': { strategy: 'weighted_random' },
+					'gemini.generateContent:default': { strategy: 'strict' },
 				},
 			})
 		);
 		assert.ok(config);
-		assert.equal(config!.rules.get('gemini.generatecontent:default')?.strategy, 'strict');
-		assert.equal(
-			config!.rules.get('gemini.streamgeneratecontent:default')?.strategy,
-			'weighted_random'
-		);
+		assert.equal(config!.rules.get('gemini.models.generate:default')?.strategy, 'strict');
+		assert.equal(config!.rules.has('gemini.generatecontent:default'), false);
 		assert.equal(
 			resolveModelRoutePolicyStrategy(
 				JSON.stringify({
@@ -71,6 +68,19 @@ describe('parseModelRoutePolicy', () => {
 				}),
 				'gemini',
 				'generateContent',
+				'default'
+			),
+			'strict'
+		);
+		assert.equal(
+			resolveModelRoutePolicyStrategy(
+				JSON.stringify({
+					rules: {
+						'gemini.generateContent:default': { strategy: 'strict' },
+					},
+				}),
+				'gemini',
+				'models.generate',
 				'default'
 			),
 			'strict'

@@ -3,6 +3,7 @@
  */
 import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
 import {
+	canonicalizeRequestOperation,
 	isRequestOperationForProtocol,
 	normalizeRouteOperation,
 	PASSTHROUGH_ROUTE_ADAPTER,
@@ -119,13 +120,19 @@ export async function createModelRouteService(
 	} catch (e) {
 		throw badRequest(e instanceof Error ? e.message : 'Invalid request_protocol');
 	}
-	const requestOperation = normalizeRouteOperation(body.request_operation);
+	const requestOperation = canonicalizeRequestOperation(
+		requestProtocol,
+		normalizeRouteOperation(body.request_operation)
+	);
 	if (!isRequestOperationForProtocol(requestProtocol, requestOperation)) {
 		throw badRequest(
 			`request_operation "${requestOperation}" is not valid for request_protocol "${requestProtocol}"`
 		);
 	}
-	const upstreamOperation = normalizeRouteOperation(body.upstream_operation);
+	const upstreamOperation = canonicalizeRequestOperation(
+		proto,
+		normalizeRouteOperation(body.upstream_operation)
+	);
 	if (!isRequestOperationForProtocol(proto, upstreamOperation)) {
 		throw badRequest(
 			`upstream_operation "${upstreamOperation}" is not valid for upstream_protocol "${proto}"`
@@ -257,7 +264,16 @@ export async function updateModelRouteService(
 
 	const requestProtocolRaw = body.request_protocol;
 	const requestOperationRaw = body.request_operation;
-	if (requestProtocolRaw !== undefined || requestOperationRaw !== undefined) {
+	const routeGroupChanging = patch.route_group !== undefined;
+	const oldPoolId =
+		existing.route_pool_id != null && String(existing.route_pool_id).trim() !== ''
+			? String(existing.route_pool_id)
+			: null;
+	if (
+		requestProtocolRaw !== undefined ||
+		requestOperationRaw !== undefined ||
+		routeGroupChanging
+	) {
 		let requestProtocol: UpstreamProtocol;
 		try {
 			requestProtocol = normalizeUpstreamProtocol(
@@ -266,7 +282,16 @@ export async function updateModelRouteService(
 		} catch (e) {
 			throw badRequest(e instanceof Error ? e.message : 'Invalid request_protocol');
 		}
-		const requestOperation = normalizeRouteOperation(requestOperationRaw);
+		// When body omits request_operation (e.g. only route_group change), keep the
+		// passthrough-aligned operation from the existing target instead of defaulting to '*'.
+		const requestOperation = canonicalizeRequestOperation(
+			requestProtocol,
+			normalizeRouteOperation(
+				requestOperationRaw !== undefined && requestOperationRaw !== null
+					? requestOperationRaw
+					: existing.upstream_operation
+			)
+		);
 		if (!isRequestOperationForProtocol(requestProtocol, requestOperation)) {
 			throw badRequest(
 				`request_operation "${requestOperation}" is not valid for request_protocol "${requestProtocol}"`
@@ -279,8 +304,9 @@ export async function updateModelRouteService(
 		if (requestProtocol !== effectiveProto && effectiveAdapter === PASSTHROUGH_ROUTE_ADAPTER) {
 			throw badRequest('Cross-protocol targets require a conversion adapter');
 		}
-		const effectiveUpstreamOperation = normalizeRouteOperation(
-			body.upstream_operation ?? existing.upstream_operation
+		const effectiveUpstreamOperation = canonicalizeRequestOperation(
+			effectiveProto,
+			normalizeRouteOperation(body.upstream_operation ?? existing.upstream_operation)
 		);
 		if (
 			effectiveAdapter === PASSTHROUGH_ROUTE_ADAPTER &&
@@ -306,7 +332,10 @@ export async function updateModelRouteService(
 		patch.route_pool_id = topology.poolId;
 	}
 	if (patch.upstream_operation !== undefined) {
-		const operation = normalizeRouteOperation(patch.upstream_operation);
+		const operation = canonicalizeRequestOperation(
+			effectiveProto,
+			normalizeRouteOperation(patch.upstream_operation)
+		);
 		if (!isRequestOperationForProtocol(effectiveProto, operation)) {
 			throw badRequest(
 				`upstream_operation "${operation}" is not valid for upstream_protocol "${effectiveProto}"`
@@ -326,12 +355,29 @@ export async function updateModelRouteService(
 	if (!hasPatch) return;
 	const changes = await repos.routes.updateModelRouteByPatch(id, patch);
 	if (!changes) throw notFound('Route not found');
+
+	const newPoolId =
+		patch.route_pool_id != null && String(patch.route_pool_id).trim() !== ''
+			? String(patch.route_pool_id)
+			: null;
+	if (oldPoolId && newPoolId && oldPoolId !== newPoolId) {
+		await repos.routes.deleteRoutePoolIfEmpty(oldPoolId);
+	}
 }
 
-/** 删除路由；不存在抛 `notFound`。 */
+/** 删除路由；不存在抛 `notFound`。空 Pool / Surface 一并 GC。 */
 export async function deleteModelRouteService(repos: GatewayRepositories, id: string): Promise<void> {
+	const existing = await repos.routes.getModelRouteRowById(id);
+	if (!existing) throw notFound('Route not found');
+	const poolId =
+		existing.route_pool_id != null && String(existing.route_pool_id).trim() !== ''
+			? String(existing.route_pool_id)
+			: null;
 	const changes = await repos.routes.deleteModelRouteById(id);
 	if (!changes) throw notFound('Route not found');
+	if (poolId) {
+		await repos.routes.deleteRoutePoolIfEmpty(poolId);
+	}
 }
 
 /** Update the strategy owned by one concrete route pool. `null` inherits the model/global policy. */

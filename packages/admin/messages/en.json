@@ -333,7 +333,8 @@
 				"audio": "audio",
 				"messages": "messages",
 				"generateContent": "generate",
-				"streamGenerateContent": "stream"
+				"streamGenerateContent": "stream",
+				"modelsGenerate": "generate"
 			}
 		},
 		"import": {
@@ -395,7 +396,9 @@
 			"apiKeyHint": "Upstream credential for this provider.",
 			"apiKeyEditHint": "Leave blank to keep the current key. Enter a new value to replace it.",
 			"statusEnabled": "Provider enabled",
-			"statusHint": "Disabled providers are skipped for routing and playground."
+			"statusHint": "Disabled providers are skipped for routing and playground.",
+			"capModelsGenerate": "models.generate (/v1beta/models/{model}:{action}) — stream + non-stream",
+			"legacyPerActionNotice": "This provider still has separate generateContent / streamGenerateContent overrides that cannot be safely merged. They are preserved as-is on save. Clear them in the database or set a single {action} template after review."
 		}
 	},
 	"models": {
@@ -732,7 +735,8 @@
 			"audioPricePerSecond": "Price per second",
 			"audioMinimumSeconds": "Minimum seconds",
 			"weight": "Weight",
-			"weightHint": "Same-priority layer weight (≥ 1). Higher = more traffic for weighted strategies."
+			"weightHint": "Same-priority layer weight (≥ 1). Higher = more traffic for weighted strategies.",
+			"operationModelsGenerate": "models.generate · Generate Content (stream + non-stream)"
 		},
 		"kindAudio": "Audio",
 		"strategy": {

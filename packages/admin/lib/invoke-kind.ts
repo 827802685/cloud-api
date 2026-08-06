@@ -89,9 +89,7 @@ export function resolveRequestOperation(input: {
 		case 'llm':
 			if (input.protocol === 'openai') return 'chat';
 			if (input.protocol === 'anthropic') return 'messages';
-			return input.geminiAction === 'generateContent'
-				? 'generateContent'
-				: 'streamGenerateContent';
+			return 'models.generate';
 		default: {
 			const _exhaustive: never = input.kind;
 			return _exhaustive;
