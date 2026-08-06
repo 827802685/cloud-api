@@ -17,7 +17,8 @@
 |------|------|
 | Cloudflare 首次上云 | [cloudflare-quickstart.md](./cloudflare-quickstart.md) |
 | Cloudflare 运维 / Workers Builds / 多实例 | [cloudflare.md](./cloudflare.md) · 实例 env：[cloudflare-worker/README.md](../../../cloudflare-worker/README.md) |
-| Docker / Postgres / MySQL / Hybrid 自托管 | [docker.md](./docker.md) |
+| Docker / Postgres / MySQL / Hybrid 自托管 | [docker.md](./docker.md)（含 [§8 如何更新版本](./docker.md#8-如何更新版本)） |
+| Cloudflare 已上线实例升级 | [cloudflare-quickstart.md §12](./cloudflare-quickstart.md#12-后续升级) |
 | Zeabur 等容器平台 | [zeabur.md](./zeabur.md) |
 | D1 ↔ Postgres ETL / 对账 | [d1-postgres-cutover.md](../migrations/d1-postgres-cutover.md) |
 | 本地开发组合 | [local-development.md](../../developers/local-development.md) |
