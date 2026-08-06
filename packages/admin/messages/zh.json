@@ -752,6 +752,9 @@
 			"guideHint": "点击策略卡片即可选择；保存前可在下方预览当前 Target 的处理方式。",
 			"bestFor": "适合",
 			"tradeoff": "取舍",
+			"labelSeparator": "：",
+			"recommended": "推荐",
+			"instanceLocal": "单实例",
 			"source": {
 				"pool": "当前路由池",
 				"modelOperation": "模型端点规则",
@@ -760,14 +763,26 @@
 				"global": "全局配置",
 				"default": "系统默认"
 			},
+			"display": {
+				"affinity": "缓存亲和",
+				"weighted_random": "加权随机",
+				"strict": "固定顺序",
+				"round_robin": "加权轮询"
+			},
+			"diagramCaption": {
+				"affinity": "同用户键粘滞同一 Target",
+				"strict": "所有请求共用固定顺序",
+				"weighted_random": "每次请求按权重随机",
+				"round_robin": "轮流首选 · 单实例计数"
+			},
 			"affinity": "affinity",
 			"weighted_random": "weighted_random",
 			"strict": "strict",
 			"round_robin": "round_robin",
 			"description": {
 				"affinity": {
-					"summary": "按用户与模型生成稳定偏好，同一类请求通常命中同一 Provider；权重影响整体分布。",
-					"bestFor": "Prompt Cache、会话连续性",
+					"summary": "用 userId + 模型 + 分组 + 协议做哈希粘滞：同一用户对同一模型会稳定落到同一 Provider（利于上游 Prompt Cache）；不同用户可能落到不同 Provider。权重只影响整体分布，不是所有人共用一个主 Provider。",
+					"bestFor": "Prompt Cache、同用户会话连续性",
 					"tradeoff": "短时间流量不一定完全均匀"
 				},
 				"weighted_random": {
@@ -776,7 +791,7 @@
 					"tradeoff": "同一用户可能频繁切换 Provider"
 				},
 				"strict": {
-					"summary": "同优先级内按权重从高到低固定排序，权重相同时按 Provider ID 排序。",
+					"summary": "所有请求共用同一固定尝试顺序：同优先级内按权重从高到低，权重相同时按 Provider ID。与缓存亲和不同——不会按用户粘滞。",
 					"bestFor": "明确主备、结果可预测",
 					"tradeoff": "首选 Provider 会承担大部分流量"
 				},
@@ -789,13 +804,14 @@
 			"effectTitle": "策略效果预览",
 			"effectHint": "基于当前启用的 Target 解释选择顺序，不会发送真实请求。",
 			"effect": {
-				"affinity": "同一用户、模型、分组和协议会得到稳定的首选 Target；失败时继续尝试该层其余 Target。",
+				"affinity": "亲和键 = userId|model|group|protocol。同一键稳定首选同一 Target；失败时继续尝试该层其余 Target。不同用户的首选可以不同。",
 				"weighted_random": "每次请求按权重随机决定首选 Target；百分比是该优先级内首次命中的近似占比。",
-				"strict": "数字表示同优先级内的固定尝试顺序：权重越高越靠前。",
+				"strict": "数字表示所有请求共用的固定尝试顺序：权重越高越靠前，与用户无关。",
 				"round_robin": "同优先级内按权重轮流成为首选 Target；实际起点随当前运行实例的计数器变化。"
 			},
 			"priorityFirst": "Priority 始终先于策略：只有最高优先级全部失败后，才进入下一回退层。",
 			"runtimeHealthHint": "实际请求还会先排除熔断中的 Provider，因此运行时顺序可能随健康状态变化。",
+			"roundRobinInstanceHint": "在 Cloudflare Workers 上，每个 isolate 各自维护计数器，轮询仅为尽力均匀，并非全局协调。",
 			"singleTargetEffect": "当前有 {count} 个可用 Target；少于 2 个时，各策略的首选结果相同。",
 			"firstAttemptLayer": "首选层",
 			"fallbackLayer": "回退层",
@@ -1418,7 +1434,7 @@
 		},
 		"routeStrategy": {
 			"title": "全局路由策略",
-			"description": "模型未配置 route_policy 时的默认策略（system_config.ROUTE_STRATEGY）。",
+			"description": "模型或路由池未覆盖时的默认策略（system_config.ROUTE_STRATEGY）。示意图展示同优先级内如何选择 Target。",
 			"strategy": "策略"
 		},
 		"saveRouteStrategy": "保存路由策略"

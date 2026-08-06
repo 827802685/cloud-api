@@ -752,6 +752,9 @@
 			"guideHint": "Select a strategy card, then preview how it handles the current targets before saving.",
 			"bestFor": "Best for",
 			"tradeoff": "Trade-off",
+			"labelSeparator": ": ",
+			"recommended": "Recommended",
+			"instanceLocal": "Per instance",
 			"source": {
 				"pool": "Current route pool",
 				"modelOperation": "Model endpoint rule",
@@ -760,14 +763,26 @@
 				"global": "Global config",
 				"default": "System default"
 			},
+			"display": {
+				"affinity": "Cache affinity",
+				"weighted_random": "Weighted random",
+				"strict": "Fixed order",
+				"round_robin": "Weighted round-robin"
+			},
+			"diagramCaption": {
+				"affinity": "same user key → sticky target",
+				"strict": "all requests → same fixed order",
+				"weighted_random": "each request → by weight %",
+				"round_robin": "rotate first choice · per instance"
+			},
 			"affinity": "affinity",
 			"weighted_random": "weighted_random",
 			"strict": "strict",
 			"round_robin": "round_robin",
 			"description": {
 				"affinity": {
-					"summary": "Builds a stable preference from user and model context; weights shape the overall distribution.",
-					"bestFor": "Prompt cache and session locality",
+					"summary": "Sticky hash on userId + model + group + protocol: the same user keeps the same preferred provider (helps upstream prompt cache); different users may pin to different providers. Weights only shape the overall mix — this is not one global primary for everyone.",
+					"bestFor": "Prompt cache and same-user session locality",
 					"tradeoff": "Short-term traffic may not be perfectly even"
 				},
 				"weighted_random": {
@@ -776,7 +791,7 @@
 					"tradeoff": "The same user may frequently switch providers"
 				},
 				"strict": {
-					"summary": "Uses a deterministic weight-descending order within a priority; provider ID breaks ties.",
+					"summary": "Every request shares one fixed attempt order: weight descending within a priority, then provider ID. Unlike affinity, there is no per-user sticky pin.",
 					"bestFor": "Explicit primary/backup routing and predictability",
 					"tradeoff": "The first provider receives most traffic"
 				},
@@ -789,13 +804,14 @@
 			"effectTitle": "Strategy effect preview",
 			"effectHint": "Explains ordering from enabled targets only; no real request is sent.",
 			"effect": {
-				"affinity": "The same user, model, group, and protocol get a stable preferred target; failures continue through the rest of that layer.",
+				"affinity": "Affinity key = userId|model|group|protocol. The same key keeps a stable first target; failures continue in that layer. Different users can prefer different targets.",
 				"weighted_random": "Each request picks its first target by weight; percentages approximate first-choice share within the priority.",
-				"strict": "Numbers show the fixed attempt order within each priority: higher weight comes first.",
+				"strict": "Numbers show the shared fixed attempt order for every request: higher weight comes first, independent of the user.",
 				"round_robin": "Targets in the same priority take turns as first choice by weight; the actual start depends on this runtime instance's counter."
 			},
 			"priorityFirst": "Priority always wins: the next fallback layer is used only after every target in the higher layer fails.",
 			"runtimeHealthHint": "Runtime also removes circuit-open providers first, so the live order can change with provider health.",
+			"roundRobinInstanceHint": "On Cloudflare Workers, each isolate keeps its own counter, so rotation is best-effort rather than globally even.",
 			"singleTargetEffect": "{count} usable target(s) are available; with fewer than two, every strategy has the same first choice.",
 			"firstAttemptLayer": "First attempt layer",
 			"fallbackLayer": "Fallback layer",
@@ -1418,7 +1434,7 @@
 		},
 		"routeStrategy": {
 			"title": "Global route strategy",
-			"description": "Default strategy when a model has no route_policy override (system_config.ROUTE_STRATEGY).",
+			"description": "Default strategy when a model or pool has no override (system_config.ROUTE_STRATEGY). Diagrams show how each strategy picks targets within the same priority.",
 			"strategy": "Strategy"
 		},
 		"saveRouteStrategy": "Save route strategy"
