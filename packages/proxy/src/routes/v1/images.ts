@@ -19,7 +19,7 @@ import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import {
 	buildAffinityKey,
 	buildTierKeyPrefix,
-	resolveRouteStrategy,
+	resolveRouteStrategyPlan,
 } from '../../services/route-strategies';
 import { proxyImageEdits, proxyImageGenerations, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
@@ -75,6 +75,7 @@ async function resolveOpenAiImageRoutes(
 			effectiveRouteGroup: string;
 			routes: RouteResult[];
 			poolStrategy: string | null;
+			poolTierStrategies: string | null;
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
@@ -108,6 +109,7 @@ async function resolveOpenAiImageRoutes(
 			effectiveRouteGroup,
 			routes,
 			poolStrategy: resolvedSurface.surface?.pool_strategy ?? null,
+			poolTierStrategies: resolvedSurface.surface?.pool_tier_strategies ?? null,
 		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Model route resolution failed';
@@ -833,9 +835,10 @@ imageRoutes.post('/generations', async (c) => {
 	// Seedream 等兼容扩展：用户显式传入时透传；亦可由 route `custom_params` 注入默认值
 	applyOpenAiImageGenerationExtras(upstreamBody, body);
 
-	const strategy = await resolveRouteStrategy({
+	const strategyPlan = await resolveRouteStrategyPlan({
 		routePolicyRaw: model.route_policy ?? null,
 		poolStrategy: routed.poolStrategy,
+		poolTierStrategies: routed.poolTierStrategies,
 		protocol: 'openai',
 		capability: 'images.generations',
 		routeGroup: effectiveRouteGroup,
@@ -852,7 +855,8 @@ imageRoutes.post('/generations', async (c) => {
 	const proxyResult = await proxyImageGenerations(repos, routes, upstreamBody, c.req.raw.signal, {
 		affinityKey,
 		tierKeyPrefix,
-		strategy,
+		strategy: strategyPlan.base,
+		tierStrategies: strategyPlan.tierOverrides,
 		timing,
 	});
 
@@ -983,9 +987,10 @@ imageRoutes.post('/edits', async (c) => {
 		return circuitBlocked;
 	}
 
-	const strategy = await resolveRouteStrategy({
+	const strategyPlan = await resolveRouteStrategyPlan({
 		routePolicyRaw: model.route_policy ?? null,
 		poolStrategy: routed.poolStrategy,
+		poolTierStrategies: routed.poolTierStrategies,
 		protocol: 'openai',
 		capability: 'images.edits',
 		routeGroup: effectiveRouteGroup,
@@ -1002,7 +1007,8 @@ imageRoutes.post('/edits', async (c) => {
 	const proxyResult = await proxyImageEdits(repos, routes, edit, c.req.raw.signal, {
 		affinityKey,
 		tierKeyPrefix,
-		strategy,
+		strategy: strategyPlan.base,
+		tierStrategies: strategyPlan.tierOverrides,
 		timing,
 	});
 

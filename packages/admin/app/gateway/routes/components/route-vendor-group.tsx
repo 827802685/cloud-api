@@ -31,7 +31,8 @@ type Props = {
 		group: string,
 		poolId?: string | null,
 		poolStrategy?: string | null,
-		requestOperation?: string
+		requestOperation?: string,
+		extras?: { priority?: number; poolTierStrategies?: string | null }
 	) => void;
 };
 

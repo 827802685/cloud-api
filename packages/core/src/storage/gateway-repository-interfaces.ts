@@ -201,7 +201,14 @@ export interface ModelRoutesRepository {
 		requestOperation: string;
 		poolName: string;
 	}): Promise<{ poolId: string; surfaceId: string }>;
-	updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number>;
+	/**
+	 * Patch pool-level routing policy. Only provided fields are updated.
+	 * Pass `null` for a field to clear it (inherit).
+	 */
+	updateRoutePoolPolicy(
+		poolId: string,
+		patch: { strategy?: string | null; tierStrategies?: string | null }
+	): Promise<number>;
 	updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number>;
 	deleteModelRouteById(id: string): Promise<number>;
 	/** Delete pool (and its surfaces) only when it has no model_routes targets. */

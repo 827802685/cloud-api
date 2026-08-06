@@ -37,7 +37,7 @@ const emptyRepos = {} as GatewayRepositories;
 const defaultOptions = {
 	affinityKey: 'u|m|default|openai',
 	tierKeyPrefix: 'm|default|openai',
-	strategy: 'strict' as const,
+	strategy: 'fixed_order' as const,
 };
 
 beforeEach(() => {

@@ -570,8 +570,12 @@
 			"strategyInherit": "Strategy: inherit",
 			"inheritShort": "inherit",
 			"effectiveStrategy": "Effective strategy",
+			"tierStrategy": "Tier strategy",
+			"tierStrategyEdit": "Edit tier strategy: {strategy} ({source})",
+			"failoverRules": "Failover rules",
 			"strategySource": {
-				"pool": "Current route pool",
+				"tier": "This tier",
+				"pool": "Inherited from route pool",
 				"modelOperation": "Inherited from model endpoint rule",
 				"modelProtocol": "Inherited from model protocol rule",
 				"model": "Inherited from model default",
@@ -586,6 +590,7 @@
 			"enabledShort": "Enabled",
 			"disabledShort": "Disabled",
 			"addRoute": "Add route",
+			"noProviders": "No providers available",
 			"firstAttempt": "First attempt layer",
 			"fallback": "On failure, continue",
 			"fallbackLayer": "Fallback layer",
@@ -754,8 +759,13 @@
 			"tradeoff": "Trade-off",
 			"labelSeparator": ": ",
 			"recommended": "Recommended",
-			"instanceLocal": "Per instance",
+			"tierLevel": "Tier strategy",
+			"tierLevelHint": "Applies only to Target ordering within this priority tier. Leave empty to inherit the route-pool default.",
+			"poolDefault": "Route-pool default strategy",
+			"poolDefaultHint": "Used by priority tiers without their own override. Leave empty to continue the model / global inheritance chain.",
+			"tierRequiresPool": "Per-tier strategy requires a route pool. Add a provider to this surface first to create one.",
 			"source": {
+				"tier": "Tier override",
 				"pool": "Current route pool",
 				"modelOperation": "Model endpoint rule",
 				"modelProtocol": "Model protocol rule",
@@ -764,50 +774,46 @@
 				"default": "System default"
 			},
 			"display": {
-				"affinity": "Cache affinity",
+				"cache_affinity": "Cache affinity",
 				"weighted_random": "Weighted random",
-				"strict": "Fixed order",
-				"round_robin": "Weighted round-robin"
+				"fixed_order": "Fixed order",
+				"weighted_round_robin": "Weighted round-robin"
 			},
 			"diagramCaption": {
-				"affinity": "same user key → sticky target",
-				"strict": "all requests → same fixed order",
+				"cache_affinity": "same user key → sticky target",
+				"fixed_order": "all requests → same fixed order",
 				"weighted_random": "each request → by weight %",
-				"round_robin": "rotate first choice · per instance"
+				"weighted_round_robin": "rotate first choice"
 			},
-			"affinity": "affinity",
-			"weighted_random": "weighted_random",
-			"strict": "strict",
-			"round_robin": "round_robin",
 			"description": {
-				"affinity": {
+				"cache_affinity": {
 					"summary": "Sticky hash on userId + model + group + protocol: the same user keeps the same preferred provider (helps upstream prompt cache); different users may pin to different providers. Weights only shape the overall mix — this is not one global primary for everyone.",
 					"bestFor": "Prompt cache and same-user session locality",
 					"tradeoff": "Short-term traffic may not be perfectly even"
+				},
+				"fixed_order": {
+					"summary": "Every request shares one fixed attempt order: weight descending within a priority, then provider ID. Unlike sticky routing, it does not keep a user on the same provider.",
+					"bestFor": "Explicit primary/backup routing and predictability",
+					"tradeoff": "The first provider receives most traffic"
+				},
+				"weighted_round_robin": {
+					"summary": "Rotates through a weight-expanded sequence so providers take turns as first choice.",
+					"bestFor": "Even rotation and capacity sharing",
+					"tradeoff": "Counters are per runtime instance, not globally coordinated"
 				},
 				"weighted_random": {
 					"summary": "Randomly selects by weight per request and builds a no-replacement retry order.",
 					"bestFor": "Proportional traffic splits, A/B tests, or cost allocation",
 					"tradeoff": "The same user may frequently switch providers"
-				},
-				"strict": {
-					"summary": "Every request shares one fixed attempt order: weight descending within a priority, then provider ID. Unlike affinity, there is no per-user sticky pin.",
-					"bestFor": "Explicit primary/backup routing and predictability",
-					"tradeoff": "The first provider receives most traffic"
-				},
-				"round_robin": {
-					"summary": "Rotates through a weight-expanded sequence so providers take turns as first choice.",
-					"bestFor": "Even rotation and capacity sharing",
-					"tradeoff": "Counters are per runtime instance, not globally coordinated"
 				}
 			},
 			"effectTitle": "Strategy effect preview",
 			"effectHint": "Explains ordering from enabled targets only; no real request is sent.",
 			"effect": {
-				"affinity": "Affinity key = userId|model|group|protocol. The same key keeps a stable first target; failures continue in that layer. Different users can prefer different targets.",
-				"weighted_random": "Each request picks its first target by weight; percentages approximate first-choice share within the priority.",
-				"strict": "Numbers show the shared fixed attempt order for every request: higher weight comes first, independent of the user.",
-				"round_robin": "Targets in the same priority take turns as first choice by weight; the actual start depends on this runtime instance's counter."
+				"cache_affinity": "Affinity key = userId|model|group|protocol. The same key keeps a stable first target; failures continue in that layer. Different users can prefer different targets.",
+				"fixed_order": "Numbers show the shared fixed attempt order for every request: higher weight comes first, independent of the user.",
+				"weighted_round_robin": "Targets in the same priority take turns as first choice by weight; the actual start depends on this runtime instance's counter.",
+				"weighted_random": "Each request picks its first target by weight; percentages approximate first-choice share within the priority."
 			},
 			"priorityFirst": "Priority always wins: the next fallback layer is used only after every target in the higher layer fails.",
 			"runtimeHealthHint": "Runtime also removes circuit-open providers first, so the live order can change with provider health.",
@@ -816,8 +822,24 @@
 			"firstAttemptLayer": "First attempt layer",
 			"fallbackLayer": "Fallback layer",
 			"inactiveExcluded": "Disabled routes or providers are excluded from this preview.",
-			"hintCache": "Non-affinity may reduce prompt cache hit rate.",
-			"hintNoCache": "Upstream has no prompt cache; prefer weighted_random or round_robin."
+			"hintCache": "Non-cache_affinity may reduce prompt cache hit rate.",
+			"hintNoCache": "Upstream has no prompt cache; prefer weighted_random or weighted_round_robin.",
+			"cache_affinity": "cache_affinity",
+			"weighted_random": "weighted_random",
+			"fixed_order": "fixed_order",
+			"weighted_round_robin": "weighted_round_robin"
+		},
+		"failover": {
+			"title": "Failover rules",
+			"readonlyHint": "These rules are fixed today and not configurable yet.",
+			"order": "Attempt order: priority tiers high → low; within a tier, order by that tier's route strategy; skip providers in cooldown.",
+			"sameLayer": "Same-tier failover: 429 / 5xx / 401 / 403 / 524 / network errors try the next candidate; client errors such as 400 / 404 do not switch providers.",
+			"crossLayer": "Cross-tier failover: after a higher priority tier is exhausted, continue to the next priority tier (operator-defined primary/backup).",
+			"attemptLimit": "No fixed retry cap: every active route that is not circuit-open may be tried.",
+			"circuitCooldown": "Provider cooldown: 429 backs off 5s→15s→30s→60s (prefer upstream Retry-After, capped at 15 minutes); 401/403 for 5 minutes; 5xx opens for 10s after 3 consecutive failures.",
+			"allBusy": "If every provider is cooling down: gateway returns 429 circuit.upstream_capacity_exhausted with zero upstream calls; honor Retry-After.",
+			"memoryNote": "Cooldown state is in-process memory and is not shared across Cloudflare Worker isolates.",
+			"imagesAbort": "Image generation: client cancel or gateway timeout returns 504 and does not fail over to another provider."
 		}
 	},
 	"playground": {
@@ -1434,8 +1456,10 @@
 		},
 		"routeStrategy": {
 			"title": "Global route strategy",
-			"description": "Default strategy when a model or pool has no override (system_config.ROUTE_STRATEGY). Diagrams show how each strategy picks targets within the same priority.",
-			"strategy": "Strategy"
+			"description": "Default strategy when a model or pool has no override (system_config.ROUTE_STRATEGY).",
+			"strategy": "Strategy",
+			"change": "Change",
+			"dialogHint": "Choose the default strategy used when a model or pool has no override."
 		},
 		"saveRouteStrategy": "Save route strategy"
 	},

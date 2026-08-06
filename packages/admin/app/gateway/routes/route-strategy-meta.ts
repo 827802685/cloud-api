@@ -8,39 +8,33 @@ export type RouteStrategyMeta = {
 	/** Shown as a secondary monospace badge; never localized. */
 	machineId: RouteStrategyName;
 	recommended: boolean;
-	/** Soft warning for CF Workers / multi-isolate deployments. */
-	instanceLocal: boolean;
 	diagram: RouteStrategyDiagramKind;
 };
 
 const META_BY_ID: Record<RouteStrategyName, RouteStrategyMeta> = {
-	affinity: {
-		id: 'affinity',
-		machineId: 'affinity',
+	cache_affinity: {
+		id: 'cache_affinity',
+		machineId: 'cache_affinity',
 		recommended: true,
-		instanceLocal: false,
-		diagram: 'affinity',
+		diagram: 'cache_affinity',
 	},
-	strict: {
-		id: 'strict',
-		machineId: 'strict',
+	fixed_order: {
+		id: 'fixed_order',
+		machineId: 'fixed_order',
 		recommended: false,
-		instanceLocal: false,
-		diagram: 'strict',
+		diagram: 'fixed_order',
 	},
 	weighted_random: {
 		id: 'weighted_random',
 		machineId: 'weighted_random',
 		recommended: false,
-		instanceLocal: false,
 		diagram: 'weighted_random',
 	},
-	round_robin: {
-		id: 'round_robin',
-		machineId: 'round_robin',
+	weighted_round_robin: {
+		id: 'weighted_round_robin',
+		machineId: 'weighted_round_robin',
 		recommended: false,
-		instanceLocal: true,
-		diagram: 'round_robin',
+		diagram: 'weighted_round_robin',
 	},
 };
 
@@ -49,10 +43,10 @@ const META_BY_ID: Record<RouteStrategyName, RouteStrategyMeta> = {
  * Persisted enum order remains `ROUTE_STRATEGY_NAMES` in core.
  */
 export const ROUTE_STRATEGY_UI_ORDER = [
-	'affinity',
-	'strict',
+	'cache_affinity',
+	'fixed_order',
 	'weighted_random',
-	'round_robin',
+	'weighted_round_robin',
 ] as const satisfies readonly RouteStrategyName[];
 
 export const ROUTE_STRATEGY_META_LIST: RouteStrategyMeta[] = ROUTE_STRATEGY_UI_ORDER.map(

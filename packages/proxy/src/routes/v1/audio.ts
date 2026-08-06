@@ -18,7 +18,7 @@ import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import {
 	buildAffinityKey,
 	buildTierKeyPrefix,
-	resolveRouteStrategy,
+	resolveRouteStrategyPlan,
 } from '../../services/route-strategies';
 import { proxyAudioTranscriptions, type ProxyResult } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
@@ -67,6 +67,7 @@ async function resolveOpenAiAudioRoutes(
 			effectiveRouteGroup: string;
 			routes: RouteResult[];
 			poolStrategy: string | null;
+			poolTierStrategies: string | null;
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
@@ -100,6 +101,7 @@ async function resolveOpenAiAudioRoutes(
 			effectiveRouteGroup,
 			routes,
 			poolStrategy: resolvedSurface.surface?.pool_strategy ?? null,
+			poolTierStrategies: resolvedSurface.surface?.pool_tier_strategies ?? null,
 		};
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Model route resolution failed';
@@ -336,9 +338,10 @@ audioRoutes.post('/transcriptions', async (c) => {
 		return circuitBlocked;
 	}
 
-	const strategy = await resolveRouteStrategy({
+	const strategyPlan = await resolveRouteStrategyPlan({
 		routePolicyRaw: model.route_policy ?? null,
 		poolStrategy: routed.poolStrategy,
+		poolTierStrategies: routed.poolTierStrategies,
 		protocol: 'openai',
 		capability: 'audio.transcriptions',
 		routeGroup: effectiveRouteGroup,
@@ -357,7 +360,13 @@ audioRoutes.post('/transcriptions', async (c) => {
 		routes,
 		transcription,
 		c.req.raw.signal,
-		{ affinityKey, tierKeyPrefix, strategy, timing }
+		{
+			affinityKey,
+			tierKeyPrefix,
+			strategy: strategyPlan.base,
+			tierStrategies: strategyPlan.tierOverrides,
+			timing,
+		}
 	);
 
 	return finalizeAudioResponse({

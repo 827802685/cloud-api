@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
 	ArrowDownIcon,
 	ArrowLongRightIcon,
@@ -42,6 +43,19 @@ import {
 	type RouteListRow,
 	type RouteProtocolGroupSection,
 } from '../types';
+import { FailoverRulesDialog } from './failover-rules-dialog';
+
+type OpenStrategyDialog = (
+	modelId: string,
+	modelTitle: string,
+	protocol: string,
+	protocolLabel: string,
+	group: string,
+	poolId?: string | null,
+	poolStrategy?: string | null,
+	requestOperation?: string,
+	extras?: { priority?: number; poolTierStrategies?: string | null }
+) => void;
 
 type Props = {
 	card: RouteModelGroup;
@@ -55,16 +69,7 @@ type Props = {
 	onEdit: (route: RouteListRow) => void;
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
-	onOpenStrategyDialog: (
-		modelId: string,
-		modelTitle: string,
-		protocol: string,
-		protocolLabel: string,
-		group: string,
-		poolId?: string | null,
-		poolStrategy?: string | null,
-		requestOperation?: string
-	) => void;
+	onOpenStrategyDialog: OpenStrategyDialog;
 };
 
 function RouteTarget({
@@ -222,44 +227,23 @@ function RouteTarget({
 	);
 }
 
-function FlowConnector({ onAdd }: { onAdd: () => void }) {
+function UpstreamToolbar({ onAdd }: { onAdd: () => void }) {
 	const t = useTranslations('routes.flow');
 
 	return (
-		<>
-			<div className="relative hidden h-5 xl:block">
-				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" aria-hidden />
-				<ArrowLongRightIcon
-					className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500"
-					aria-hidden
-				/>
-				<span className="absolute bottom-[calc(50%+0.45rem)] left-0 right-0 truncate text-center text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-					{t('providerStep')}
-				</span>
-				<button
-					type="button"
-					onClick={onAdd}
-					className="absolute left-1/2 top-[calc(50%+0.7rem)] inline-flex -translate-x-1/2 items-center gap-0.5 whitespace-nowrap rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-				>
-					<PlusIcon className="h-3 w-3" />
-					{t('addProvider')}
-				</button>
-			</div>
-			<div className="flex flex-col items-center gap-1 py-1 xl:hidden">
-				<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-					{t('providerStep')}
-				</span>
-				<ArrowDownIcon className="h-4 w-4 text-blue-400" aria-hidden />
-				<button
-					type="button"
-					onClick={onAdd}
-					className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-				>
-					<PlusIcon className="h-3.5 w-3.5" />
-					{t('addProvider')}
-				</button>
-			</div>
-		</>
+		<div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+			<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+				{t('providerStep')}
+			</span>
+			<button
+				type="button"
+				onClick={onAdd}
+				className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+			>
+				<PlusIcon className="h-3 w-3" />
+				{t('addProvider')}
+			</button>
+		</div>
 	);
 }
 
@@ -276,22 +260,14 @@ function RoutingMatchConnector({
 	return (
 		<>
 			<div
-				className="relative hidden h-5 min-w-0 xl:block"
+				className="hidden min-w-0 flex-col items-center justify-center gap-1 xl:flex"
 				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
 			>
-				<span
-					className="absolute inset-x-0 top-1/2 h-px bg-blue-300"
-					aria-hidden
-				/>
-				<span className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
+				<span className="whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
 					{t('routeGroup')} · {routeGroup}
 				</span>
-				<ArrowLongRightIcon
-					className="absolute -right-px top-1/2 h-5 w-5 -translate-y-1/2 text-blue-500"
-					aria-hidden
-				/>
 				<p
-					className="absolute left-0 right-0 top-[calc(50%+0.8rem)] line-clamp-2 break-all text-center font-mono text-[10px] font-medium leading-3 text-blue-600"
+					className="line-clamp-2 break-all text-center font-mono text-[10px] font-medium leading-3 text-blue-600"
 					title={`model=${requestedModelId}`}
 				>
 					model={requestedModelId}
@@ -310,7 +286,6 @@ function RoutingMatchConnector({
 				>
 					model={requestedModelId}
 				</span>
-				<ArrowDownIcon className="h-4 w-4 text-blue-400" aria-hidden />
 			</div>
 		</>
 	);
@@ -414,6 +389,18 @@ function RequestSurfaceNode({
 	);
 }
 
+function strategyDisplayKey(strategy: string): string {
+	if (
+		strategy === 'cache_affinity' ||
+		strategy === 'weighted_random' ||
+		strategy === 'fixed_order' ||
+		strategy === 'weighted_round_robin'
+	) {
+		return strategy;
+	}
+	return strategy;
+}
+
 function FlowBranch({
 	section,
 	card,
@@ -442,15 +429,8 @@ function FlowBranch({
 	onOpenStrategyDialog: Props['onOpenStrategyDialog'];
 }) {
 	const t = useTranslations('routes.flow');
-	const strategy = resolveEffectiveRouteStrategy({
-		poolStrategy: section.poolStrategy,
-		routePolicyRaw: meta?.route_policy ?? null,
-		protocol: section.protocol,
-		requestOperation: section.requestOperation,
-		routeGroup: section.group,
-		globalStrategy: globalRouteStrategy,
-	});
-	const strategySourceLabel = t(`strategySource.${strategy.source}`);
+	const tStrategy = useTranslations('routes.strategy');
+	const [failoverOpen, setFailoverOpen] = useState(false);
 	const priorityLayers = [...section.routes.reduce((map, route) => {
 		const layer = map.get(route.priority) ?? [];
 		layer.push(route);
@@ -480,85 +460,120 @@ function FlowBranch({
 				className="absolute left-0 top-1/2 hidden h-px w-4 bg-blue-300 xl:block"
 				aria-hidden
 			/>
-			<div className="grid min-w-0 gap-y-2 xl:grid-cols-[minmax(150px,240px)_minmax(160px,200px)_112px_minmax(360px,1fr)] xl:items-center">
+			<div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(150px,240px)_auto_minmax(420px,1fr)] xl:items-center">
 				<RoutingMatchConnector modelId={card.model_id} routeGroup={section.group} />
 
-				<button
-					type="button"
-					onClick={() =>
-						onOpenStrategyDialog(
-							card.model_id,
-							card.title,
-							section.protocol,
-							section.protocolLabel,
-							section.group,
-							section.poolId,
-							section.poolStrategy,
-							section.requestOperation
-						)
-					}
-					className="min-w-0 rounded-lg border border-indigo-200 bg-indigo-50/75 px-3 py-2.5 text-left shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-					title={`${t('effectiveStrategy')}: ${strategy.strategy} · ${strategySourceLabel}`}
-				>
-					<span className="flex items-center justify-between gap-2">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">
-							{t('policyNode')}
-						</span>
-						<PencilSquareIcon className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-					</span>
-					<span className="mt-1.5 block truncate text-xs font-semibold text-gray-800">
-						{strategy.inherited ? `${t('inheritShort')} → ${strategy.strategy}` : strategy.strategy}
-					</span>
-					<span className="mt-0.5 block truncate text-[10px] text-indigo-500">
-						{strategySourceLabel}
-					</span>
-				</button>
+				<div className="flex items-center justify-center py-0.5 xl:px-0.5" aria-hidden>
+					<span className="hidden h-px w-8 bg-blue-300 xl:block" />
+					<ArrowDownIcon className="h-4 w-4 text-blue-400 xl:hidden" />
+				</div>
 
-				<FlowConnector
-					onAdd={() => onCreate(card.model_id, {
-						protocol: section.protocol,
-						operation: section.requestOperation,
-						group: section.group,
-					})}
-				/>
-
-				<div className="w-full min-w-0 rounded-lg border border-slate-200 bg-white/55 p-2 shadow-sm xl:w-fit xl:max-w-full xl:justify-self-start">
-					<div className="space-y-1.5">
-						{priorityLayers.map(([priority, routes], layerIndex) => (
-							<div key={priority}>
-								{layerIndex > 0 ? (
-									<div className="flex items-center gap-1.5 py-0.5 text-[10px] font-medium text-gray-400">
-										<ArrowDownIcon className="h-3 w-3" />
-										<span>{t('fallback')}</span>
+				<div className="min-w-0">
+					<UpstreamToolbar
+						onAdd={() => onCreate(card.model_id, {
+							protocol: section.protocol,
+							operation: section.requestOperation,
+							group: section.group,
+						})}
+					/>
+					<div className="flex min-w-0 flex-col items-stretch gap-3 md:flex-row md:flex-wrap">
+						{priorityLayers.map(([priority, routes], layerIndex) => {
+							const strategy = resolveEffectiveRouteStrategy({
+								poolStrategy: section.poolStrategy,
+								poolTierStrategies: section.poolTierStrategies,
+								priority,
+								routePolicyRaw: meta?.route_policy ?? null,
+								protocol: section.protocol,
+								requestOperation: section.requestOperation,
+								routeGroup: section.group,
+								globalStrategy: globalRouteStrategy,
+							});
+							const displayKey = strategyDisplayKey(strategy.strategy);
+							const displayName =
+								displayKey === 'cache_affinity' ||
+								displayKey === 'weighted_random' ||
+								displayKey === 'fixed_order' ||
+								displayKey === 'weighted_round_robin'
+									? tStrategy(`display.${displayKey}`)
+									: strategy.strategy;
+							const sourceLabel = t(`strategySource.${strategy.source}`);
+							return (
+								<div
+									key={priority}
+									className="flex min-w-0 flex-col items-stretch gap-2 md:flex-row"
+								>
+									{layerIndex > 0 ? (
+										<div className="flex shrink-0 items-center justify-center py-1 md:px-0.5 md:py-0">
+											<button
+												type="button"
+												onClick={() => setFailoverOpen(true)}
+												className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 hover:ring-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+												title={t('failoverRules')}
+											>
+												<ArrowDownIcon className="h-3 w-3 md:hidden" />
+												<ArrowLongRightIcon className="hidden h-4 w-4 md:block" />
+												<span>{t('failoverRules')}</span>
+											</button>
+										</div>
+									) : null}
+									<div className="min-w-[18rem] max-w-full rounded-lg border border-slate-200 bg-white/80 p-2.5 shadow-sm">
+										<div className="mb-2 flex min-w-0 flex-wrap items-center gap-1.5 border-b border-slate-100 pb-2">
+											<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
+												P{priority}
+											</span>
+											<span className="text-[10px] font-medium text-gray-500">
+												{layerIndex === 0 ? t('firstAttempt') : t('fallbackLayer')}
+											</span>
+											<button
+												type="button"
+												onClick={() =>
+													onOpenStrategyDialog(
+														card.model_id,
+														card.title,
+														section.protocol,
+														section.protocolLabel,
+														section.group,
+														section.poolId,
+														section.poolStrategy,
+														section.requestOperation,
+														{
+															priority,
+															poolTierStrategies: section.poolTierStrategies,
+														}
+													)
+												}
+												className="ml-auto inline-flex max-w-full items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+												title={t('tierStrategyEdit', {
+													strategy: displayName,
+													source: sourceLabel,
+												})}
+											>
+												<span className="truncate">{displayName}</span>
+												<PencilSquareIcon className="h-3 w-3 shrink-0 text-indigo-400" />
+											</button>
+										</div>
+										<div className="flex min-w-0 flex-wrap gap-2">
+											{routes.map((route) => (
+												<RouteTarget
+													key={route.id}
+													route={route}
+													provider={providerMeta.get(route.provider_id)}
+													requestProtocol={section.protocol}
+													requestOperation={section.requestOperation}
+													togglingId={togglingId}
+													onEdit={onEdit}
+													onToggleStatus={onToggleStatus}
+												/>
+											))}
+										</div>
 									</div>
-								) : null}
-								<div className="mb-1 flex items-center gap-1.5">
-									<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
-										P{priority}
-									</span>
-									<span className="text-[10px] font-medium text-gray-500">
-										{layerIndex === 0 ? t('firstAttempt') : t('fallbackLayer')}
-									</span>
 								</div>
-								<div className="flex min-w-0 flex-wrap gap-2">
-									{routes.map((route) => (
-										<RouteTarget
-											key={route.id}
-											route={route}
-											provider={providerMeta.get(route.provider_id)}
-											requestProtocol={section.protocol}
-											requestOperation={section.requestOperation}
-											togglingId={togglingId}
-											onEdit={onEdit}
-											onToggleStatus={onToggleStatus}
-										/>
-									))}
-								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</div>
 			</div>
+			<FailoverRulesDialog open={failoverOpen} onClose={() => setFailoverOpen(false)} />
 		</div>
 	);
 }
@@ -727,14 +742,9 @@ export function RouteModelFlow(props: Props) {
 						onOpenStrategyDialog={onOpenStrategyDialog}
 					/>
 				)) : (
-					<button
-						type="button"
-						onClick={() => onCreate(card.model_id)}
-						className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white/80 px-4 py-8 text-sm font-medium text-gray-500 hover:border-blue-300 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-					>
-						<PlusIcon className="h-5 w-5" />
-						{t('clickToAdd')}
-					</button>
+					<div className="flex min-h-20 items-center justify-center py-5 text-sm font-medium text-gray-400">
+						{tFlow('noProviders')}
+					</div>
 				)}
 			</div>
 		</article>

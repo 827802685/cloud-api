@@ -91,6 +91,8 @@ export const routePoolsTable = pgTable('route_pools', {
 	routeGroup: text('route_group').notNull().default('default'),
 	name: text('name').notNull(),
 	strategy: text('strategy'),
+	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
+	tierStrategies: text('tier_strategies'),
 	status: text('status').notNull().default('active'),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull(),

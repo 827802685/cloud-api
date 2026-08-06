@@ -6,6 +6,7 @@ import {
 	factorLevelForValue,
 	hasBasePricingInversion,
 	requestOperationsForModel,
+	resolveEffectiveRouteStrategy,
 	upstreamOperationsForProviderModel,
 } from './route-utils';
 
@@ -121,5 +122,57 @@ describe('route factor presentation', () => {
 		assert.equal(hasBasePricingInversion(1, 1), false);
 		assert.equal(hasBasePricingInversion(1.1, 1), false);
 		assert.equal(hasBasePricingInversion(Number.NaN, 1), false);
+	});
+});
+
+describe('resolveEffectiveRouteStrategy', () => {
+	it('prefers tier override over pool strategy', () => {
+		const effective = resolveEffectiveRouteStrategy({
+			poolStrategy: 'weighted_random',
+			poolTierStrategies: JSON.stringify({ '10': 'fixed_order' }),
+			priority: 10,
+			protocol: 'openai',
+			requestOperation: 'chat',
+			routeGroup: 'default',
+			globalStrategy: 'cache_affinity',
+		});
+		assert.deepEqual(effective, {
+			strategy: 'fixed_order',
+			source: 'tier',
+			inherited: false,
+		});
+	});
+
+	it('inherits pool strategy when the tier has no override', () => {
+		const effective = resolveEffectiveRouteStrategy({
+			poolStrategy: 'weighted_random',
+			poolTierStrategies: JSON.stringify({ '0': 'fixed_order' }),
+			priority: 10,
+			protocol: 'openai',
+			requestOperation: 'chat',
+			routeGroup: 'default',
+			globalStrategy: 'cache_affinity',
+		});
+		assert.deepEqual(effective, {
+			strategy: 'weighted_random',
+			source: 'pool',
+			inherited: true,
+		});
+	});
+
+	it('falls back through model / global when pool is unset', () => {
+		const effective = resolveEffectiveRouteStrategy({
+			priority: 1,
+			routePolicyRaw: JSON.stringify({ strategy: 'weighted_round_robin' }),
+			protocol: 'openai',
+			requestOperation: 'chat',
+			routeGroup: 'default',
+			globalStrategy: 'cache_affinity',
+		});
+		assert.deepEqual(effective, {
+			strategy: 'weighted_round_robin',
+			source: 'model',
+			inherited: true,
+		});
 	});
 });

@@ -9,6 +9,7 @@ import {
 	parseModelRoutePolicy,
 	routePolicyRuleKey,
 } from '@octafuse/core/db/model-route-policy';
+import { parseRoutePoolTierStrategies } from '@octafuse/core/db/route-pool-tier-strategies';
 import {
 	ANTHROPIC_ENDPOINT_CAPABILITIES,
 	GEMINI_ENDPOINT_CAPABILITIES,
@@ -70,17 +71,34 @@ export type EffectiveRouteStrategy = {
 /**
  * Mirrors the proxy's route strategy resolution order so the admin UI can show
  * both the configured value and the value that will actually take effect.
+ *
+ * When `priority` is provided, `poolTierStrategies[priority]` wins first
+ * (source `'tier'`).
  */
 export function resolveEffectiveRouteStrategy(params: {
 	poolStrategy?: string | null;
+	poolTierStrategies?: string | null;
+	priority?: number;
 	routePolicyRaw?: string | null;
 	protocol: string;
 	requestOperation?: string | null;
 	routeGroup: string;
 	globalStrategy?: string | null;
 }): EffectiveRouteStrategy {
+	if (params.priority !== undefined) {
+		const tierMap = parseRoutePoolTierStrategies(params.poolTierStrategies);
+		const tierStrategy = tierMap.get(params.priority);
+		if (tierStrategy) {
+			return { strategy: tierStrategy, source: 'tier', inherited: false };
+		}
+	}
+
 	if (params.poolStrategy && isRouteStrategyName(params.poolStrategy)) {
-		return { strategy: params.poolStrategy, source: 'pool', inherited: false };
+		return {
+			strategy: params.poolStrategy,
+			source: 'pool',
+			inherited: params.priority !== undefined,
+		};
 	}
 
 	const policy = parseModelRoutePolicy(params.routePolicyRaw);
@@ -148,6 +166,7 @@ export function splitRoutesByProtocolAndRouteGroup<
 		route_pool_id?: string | null;
 		pool_name?: string | null;
 		pool_strategy?: string | null;
+		pool_tier_strategies?: string | null;
 		surfaces?: string | null;
 	},
 >(
@@ -176,6 +195,7 @@ export function splitRoutesByProtocolAndRouteGroup<
 					poolId: r.route_pool_id ?? null,
 					poolName: r.pool_name ?? null,
 					poolStrategy: r.pool_strategy ?? null,
+					poolTierStrategies: r.pool_tier_strategies ?? null,
 					group: g,
 					routes: [],
 				};
@@ -527,7 +547,7 @@ export function readRoutePolicyFormFromRaw(
 	existingRaw: string | null | undefined,
 	protocol: string,
 	group: string
-): { protocolStrategy: string; capabilityStrategies: Record<string, string> } {
+): { protocolStrategy: string; tierStrategy: string; capabilityStrategies: Record<string, string> } {
 	const parsed = parseModelRoutePolicy(existingRaw);
 	const protocolStrategy = parsed?.rules.get(routePolicyRuleKey(protocol, null, group))?.strategy ?? '';
 	const capabilityStrategies: Record<string, string> = {};
@@ -535,7 +555,7 @@ export function readRoutePolicyFormFromRaw(
 		capabilityStrategies[cap] =
 			parsed?.rules.get(routePolicyRuleKey(protocol, cap, group))?.strategy ?? '';
 	}
-	return { protocolStrategy, capabilityStrategies };
+	return { protocolStrategy, tierStrategy: '', capabilityStrategies };
 }
 
 /**

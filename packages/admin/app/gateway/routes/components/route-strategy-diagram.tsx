@@ -375,12 +375,12 @@ export function RouteStrategyDiagram(props: Props) {
 		<div
 			className={`overflow-hidden rounded-md bg-slate-50/80 ring-1 ring-inset ring-slate-200/80 ${wrap}`}
 		>
-			{kind === 'affinity' ? <AffinityDiagram active={animate} caption={caption} /> : null}
-			{kind === 'strict' ? <StrictDiagram active={animate} caption={caption} /> : null}
+			{kind === 'cache_affinity' ? <AffinityDiagram active={animate} caption={caption} /> : null}
+			{kind === 'fixed_order' ? <StrictDiagram active={animate} caption={caption} /> : null}
 			{kind === 'weighted_random' ? (
 				<WeightedRandomDiagram active={animate} caption={caption} />
 			) : null}
-			{kind === 'round_robin' ? <RoundRobinDiagram active={animate} caption={caption} /> : null}
+			{kind === 'weighted_round_robin' ? <RoundRobinDiagram active={animate} caption={caption} /> : null}
 		</div>
 	);
 }

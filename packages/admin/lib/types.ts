@@ -185,6 +185,8 @@ export interface GatewayModelRoute {
   route_pool_id?: string | null;
   pool_name?: string | null;
   pool_strategy?: string | null;
+  /** JSON map from `route_pools.tier_strategies`: {"10":"cache_affinity","0":"fixed_order"} */
+  pool_tier_strategies?: string | null;
   pool_status?: string | null;
   /** JSON array of public ingress surfaces sharing this pool. */
   surfaces?: string | null;

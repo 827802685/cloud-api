@@ -11,7 +11,7 @@ import { asMySqlPool } from './mysql2-compat';
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
 		mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
 		mr.route_pool_id, mr.upstream_operation, mr.adapter,
-		rp.name AS pool_name, rp.strategy AS pool_strategy, rp.status AS pool_status,
+		rp.name AS pool_name, rp.strategy AS pool_strategy, rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status,
 		CAST(COALESCE((
 			SELECT JSON_ARRAYAGG(JSON_OBJECT(
 				'id', ms.id,
@@ -142,10 +142,25 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 			return { poolId: params.poolId, surfaceId: params.surfaceId };
 		},
 
-		async updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number> {
+		async updateRoutePoolPolicy(
+			poolId: string,
+			patch: { strategy?: string | null; tierStrategies?: string | null }
+		): Promise<number> {
+			const sets: string[] = [];
+			const bindValues: unknown[] = [];
+			if (patch.strategy !== undefined) {
+				sets.push('strategy = ?');
+				bindValues.push(patch.strategy);
+			}
+			if (patch.tierStrategies !== undefined) {
+				sets.push('tier_strategies = ?');
+				bindValues.push(patch.tierStrategies);
+			}
+			if (sets.length === 0) return 0;
+			sets.push('updated_at = CURRENT_TIMESTAMP(6)');
 			const [result] = await pool.execute<ResultSetHeader>(
-				`UPDATE route_pools SET strategy = ?, updated_at = CURRENT_TIMESTAMP(6) WHERE id = ?`,
-				[strategy, poolId]
+				`UPDATE route_pools SET ${sets.join(', ')} WHERE id = ?`,
+				[...bindValues, poolId]
 			);
 			return result.affectedRows;
 		},

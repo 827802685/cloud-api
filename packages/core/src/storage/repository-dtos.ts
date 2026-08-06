@@ -67,6 +67,8 @@ export interface ModelRouteJoinRow {
 	surfaces: string | null;
 	pool_name: string | null;
 	pool_strategy: string | null;
+	/** JSON map from `route_pools.tier_strategies` */
+	pool_tier_strategies: string | null;
 	pool_status: string | null;
 	model_name: string | null;
 	provider_name: string | null;

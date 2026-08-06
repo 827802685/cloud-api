@@ -106,39 +106,32 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 							onMouseLeave={() => setHovered((cur) => (cur === meta.id ? null : cur))}
 							onFocus={() => setHovered(meta.id)}
 							onBlur={() => setHovered((cur) => (cur === meta.id ? null : cur))}
-							className={`rounded-lg border p-3.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${
+							className={`flex h-full flex-col items-stretch justify-start rounded-lg border p-3.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${
 								selected
 									? 'border-indigo-300 bg-indigo-50/70 ring-1 ring-inset ring-indigo-200'
 									: 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-slate-50'
 							}`}
 						>
-							<div className="flex items-start justify-between gap-2">
-								<div className="min-w-0">
-									<div className="text-sm font-semibold text-gray-900">
-										{t(strategyTitleKey(meta.id))}
-									</div>
-									<div className="mt-0.5 font-mono text-[10px] text-gray-400">
-										{meta.machineId}
-									</div>
+							<div className="relative min-h-[2.5rem] pr-24">
+								<div className="truncate text-sm font-semibold leading-5 text-gray-900">
+									{t(strategyTitleKey(meta.id))}
 								</div>
-								<span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+								<div className="mt-0.5 truncate font-mono text-[10px] leading-4 text-gray-400">
+									{meta.machineId}
+								</div>
+								<span className="absolute right-0 top-0 flex flex-col items-end gap-1">
 									{meta.recommended ? (
-										<span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+										<span className="whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-amber-800">
 											{t('recommended')}
 										</span>
 									) : null}
-									{meta.instanceLocal ? (
-										<span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">
-											{t('instanceLocal')}
-										</span>
-									) : null}
 									{usingInherit ? (
-										<span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+										<span className="whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-indigo-700">
 											{t('inherit')}
 										</span>
 									) : null}
 									{selected ? (
-										<span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+										<span className="whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-emerald-700">
 											{t('effective')}
 										</span>
 									) : null}

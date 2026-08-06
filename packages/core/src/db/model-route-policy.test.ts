@@ -16,7 +16,7 @@ describe('routePolicyRuleKey / isRouteStrategyName', () => {
 	});
 
 	it('recognizes strategy names', () => {
-		assert.equal(isRouteStrategyName('affinity'), true);
+		assert.equal(isRouteStrategyName('cache_affinity'), true);
 		assert.equal(isRouteStrategyName(DEFAULT_ROUTE_STRATEGY), true);
 		assert.equal(isRouteStrategyName('sticky'), false);
 	});
@@ -34,17 +34,17 @@ describe('parseModelRoutePolicy', () => {
 	it('parses top-level strategy and rules', () => {
 		const config = parseModelRoutePolicy(
 			JSON.stringify({
-				strategy: 'affinity',
+				strategy: 'cache_affinity',
 				rules: {
 					'openai:default': { strategy: 'weighted_random' },
-					'openai.chat:default': { strategy: 'strict' },
+					'openai.chat:default': { strategy: 'fixed_order' },
 				},
 			})
 		);
 		assert.ok(config);
-		assert.equal(config!.strategy, 'affinity');
+		assert.equal(config!.strategy, 'cache_affinity');
 		assert.equal(config!.rules.get('openai:default')?.strategy, 'weighted_random');
-		assert.equal(config!.rules.get('openai.chat:default')?.strategy, 'strict');
+		assert.equal(config!.rules.get('openai.chat:default')?.strategy, 'fixed_order');
 	});
 
 	it('aliases legacy Gemini capabilities onto models.generate with generateContent preferred', () => {
@@ -52,71 +52,71 @@ describe('parseModelRoutePolicy', () => {
 			JSON.stringify({
 				rules: {
 					'gemini.streamGenerateContent:default': { strategy: 'weighted_random' },
-					'gemini.generateContent:default': { strategy: 'strict' },
+					'gemini.generateContent:default': { strategy: 'fixed_order' },
 				},
 			})
 		);
 		assert.ok(config);
-		assert.equal(config!.rules.get('gemini.models.generate:default')?.strategy, 'strict');
+		assert.equal(config!.rules.get('gemini.models.generate:default')?.strategy, 'fixed_order');
 		assert.equal(config!.rules.has('gemini.generatecontent:default'), false);
 		assert.equal(
 			resolveModelRoutePolicyStrategy(
 				JSON.stringify({
 					rules: {
-						'gemini.generateContent:default': { strategy: 'strict' },
+						'gemini.generateContent:default': { strategy: 'fixed_order' },
 					},
 				}),
 				'gemini',
 				'generateContent',
 				'default'
 			),
-			'strict'
+			'fixed_order'
 		);
 		assert.equal(
 			resolveModelRoutePolicyStrategy(
 				JSON.stringify({
 					rules: {
-						'gemini.generateContent:default': { strategy: 'strict' },
+						'gemini.generateContent:default': { strategy: 'fixed_order' },
 					},
 				}),
 				'gemini',
 				'models.generate',
 				'default'
 			),
-			'strict'
+			'fixed_order'
 		);
 	});
 
 	it('skips illegal strategy and illegal capability keys', () => {
 		const config = parseModelRoutePolicy(
 			JSON.stringify({
-				strategy: 'round_robin',
+				strategy: 'weighted_round_robin',
 				rules: {
 					'openai:default': { strategy: 'bad' },
-					'openai.messages:default': { strategy: 'strict' },
-					'openai.chat:default': { strategy: 'strict' },
+					'openai.messages:default': { strategy: 'fixed_order' },
+					'openai.chat:default': { strategy: 'fixed_order' },
 				},
 			})
 		);
 		assert.ok(config);
-		assert.equal(config!.strategy, 'round_robin');
+		assert.equal(config!.strategy, 'weighted_round_robin');
 		assert.equal(config!.rules.has('openai:default'), false);
 		assert.equal(config!.rules.has('openai.messages:default'), false);
-		assert.equal(config!.rules.get('openai.chat:default')?.strategy, 'strict');
+		assert.equal(config!.rules.get('openai.chat:default')?.strategy, 'fixed_order');
 	});
 });
 
 describe('resolveModelRoutePolicyStrategy', () => {
 	const raw = JSON.stringify({
-		strategy: 'affinity',
+		strategy: 'cache_affinity',
 		rules: {
 			'openai:default': { strategy: 'weighted_random' },
-			'openai.chat:default': { strategy: 'strict' },
+			'openai.chat:default': { strategy: 'fixed_order' },
 		},
 	});
 
 	it('lets capability rule beat protocol wildcard', () => {
-		assert.equal(resolveModelRoutePolicyStrategy(raw, 'openai', 'chat', 'default'), 'strict');
+		assert.equal(resolveModelRoutePolicyStrategy(raw, 'openai', 'chat', 'default'), 'fixed_order');
 	});
 
 	it('falls back to protocol×group then top-level', () => {
@@ -124,7 +124,7 @@ describe('resolveModelRoutePolicyStrategy', () => {
 			resolveModelRoutePolicyStrategy(raw, 'openai', 'images.generations', 'default'),
 			'weighted_random'
 		);
-		assert.equal(resolveModelRoutePolicyStrategy(raw, 'anthropic', 'messages', 'default'), 'affinity');
+		assert.equal(resolveModelRoutePolicyStrategy(raw, 'anthropic', 'messages', 'default'), 'cache_affinity');
 	});
 
 	it('returns null when nothing configured', () => {
@@ -142,15 +142,15 @@ describe('normalizeModelRoutePolicyInput', () => {
 	it('normalizes keys and strategies', () => {
 		const out = normalizeModelRoutePolicyInput(
 			JSON.stringify({
-				strategy: 'Affinity',
+				strategy: 'Cache_Affinity',
 				rules: {
-					'OpenAI.Chat:Default': { strategy: 'Strict', junk: 1 },
+					'OpenAI.Chat:Default': { strategy: 'Fixed_Order', junk: 1 },
 				},
 			})
 		);
 		assert.deepEqual(JSON.parse(out!), {
-			strategy: 'affinity',
-			rules: { 'openai.chat:default': { strategy: 'strict' } },
+			strategy: 'cache_affinity',
+			rules: { 'openai.chat:default': { strategy: 'fixed_order' } },
 		});
 	});
 
@@ -163,7 +163,7 @@ describe('normalizeModelRoutePolicyInput', () => {
 		assert.throws(
 			() =>
 				normalizeModelRoutePolicyInput(
-					JSON.stringify({ rules: { 'openai.messages:default': { strategy: 'strict' } } })
+					JSON.stringify({ rules: { 'openai.messages:default': { strategy: 'fixed_order' } } })
 				),
 			/capability/
 		);

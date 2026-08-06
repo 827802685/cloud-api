@@ -54,7 +54,7 @@ import {
 } from '@/lib/ai-detection-options';
 import { useTranslations } from 'next-intl';
 import { useBusinessTimezoneContext } from '@/components/BusinessTimezoneProvider';
-import { RouteStrategyPicker } from '../routes/components/route-strategy-picker';
+import { GlobalRouteStrategySection } from './global-route-strategy-section';
 
 const OTHER_TZ = '__other__';
 
@@ -396,12 +396,12 @@ export default function GatewayConfigPage() {
     }
   };
 
-  const handleSaveRouteStrategy = async () => {
-    const raw = routeStrategyValue.trim().toLowerCase();
+  const handleSaveRouteStrategy = async (nextValue: string): Promise<boolean> => {
+    const raw = nextValue.trim().toLowerCase();
     if (!isRouteStrategyName(raw)) {
       clearSaveSuccess();
       setSaveError(`ROUTE_STRATEGY must be one of: ${ROUTE_STRATEGY_NAMES.join(', ')}`);
-      return;
+      return false;
     }
     setSaveError('');
     clearSaveSuccess();
@@ -429,13 +429,15 @@ export default function GatewayConfigPage() {
           return [...prev, nextRow];
         });
         setRouteStrategyValue(raw);
-      } else {
-        clearSaveSuccess();
-        setSaveError(data.message || tCommon('saveFailed'));
+        return true;
       }
+      clearSaveSuccess();
+      setSaveError(data.message || tCommon('saveFailed'));
+      return false;
     } catch {
       clearSaveSuccess();
       setSaveError(tCommon('requestFailed'));
+      return false;
     } finally {
       setRouteStrategySaving(false);
     }
@@ -772,24 +774,11 @@ export default function GatewayConfigPage() {
         title={t('routeStrategy.title')}
         description={t('routeStrategy.description')}
       >
-        <div className="space-y-4">
-          <RouteStrategyPicker
-            value={routeStrategyValue}
-            onChange={setRouteStrategyValue}
-            disabled={routeStrategySaving}
-            dense
-          />
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => void handleSaveRouteStrategy()}
-              disabled={routeStrategySaving}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              {routeStrategySaving ? tCommon('saving') : t('saveRouteStrategy')}
-            </button>
-          </div>
-        </div>
+        <GlobalRouteStrategySection
+          value={routeStrategyValue}
+          saving={routeStrategySaving}
+          onSave={handleSaveRouteStrategy}
+        />
       </ConfigCardShell>
 
       <ConfigCardShell

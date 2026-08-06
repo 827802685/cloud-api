@@ -6,6 +6,8 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@octafuse/core/db/model-modalities';
+import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
+import { parseRoutePoolTierStrategies } from '@octafuse/core/db/route-pool-tier-strategies';
 import { useBusinessTimezone } from '@/components/BusinessTimezoneProvider';
 import { getCatalogAudioPricingDisplay, isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';
@@ -30,7 +32,7 @@ import {
 	deleteRoute,
 	fetchRoutesPageData,
 	patchModelRoutePolicy,
-	patchRoutePoolStrategy,
+	patchRoutePoolPolicy,
 	saveRoute,
 	toggleRouteStatus,
 } from './route-api';
@@ -79,6 +81,7 @@ export function useRoutesPageState() {
 	const [strategyDialog, setStrategyDialog] = useState<RoutePolicyDialogState | null>(null);
 	const [strategyForm, setStrategyForm] = useState<RoutePolicyFormState>({
 		protocolStrategy: '',
+		tierStrategy: '',
 		capabilityStrategies: {},
 	});
 	const [strategySaving, setStrategySaving] = useState(false);
@@ -480,10 +483,15 @@ export function useRoutesPageState() {
 			group: string,
 			poolId?: string | null,
 			poolStrategy?: string | null,
-			requestOperation?: string
+			requestOperation?: string,
+			extras?: { priority?: number; poolTierStrategies?: string | null }
 		) => {
 			const raw = modelMeta.get(modelId)?.route_policy ?? null;
+			const poolTierStrategies = extras?.poolTierStrategies ?? null;
+			const priority = extras?.priority;
 			const inherited = resolveEffectiveRouteStrategy({
+				poolStrategy: priority !== undefined ? poolStrategy : null,
+				poolTierStrategies: null,
 				routePolicyRaw: raw,
 				protocol,
 				requestOperation,
@@ -510,9 +518,16 @@ export function useRoutesPageState() {
 						route.status === 'active' &&
 						providerMeta.get(route.provider_id)?.status !== 'disabled',
 				}));
+			const tierMap = parseRoutePoolTierStrategies(poolTierStrategies);
+			const tierStrategy =
+				priority !== undefined ? (tierMap.get(priority) ?? '') : '';
 			setStrategyForm(
 				poolId
-					? { protocolStrategy: poolStrategy ?? '', capabilityStrategies: {} }
+					? {
+							protocolStrategy: poolStrategy ?? '',
+							tierStrategy,
+							capabilityStrategies: {},
+						}
 					: readRoutePolicyFormFromRaw(raw, protocol, group)
 			);
 			setStrategyError('');
@@ -524,6 +539,8 @@ export function useRoutesPageState() {
 				group,
 				poolId,
 				poolStrategy,
+				poolTierStrategies,
+				priority,
 				requestOperation,
 				inheritedStrategy: inherited.strategy,
 				inheritedSource: inherited.source,
@@ -538,20 +555,36 @@ export function useRoutesPageState() {
 		setStrategySaving(true);
 		setStrategyError('');
 		try {
-			const result = strategyDialog.poolId
-				? await patchRoutePoolStrategy(
-						strategyDialog.poolId,
-						strategyForm.protocolStrategy || null
+			let result: { success: true } | { success: false; message: string };
+			if (strategyDialog.poolId) {
+				const tierMap = parseRoutePoolTierStrategies(strategyDialog.poolTierStrategies);
+				if (strategyDialog.priority !== undefined) {
+					const next = strategyForm.tierStrategy.trim().toLowerCase();
+					if (next && isRouteStrategyName(next)) {
+						tierMap.set(strategyDialog.priority, next);
+					} else {
+						tierMap.delete(strategyDialog.priority);
+					}
+				}
+				const tierObj: Record<string, string> = {};
+				for (const [priority, strategy] of tierMap) {
+					tierObj[String(priority)] = strategy;
+				}
+				result = await patchRoutePoolPolicy(strategyDialog.poolId, {
+					strategy: strategyForm.protocolStrategy || null,
+					tier_strategies: Object.keys(tierObj).length > 0 ? tierObj : null,
+				});
+			} else {
+				result = await patchModelRoutePolicy(
+					strategyDialog.modelId,
+					buildRoutePolicyPatch(
+						modelMeta.get(strategyDialog.modelId)?.route_policy ?? null,
+						strategyDialog.protocol,
+						strategyDialog.group,
+						strategyForm
 					)
-				: await patchModelRoutePolicy(
-						strategyDialog.modelId,
-						buildRoutePolicyPatch(
-							modelMeta.get(strategyDialog.modelId)?.route_policy ?? null,
-							strategyDialog.protocol,
-							strategyDialog.group,
-							strategyForm
-						)
-					);
+				);
+			}
 			if (!result.success) {
 				setStrategyError(result.message);
 				return;

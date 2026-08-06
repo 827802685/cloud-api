@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ROUTE_STRATEGY_NAMES } from '@octafuse/core/db/model-route-policy';
 import { useTranslations } from 'next-intl';
 import {
@@ -25,23 +26,39 @@ export function RoutePolicyDialog(props: Props) {
 	const { dialog, form, error, saving, onClose, onFormChange, onSave } = props;
 	const t = useTranslations('routes.strategy');
 	const tCommon = useTranslations('common');
-	const capabilities = dialog.poolId ? [] : CAPABILITIES_BY_PROTOCOL[dialog.protocol] ?? [];
-	const effectiveStrategy = form.protocolStrategy || dialog.inheritedStrategy;
-	const activeTargets = dialog.targets.filter((target) => target.active);
+	const isTierMode = dialog.priority !== undefined;
+	const [poolDefaultOpen, setPoolDefaultOpen] = useState(false);
+	const capabilities = dialog.poolId || isTierMode ? [] : CAPABILITIES_BY_PROTOCOL[dialog.protocol] ?? [];
+	const effectiveStrategy = isTierMode
+		? form.tierStrategy || form.protocolStrategy || dialog.inheritedStrategy
+		: form.protocolStrategy || dialog.inheritedStrategy;
+	const activeTargets = dialog.targets.filter(
+		(target) =>
+			target.active && (dialog.priority === undefined || target.priority === dialog.priority)
+	);
 	const activePriorities = [...new Set(activeTargets.map((target) => target.priority))].sort(
 		(a, b) => b - a
 	);
 
 	const strategyLabel = (value: string) => {
-		if (!value) return `${t('inherit')} → ${dialog.inheritedStrategy}`;
-		if (value === 'affinity') return t('display.affinity');
+		if (!value) {
+			const inherited =
+				isTierMode
+					? form.protocolStrategy || dialog.inheritedStrategy
+					: dialog.inheritedStrategy;
+			return `${t('inherit')} → ${inherited}`;
+		}
+		if (value === 'cache_affinity') return t('display.cache_affinity');
 		if (value === 'weighted_random') return t('display.weighted_random');
-		if (value === 'strict') return t('display.strict');
-		if (value === 'round_robin') return t('display.round_robin');
+		if (value === 'fixed_order') return t('display.fixed_order');
+		if (value === 'weighted_round_robin') return t('display.weighted_round_robin');
 		return value;
 	};
 
 	const inheritedSourceLabel = t(`source.${dialog.inheritedSource}`);
+	const tierInheritedLabel = form.protocolStrategy
+		? t('source.pool')
+		: inheritedSourceLabel;
 
 	return (
 		<div
@@ -59,11 +76,17 @@ export function RoutePolicyDialog(props: Props) {
 				<div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
 					<div>
 						<h2 id="route-policy-dialog-title" className="text-base font-semibold text-gray-900">
-							{t('title')}
+							{isTierMode ? t('tierLevel') : t('title')}
 						</h2>
 						<p className="mt-1 text-xs text-gray-500">
 							{dialog.modelTitle} · {dialog.protocolLabel} ·{' '}
 							<span className="font-mono">{dialog.requestOperation ?? dialog.group}</span>
+							{isTierMode ? (
+								<>
+									{' '}
+									· <span className="font-semibold text-gray-700">P{dialog.priority}</span>
+								</>
+							) : null}
 						</p>
 					</div>
 					<button
@@ -84,6 +107,11 @@ export function RoutePolicyDialog(props: Props) {
 							{error}
 						</div>
 					)}
+					{!dialog.poolId && isTierMode ? (
+						<div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+							{t('tierRequiresPool')}
+						</div>
+					) : null}
 					{capabilities.length > 0 ? (
 						<div>
 							<div className="mb-2 text-sm font-medium text-gray-700">
@@ -128,21 +156,68 @@ export function RoutePolicyDialog(props: Props) {
 						</div>
 					) : null}
 
-					<div>
-						<div className="mb-1">
-							<h3 className="text-sm font-semibold text-gray-900">{t('guideTitle')}</h3>
-							<p className="mt-0.5 text-xs text-gray-500">{t('guideHint')}</p>
+					{isTierMode ? (
+						<div>
+							<div className="mb-1">
+								<h3 className="text-sm font-semibold text-gray-900">{t('tierLevel')}</h3>
+								<p className="mt-0.5 text-xs text-gray-500">{t('tierLevelHint')}</p>
+							</div>
+							<RouteStrategyPicker
+								value={form.tierStrategy}
+								onChange={(next) => onFormChange({ ...form, tierStrategy: next })}
+								allowInherit
+								inheritedStrategy={form.protocolStrategy || dialog.inheritedStrategy}
+								inheritedSourceLabel={tierInheritedLabel}
+								disabled={saving || !dialog.poolId}
+								className="mt-3"
+							/>
 						</div>
-						<RouteStrategyPicker
-							value={form.protocolStrategy}
-							onChange={(next) => onFormChange({ ...form, protocolStrategy: next })}
-							allowInherit
-							inheritedStrategy={dialog.inheritedStrategy}
-							inheritedSourceLabel={inheritedSourceLabel}
-							disabled={saving}
-							className="mt-3"
-						/>
-					</div>
+					) : (
+						<div>
+							<div className="mb-1">
+								<h3 className="text-sm font-semibold text-gray-900">{t('guideTitle')}</h3>
+								<p className="mt-0.5 text-xs text-gray-500">{t('guideHint')}</p>
+							</div>
+							<RouteStrategyPicker
+								value={form.protocolStrategy}
+								onChange={(next) => onFormChange({ ...form, protocolStrategy: next })}
+								allowInherit
+								inheritedStrategy={dialog.inheritedStrategy}
+								inheritedSourceLabel={inheritedSourceLabel}
+								disabled={saving}
+								className="mt-3"
+							/>
+						</div>
+					)}
+
+					{isTierMode ? (
+						<div className="rounded-lg border border-slate-200 bg-slate-50/70">
+							<button
+								type="button"
+								onClick={() => setPoolDefaultOpen((open) => !open)}
+								className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							>
+								<span>{t('poolDefault')}</span>
+								<span className="text-xs font-medium text-gray-500">
+									{poolDefaultOpen ? '▾' : '▸'}
+								</span>
+							</button>
+							{poolDefaultOpen ? (
+								<div className="border-t border-slate-200 px-3.5 py-3">
+									<p className="mb-3 text-xs text-gray-500">{t('poolDefaultHint')}</p>
+									<RouteStrategyPicker
+										value={form.protocolStrategy}
+										onChange={(next) => onFormChange({ ...form, protocolStrategy: next })}
+										allowInherit
+										inheritedStrategy={dialog.inheritedStrategy}
+										inheritedSourceLabel={inheritedSourceLabel}
+										disabled={saving || !dialog.poolId}
+										dense
+									/>
+								</div>
+							) : null}
+						</div>
+					) : null}
 
 					<div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3.5">
 						<div className="flex flex-wrap items-center justify-between gap-2">
@@ -163,7 +238,7 @@ export function RoutePolicyDialog(props: Props) {
 						<p className="mt-1 text-[11px] leading-relaxed text-gray-500">
 							{t('runtimeHealthHint')}
 						</p>
-						{effectiveStrategy === 'round_robin' ? (
+						{effectiveStrategy === 'weighted_round_robin' ? (
 							<p className="mt-1 text-[11px] leading-relaxed text-amber-700">
 								{t('roundRobinInstanceHint')}
 							</p>
@@ -179,7 +254,7 @@ export function RoutePolicyDialog(props: Props) {
 									const layer = activeTargets
 										.filter((target) => target.priority === priority)
 										.sort((a, b) =>
-											effectiveStrategy === 'strict'
+											effectiveStrategy === 'fixed_order'
 												? b.weight - a.weight || a.providerId.localeCompare(b.providerId)
 												: a.providerName.localeCompare(b.providerName)
 										);
@@ -204,7 +279,7 @@ export function RoutePolicyDialog(props: Props) {
 														className="flex min-w-0 items-center gap-2 text-xs"
 													>
 														<span className="w-4 shrink-0 text-right font-mono text-[10px] text-gray-400">
-															{effectiveStrategy === 'strict' ? targetIndex + 1 : '•'}
+															{effectiveStrategy === 'fixed_order' ? targetIndex + 1 : '•'}
 														</span>
 														<span className="min-w-0 flex-1 truncate font-medium text-gray-700">
 															{target.providerName}
@@ -242,7 +317,7 @@ export function RoutePolicyDialog(props: Props) {
 					<button
 						type="button"
 						onClick={onSave}
-						disabled={saving}
+						disabled={saving || (isTierMode && !dialog.poolId)}
 						className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{saving ? tCommon('savingDots') : tCommon('save')}

@@ -27,14 +27,15 @@ function groupRoutesByPriorityDesc(routes: RouteResult[]): Array<{ priority: num
 
 /**
  * 构建本次请求的 route 尝试计划。
+ * `tierOverrides` 按 priority 覆盖 `strategyName`（未配置的层仍用 base）。
  */
 export function buildRouteAttemptPlan(
 	routes: RouteResult[],
 	ctx: { affinityKey: string; tierKeyPrefix: string },
 	strategyName: RouteStrategyName,
-	now = Date.now()
+	now = Date.now(),
+	tierOverrides?: ReadonlyMap<number, RouteStrategyName> | null
 ): RouteAttemptPlan {
-	const strategy = ROUTE_STRATEGIES[strategyName] ?? ROUTE_STRATEGIES.affinity;
 	const attempts: RouteResult[] = [];
 	let earliestRetryAfterMs: number | null = null;
 	let skippedByCircuit = 0;
@@ -46,6 +47,8 @@ export function buildRouteAttemptPlan(
 	};
 
 	for (const tier of groupRoutesByPriorityDesc(routes)) {
+		const name = tierOverrides?.get(tier.priority) ?? strategyName;
+		const strategy = ROUTE_STRATEGIES[name] ?? ROUTE_STRATEGIES.cache_affinity;
 		const ordered = strategy(tier.routes, {
 			affinityKey: ctx.affinityKey,
 			tierKey: `${ctx.tierKeyPrefix}|${tier.priority}`,

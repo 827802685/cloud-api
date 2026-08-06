@@ -85,7 +85,8 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 			const [rows] = await pool.query<ResolvedModelSurfaceRow[]>(
 				`SELECT ms.id, ms.model_id, ms.route_group, ms.request_protocol, ms.request_operation,
 					ms.route_pool_id, ms.status, ms.created_at, ms.updated_at,
-					rp.name AS pool_name, rp.strategy AS pool_strategy, rp.status AS pool_status
+					rp.name AS pool_name, rp.strategy AS pool_strategy,
+					rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status
 				 FROM model_surfaces ms
 				 JOIN route_pools rp ON rp.id = ms.route_pool_id
 				 WHERE ms.model_id = ?

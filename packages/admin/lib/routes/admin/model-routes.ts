@@ -10,7 +10,7 @@ import {
 	getModelRouteService,
 	listModelRoutesService,
 	updateModelRouteService,
-	updateRoutePoolStrategyService,
+	updateRoutePoolPolicyService,
 } from '@/lib/services/admin/model-routes-service';
 import type { AdminModelRouteMutationInput } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
@@ -50,9 +50,9 @@ adminModelRoutes.post('/', async (c) => {
 	}
 });
 
-/** Pool-level strategy. Kept under `/routes` so existing Admin proxy/auth wiring is reused. */
+/** Pool-level strategy / per-tier overrides. Kept under `/routes` so existing Admin proxy/auth wiring is reused. */
 adminModelRoutes.patch('/pools/:poolId', async (c) => {
-	let body: { strategy?: unknown };
+	let body: { strategy?: unknown; tier_strategies?: unknown };
 	try {
 		body = await c.req.json();
 	} catch {
@@ -60,10 +60,10 @@ adminModelRoutes.patch('/pools/:poolId', async (c) => {
 	}
 	try {
 		const repos = c.get('repositories');
-		await updateRoutePoolStrategyService(repos, c.req.param('poolId'), body.strategy);
-		return c.json({ success: true, message: 'Route pool strategy updated successfully' });
+		await updateRoutePoolPolicyService(repos, c.req.param('poolId'), body);
+		return c.json({ success: true, message: 'Route pool policy updated successfully' });
 	} catch (error) {
-		return handleAdminRouteError(c, error, 'Failed to update route pool strategy');
+		return handleAdminRouteError(c, error, 'Failed to update route pool policy');
 	}
 });
 

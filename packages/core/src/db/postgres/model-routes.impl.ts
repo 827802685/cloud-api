@@ -43,6 +43,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 					adapter: pgMr.adapter,
 					pool_name: pgPools.name,
 					pool_strategy: pgPools.strategy,
+					pool_tier_strategies: pgPools.tierStrategies,
 					pool_status: pgPools.status,
 					model_name: pgModels.displayName,
 					provider_name: pgProviders.name,
@@ -91,6 +92,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				surfaces: r.route_pool_id ? (surfacesByPool.get(r.route_pool_id) ?? '[]') : '[]',
 				pool_name: r.pool_name,
 				pool_strategy: r.pool_strategy,
+				pool_tier_strategies: r.pool_tier_strategies,
 				pool_status: r.pool_status,
 				model_name: r.model_name,
 				provider_name: r.provider_name,
@@ -192,10 +194,34 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			return { poolId: params.poolId, surfaceId: params.surfaceId };
 		},
 
-		async updateRoutePoolStrategy(poolId: string, strategy: string | null): Promise<number> {
+		async updateRoutePoolPolicy(
+			poolId: string,
+			patch: { strategy?: string | null; tierStrategies?: string | null }
+		): Promise<number> {
+			if (patch.strategy === undefined && patch.tierStrategies === undefined) return 0;
+			if (patch.strategy !== undefined && patch.tierStrategies !== undefined) {
+				const rows = await pg<Array<{ id: string }>>`
+					UPDATE route_pools
+					SET strategy = ${patch.strategy},
+						tier_strategies = ${patch.tierStrategies},
+						updated_at = CURRENT_TIMESTAMP
+					WHERE id = ${poolId}
+					RETURNING id
+				`;
+				return rows.length;
+			}
+			if (patch.strategy !== undefined) {
+				const rows = await pg<Array<{ id: string }>>`
+					UPDATE route_pools
+					SET strategy = ${patch.strategy}, updated_at = CURRENT_TIMESTAMP
+					WHERE id = ${poolId}
+					RETURNING id
+				`;
+				return rows.length;
+			}
 			const rows = await pg<Array<{ id: string }>>`
 				UPDATE route_pools
-				SET strategy = ${strategy}, updated_at = CURRENT_TIMESTAMP
+				SET tier_strategies = ${patch.tierStrategies ?? null}, updated_at = CURRENT_TIMESTAMP
 				WHERE id = ${poolId}
 				RETURNING id
 			`;

@@ -105,10 +105,17 @@ export async function patchRoutePoolStrategy(
 	poolId: string,
 	strategy: string | null
 ): Promise<{ success: true } | { success: false; message: string }> {
+	return patchRoutePoolPolicy(poolId, { strategy });
+}
+
+export async function patchRoutePoolPolicy(
+	poolId: string,
+	patch: { strategy?: string | null; tier_strategies?: string | null | Record<string, string> }
+): Promise<{ success: true } | { success: false; message: string }> {
 	const response = await fetch(`/api/admin/routes/pools/${encodeURIComponent(poolId)}`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ strategy }),
+		body: JSON.stringify(patch),
 	});
 	const data = await readApiJson(response);
 	if (data.success) return { success: true };

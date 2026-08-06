@@ -14,6 +14,7 @@ import {
 } from '@octafuse/core/db/model-modalities';
 import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
 import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
+import { normalizeRoutePoolTierStrategiesInput } from '@octafuse/core/db/route-pool-tier-strategies';
 import { badRequest, notFound } from './errors';
 import { coerceRoutePriceOverrideInput, assertRoutePriceOverrideFactors } from './pricing-input';
 import { normalizeJsonObjectField, providerSupportsUpstreamProtocol } from './shared';
@@ -380,16 +381,61 @@ export async function deleteModelRouteService(repos: GatewayRepositories, id: st
 	}
 }
 
-/** Update the strategy owned by one concrete route pool. `null` inherits the model/global policy. */
+/**
+ * Update pool-level routing policy.
+ * - `strategy`: pool default (null/empty inherits model/global)
+ * - `tier_strategies`: JSON map of priority → strategy (null/empty clears overrides)
+ * Only provided fields are written.
+ */
+export async function updateRoutePoolPolicyService(
+	repos: GatewayRepositories,
+	poolId: string,
+	body: { strategy?: unknown; tier_strategies?: unknown }
+): Promise<void> {
+	const patch: { strategy?: string | null; tierStrategies?: string | null } = {};
+
+	if (body.strategy !== undefined) {
+		const raw = body.strategy == null ? '' : String(body.strategy).trim().toLowerCase();
+		if (raw && !isRouteStrategyName(raw)) {
+			throw badRequest(`Invalid route pool strategy "${raw}"`);
+		}
+		patch.strategy = raw || null;
+	}
+
+	if (body.tier_strategies !== undefined) {
+		try {
+			if (
+				body.tier_strategies == null ||
+				(typeof body.tier_strategies === 'string' && body.tier_strategies.trim() === '')
+			) {
+				patch.tierStrategies = null;
+			} else if (typeof body.tier_strategies === 'string') {
+				patch.tierStrategies = normalizeRoutePoolTierStrategiesInput(body.tier_strategies);
+			} else if (typeof body.tier_strategies === 'object' && !Array.isArray(body.tier_strategies)) {
+				patch.tierStrategies = normalizeRoutePoolTierStrategiesInput(
+					body.tier_strategies as Record<string, unknown>
+				);
+			} else {
+				throw new Error('tier_strategies must be a JSON object');
+			}
+		} catch (err) {
+			throw badRequest(err instanceof Error ? err.message : 'Invalid tier_strategies');
+		}
+	}
+
+	if (patch.strategy === undefined && patch.tierStrategies === undefined) {
+		throw badRequest('Provide strategy and/or tier_strategies');
+	}
+
+	const changes = await repos.routes.updateRoutePoolPolicy(poolId, patch);
+	if (!changes) throw notFound('Route pool not found');
+}
+
+/** @deprecated Use `updateRoutePoolPolicyService` */
 export async function updateRoutePoolStrategyService(
 	repos: GatewayRepositories,
 	poolId: string,
 	strategyInput: unknown
 ): Promise<void> {
-	const raw = strategyInput == null ? '' : String(strategyInput).trim().toLowerCase();
-	if (raw && !isRouteStrategyName(raw)) {
-		throw badRequest(`Invalid route pool strategy "${raw}"`);
-	}
-	const changes = await repos.routes.updateRoutePoolStrategy(poolId, raw || null);
-	if (!changes) throw notFound('Route pool not found');
+	await updateRoutePoolPolicyService(repos, poolId, { strategy: strategyInput });
 }

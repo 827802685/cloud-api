@@ -15,6 +15,8 @@ export type RouteProtocolGroupSection<T> = {
 	poolId: string | null;
 	poolName: string | null;
 	poolStrategy: string | null;
+	/** Raw JSON from `route_pools.tier_strategies` */
+	poolTierStrategies: string | null;
 	group: string;
 	routes: T[];
 };
@@ -55,6 +57,10 @@ export type RoutePolicyDialogState = {
 	group: string;
 	poolId?: string | null;
 	poolStrategy?: string | null;
+	/** Raw JSON from `route_pools.tier_strategies` */
+	poolTierStrategies?: string | null;
+	/** When set, dialog edits per-tier override for this priority */
+	priority?: number;
 	requestOperation?: string;
 	inheritedStrategy: string;
 	inheritedSource: RouteStrategySource;
@@ -62,6 +68,7 @@ export type RoutePolicyDialogState = {
 };
 
 export type RouteStrategySource =
+	| 'tier'
 	| 'pool'
 	| 'modelOperation'
 	| 'modelProtocol'
@@ -81,7 +88,10 @@ export type RouteStrategyPreviewTarget = {
 
 /** '' = inherit; otherwise a RouteStrategyName */
 export type RoutePolicyFormState = {
+	/** Pool default strategy (or model/protocol strategy in legacy mode) */
 	protocolStrategy: string;
+	/** Per-tier override when dialog.priority is set; '' = inherit pool default */
+	tierStrategy: string;
 	capabilityStrategies: Record<string, string>;
 };
 

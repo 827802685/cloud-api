@@ -12,7 +12,7 @@ import { resolveModelRouting } from '../../services/resolve-model-route-group';
 import {
   buildAffinityKey,
   buildTierKeyPrefix,
-  resolveRouteStrategy,
+  resolveRouteStrategyPlan,
 } from '../../services/route-strategies';
 import { proxyAnthropicMessages, EMPTY_USAGE, type UsageFromStream } from '../../services/proxy';
 import { finalizeRequestLogJson } from '../../services/request-log-shared';
@@ -127,6 +127,7 @@ messagesRoutes.post('/', async (c) => {
 
   let routes: RouteResult[];
   let poolStrategy: string | null = null;
+  let poolTierStrategies: string | null = null;
   try {
     const resolvedSurface = await resolveRoutesForSurface(repos, {
       modelId: baseModelId,
@@ -136,6 +137,7 @@ messagesRoutes.post('/', async (c) => {
     });
     routes = resolvedSurface.routes;
     poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
+    poolTierStrategies = resolvedSurface.surface?.pool_tier_strategies ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Model route resolution failed';
     return gatewayErrorJson(c, {
@@ -171,9 +173,10 @@ messagesRoutes.post('/', async (c) => {
   }
 
   const requestSignal = c.req.raw.signal;
-  const strategy = await resolveRouteStrategy({
+  const strategyPlan = await resolveRouteStrategyPlan({
     routePolicyRaw: model.route_policy ?? null,
     poolStrategy,
+    poolTierStrategies,
     protocol: 'anthropic',
     capability: 'messages',
     routeGroup: effectiveRouteGroup,
@@ -185,7 +188,8 @@ messagesRoutes.post('/', async (c) => {
   const proxyResult = await proxyAnthropicMessages(repos, routes, body, requestSignal, {
     affinityKey,
     tierKeyPrefix,
-    strategy,
+    strategy: strategyPlan.base,
+    tierStrategies: strategyPlan.tierOverrides,
     timing,
   });
   const { usagePromise, chosenRoute, upstreamRequestId, circuitEvents, suppressErrorAlert } = proxyResult;

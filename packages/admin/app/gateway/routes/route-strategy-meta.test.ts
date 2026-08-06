@@ -22,10 +22,10 @@ describe('route-strategy-meta', () => {
 
 	it('puts affinity and strict before load-balance strategies', () => {
 		assert.deepEqual([...ROUTE_STRATEGY_UI_ORDER], [
-			'affinity',
-			'strict',
+			'cache_affinity',
+			'fixed_order',
 			'weighted_random',
-			'round_robin',
+			'weighted_round_robin',
 		]);
 	});
 
@@ -36,15 +36,13 @@ describe('route-strategy-meta', () => {
 		}
 	});
 
-	it('marks affinity as recommended and round_robin as instance-local', () => {
-		const affinity = getRouteStrategyMeta('affinity');
-		const rr = getRouteStrategyMeta('round_robin');
+	it('marks affinity as recommended', () => {
+		const affinity = getRouteStrategyMeta('cache_affinity');
+		const rr = getRouteStrategyMeta('weighted_round_robin');
 		assert.ok(affinity);
 		assert.ok(rr);
 		assert.equal(affinity.recommended, true);
-		assert.equal(affinity.instanceLocal, false);
 		assert.equal(rr.recommended, false);
-		assert.equal(rr.instanceLocal, true);
 	});
 
 	it('returns null for unknown strategy ids', () => {

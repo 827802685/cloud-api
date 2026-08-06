@@ -1,6 +1,6 @@
 /**
  * 上游调度与故障转移：
- * - 按 priority 硬序 + 层内 route strategy（affinity / weighted_random / strict / round_robin）编排尝试序列。
+ * - 按 priority 硬序 + 层内 route strategy（cache_affinity / weighted_random / fixed_order / weighted_round_robin）编排尝试序列。
  * - 失败按类别进入 provider 熔断（`provider-circuit-breaker`：429 无头 5s→60s 梯度；普通 5xx 连续 3 次后 10s；524/fetch 不跨请求熔断）。
  * - 全部候选因熔断不可用时返回 429 + Retry-After（而非 502）。
  * - 循环内复查：本次请求内刚被熔断的 provider（同 providerId 多 target）不再打。
@@ -74,6 +74,8 @@ export type FailoverDispatchOptions = {
 	affinityKey: string;
 	tierKeyPrefix: string;
 	strategy: RouteStrategyName;
+	/** Per-priority overrides from `route_pools.tier_strategies` */
+	tierStrategies?: ReadonlyMap<number, RouteStrategyName> | null;
 	timing?: RequestTimingCollector | null;
 };
 
@@ -178,9 +180,16 @@ export async function failoverDispatch(
 	const affinityKey = options?.affinityKey ?? '';
 	const tierKeyPrefix = options?.tierKeyPrefix ?? '';
 	const strategy: RouteStrategyName = options?.strategy ?? DEFAULT_ROUTE_STRATEGY;
+	const tierStrategies = options?.tierStrategies ?? null;
 
 	const circuitEvents: GatewayCircuitAlertEvent[] = [];
-	const plan = buildRouteAttemptPlan(protocolRoutes, { affinityKey, tierKeyPrefix }, strategy);
+	const plan = buildRouteAttemptPlan(
+		protocolRoutes,
+		{ affinityKey, tierKeyPrefix },
+		strategy,
+		Date.now(),
+		tierStrategies
+	);
 
 	if (plan.attempts.length === 0) {
 		return {

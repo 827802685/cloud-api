@@ -1079,7 +1079,7 @@ LLM 及 token 模式的价格以每百万 token 为单位（per-million-token pr
 **排序与 failover**：
 
 - **层**：按 `model_routes.priority` **降序**（数字越大越先试）。
-- **同层**：按生效策略排序（默认 **`affinity`**：加权 Rendezvous，利于 prompt cache；另有 `weighted_random` / `strict` / `round_robin`），权重为 `model_routes.weight`。
+- **同层**：按生效策略排序（默认 **`cache_affinity`**：加权 Rendezvous，利于 prompt cache；另有 `weighted_random` / `fixed_order` / `weighted_round_robin`），权重为 `model_routes.weight`。
 - **跳过**：`providers.status = disabled`、无 `api_key`，或处于 **provider 熔断** 的候选不参与本次 attempt。
 - **全部不可用**（均熔断）：网关直接返回 **429**，响应体为 `{ "error": { "code": "upstream_capacity_exhausted", ... } }`，并带 `Retry-After`；**不调用上游**。
 - **有可试路由时**：按序打上游；可重试失败则换下一 Provider；全部 attempt 失败则返回**最后一次**上游响应。

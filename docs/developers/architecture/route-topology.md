@@ -58,23 +58,24 @@ model + route_group + request protocol + operation
 
 ## 策略优先级
 
-有效策略按以下顺序解析：
+有效策略按以下顺序解析（层内排序）：
 
+0. `route_pools.tier_strategies[priority]`（该 priority 层覆盖）
 1. `route_pools.strategy`
 2. `models.route_policy.rules[protocol.capability:route_group]`
 3. `models.route_policy.rules[protocol:route_group]`
 4. `models.route_policy.strategy`
 5. `system_config.ROUTE_STRATEGY`
-6. 代码默认 `affinity`
+6. 代码默认 `cache_affinity`
 
-Pool 级策略只影响当前请求 Surface 指向的 Pool，适合让 Chat 保持 `affinity`，同时让 Images / Audio 使用 `weighted_random`。完整算法见 [route-strategies.md](../reference/route-strategies.md)。
+Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` 可在同一 Pool 内让高/低 priority 层使用不同排序算法。完整算法见 [route-strategies.md](../reference/route-strategies.md)。
 
 ## Admin API
 
 - `POST /admin/routes` 可传 `request_protocol`、`request_operation`、`upstream_protocol`、`upstream_operation`、`adapter`；服务端会创建或复用对应 Surface / Pool。
 - `PATCH /admin/routes/:id` 可调整 Target；当请求协议或 operation 改变时会重新关联对应 Pool。
-- `PATCH /admin/routes/pools/:poolId`，body 为 `{ "strategy": "affinity" }`；`null` / 空值表示继承模型或全局策略。
-- `GET /admin/routes` 返回 `route_pool_id` 与序列化的 `surfaces`，供 Admin 绘制路由流。
+- `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "cache_affinity", "tier_strategies": { "10": "fixed_order" } }`；各字段可选；`null` / 空值表示清空并继承下一级。
+- `GET /admin/routes` 返回 `route_pool_id`、`pool_strategy`、`pool_tier_strategies` 与序列化的 `surfaces`，供 Admin 绘制路由流。
 
 对外调用 Admin 时，路径前面加 `/api`，即 `/api/admin/routes/...`。
 

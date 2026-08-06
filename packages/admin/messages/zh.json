@@ -570,8 +570,12 @@
 			"strategyInherit": "策略：继承",
 			"inheritShort": "继承",
 			"effectiveStrategy": "实际生效策略",
+			"tierStrategy": "层策略",
+			"tierStrategyEdit": "编辑层策略：{strategy}（{source}）",
+			"failoverRules": "Failover 规则",
 			"strategySource": {
-				"pool": "当前路由池",
+				"tier": "本层",
+				"pool": "继承自路由池",
 				"modelOperation": "继承自模型端点规则",
 				"modelProtocol": "继承自模型协议规则",
 				"model": "继承自模型默认",
@@ -586,6 +590,7 @@
 			"enabledShort": "已启用",
 			"disabledShort": "未启用",
 			"addRoute": "添加路由",
+			"noProviders": "当前没有可用供应商",
 			"firstAttempt": "首选层",
 			"fallback": "失败后继续",
 			"fallbackLayer": "回退层",
@@ -754,8 +759,13 @@
 			"tradeoff": "取舍",
 			"labelSeparator": "：",
 			"recommended": "推荐",
-			"instanceLocal": "单实例",
+			"tierLevel": "本层策略",
+			"tierLevelHint": "仅影响该 priority 层内的 Target 排序。留空则继承路由池默认策略。",
+			"poolDefault": "路由池默认策略",
+			"poolDefaultHint": "应用于未单独配置的 priority 层。留空则继续沿继承链查找模型 / 全局策略。",
+			"tierRequiresPool": "本层策略需要路由池（route pool）。请先为该入口添加供应商以创建路由池。",
 			"source": {
+				"tier": "本层覆盖",
 				"pool": "当前路由池",
 				"modelOperation": "模型端点规则",
 				"modelProtocol": "模型协议规则",
@@ -764,50 +774,46 @@
 				"default": "系统默认"
 			},
 			"display": {
-				"affinity": "缓存亲和",
+				"cache_affinity": "缓存亲和",
 				"weighted_random": "加权随机",
-				"strict": "固定顺序",
-				"round_robin": "加权轮询"
+				"fixed_order": "固定顺序",
+				"weighted_round_robin": "加权轮询"
 			},
 			"diagramCaption": {
-				"affinity": "同用户键粘滞同一 Target",
-				"strict": "所有请求共用固定顺序",
-				"weighted_random": "每次请求按权重随机",
-				"round_robin": "轮流首选 · 单实例计数"
+				"cache_affinity": "同用户键粘滞同一 Target",
+				"fixed_order": "所有请求共用固定顺序",
+				"weighted_random": "每次请求按权重 %",
+				"weighted_round_robin": "轮流首选"
 			},
-			"affinity": "affinity",
-			"weighted_random": "weighted_random",
-			"strict": "strict",
-			"round_robin": "round_robin",
 			"description": {
-				"affinity": {
+				"cache_affinity": {
 					"summary": "用 userId + 模型 + 分组 + 协议做哈希粘滞：同一用户对同一模型会稳定落到同一 Provider（利于上游 Prompt Cache）；不同用户可能落到不同 Provider。权重只影响整体分布，不是所有人共用一个主 Provider。",
 					"bestFor": "Prompt Cache、同用户会话连续性",
 					"tradeoff": "短时间流量不一定完全均匀"
+				},
+				"fixed_order": {
+					"summary": "所有请求共用同一固定尝试顺序：同优先级内按权重从高到低，权重相同时按 Provider ID。与粘性路由不同，不会让同一用户稳定命中同一 Provider。",
+					"bestFor": "明确主备、结果可预测",
+					"tradeoff": "首选 Provider 会承担大部分流量"
+				},
+				"weighted_round_robin": {
+					"summary": "按权重展开轮询序列，让请求依次落到不同 Provider。",
+					"bestFor": "均匀轮转、容量分摊",
+					"tradeoff": "计数器按运行实例维护，并非跨实例全局同步"
 				},
 				"weighted_random": {
 					"summary": "每次请求按权重随机选择，并为失败后的重试生成无重复候选顺序。",
 					"bestFor": "按比例分流、A/B 或成本分配",
 					"tradeoff": "同一用户可能频繁切换 Provider"
-				},
-				"strict": {
-					"summary": "所有请求共用同一固定尝试顺序：同优先级内按权重从高到低，权重相同时按 Provider ID。与缓存亲和不同——不会按用户粘滞。",
-					"bestFor": "明确主备、结果可预测",
-					"tradeoff": "首选 Provider 会承担大部分流量"
-				},
-				"round_robin": {
-					"summary": "按权重展开轮询序列，让请求依次落到不同 Provider。",
-					"bestFor": "均匀轮转、容量分摊",
-					"tradeoff": "计数器按运行实例维护，并非跨实例全局同步"
 				}
 			},
 			"effectTitle": "策略效果预览",
 			"effectHint": "基于当前启用的 Target 解释选择顺序，不会发送真实请求。",
 			"effect": {
-				"affinity": "亲和键 = userId|model|group|protocol。同一键稳定首选同一 Target；失败时继续尝试该层其余 Target。不同用户的首选可以不同。",
-				"weighted_random": "每次请求按权重随机决定首选 Target；百分比是该优先级内首次命中的近似占比。",
-				"strict": "数字表示所有请求共用的固定尝试顺序：权重越高越靠前，与用户无关。",
-				"round_robin": "同优先级内按权重轮流成为首选 Target；实际起点随当前运行实例的计数器变化。"
+				"cache_affinity": "亲和键 = userId|model|group|protocol。同一键稳定首选同一 Target；失败时继续尝试该层其余 Target。不同用户的首选可以不同。",
+				"fixed_order": "数字表示所有请求共用的固定尝试顺序：权重越高越靠前，与用户无关。",
+				"weighted_round_robin": "同优先级内按权重轮流成为首选 Target；实际起点随当前运行实例的计数器变化。",
+				"weighted_random": "每次请求按权重随机决定首选 Target；百分比是该优先级内首次命中的近似占比。"
 			},
 			"priorityFirst": "Priority 始终先于策略：只有最高优先级全部失败后，才进入下一回退层。",
 			"runtimeHealthHint": "实际请求还会先排除熔断中的 Provider，因此运行时顺序可能随健康状态变化。",
@@ -816,8 +822,24 @@
 			"firstAttemptLayer": "首选层",
 			"fallbackLayer": "回退层",
 			"inactiveExcluded": "停用的 Route 或 Provider 已从预览中排除。",
-			"hintCache": "非 affinity 可能降低 prompt cache 命中率。",
-			"hintNoCache": "上游无 prompt cache；建议 weighted_random 或 round_robin。"
+			"hintCache": "非 cache_affinity 可能降低 prompt cache 命中率。",
+			"hintNoCache": "上游无 prompt cache；建议 weighted_random 或 weighted_round_robin。",
+			"cache_affinity": "cache_affinity",
+			"weighted_random": "weighted_random",
+			"fixed_order": "fixed_order",
+			"weighted_round_robin": "weighted_round_robin"
+		},
+		"failover": {
+			"title": "Failover 规则",
+			"readonlyHint": "当前为固定策略，暂不可配置。",
+			"order": "尝试顺序：按 priority 从高到低分层；层内按该层路由策略排序；跳过冷却中的 Provider。",
+			"sameLayer": "同层 failover：429 / 5xx / 401 / 403 / 524 / 网络错误会换下一个候选；400 / 404 等客户端错误不会换 Provider。",
+			"crossLayer": "跨层 failover：高层候选耗尽后进入下一 priority 层（运维配置的主备关系）。",
+			"attemptLimit": "无固定重试次数上限：会尝试所有未熔断的 active 路由。",
+			"circuitCooldown": "Provider 冷却：429 递增 5s→15s→30s→60s（优先上游 Retry-After，封顶 15 分钟）；401/403 固定 5 分钟；5xx 连续 3 次后冷却 10 秒。",
+			"allBusy": "全部冷却时：网关直接返回 429 circuit.upstream_capacity_exhausted（零上游调用），请按 Retry-After 重试。",
+			"memoryNote": "冷却状态为单实例内存态，Cloudflare Workers 多 isolate 之间不共享。",
+			"imagesAbort": "图片生成：客户端取消或网关超时返回 504，不会 failover 到其他 Provider。"
 		}
 	},
 	"playground": {
@@ -1434,8 +1456,10 @@
 		},
 		"routeStrategy": {
 			"title": "全局路由策略",
-			"description": "模型或路由池未覆盖时的默认策略（system_config.ROUTE_STRATEGY）。示意图展示同优先级内如何选择 Target。",
-			"strategy": "策略"
+			"description": "模型或路由池未覆盖时的默认策略（system_config.ROUTE_STRATEGY）。",
+			"strategy": "策略",
+			"change": "修改",
+			"dialogHint": "选择模型或路由池未覆盖时使用的默认策略。"
 		},
 		"saveRouteStrategy": "保存路由策略"
 	},

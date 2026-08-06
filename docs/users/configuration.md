@@ -42,11 +42,11 @@ Provider 导入模板的维护说明见 [developers/reference/provider-import-pr
   - **Request protocol / operation**：客户端从哪个协议与操作进入，例如 `openai.chat`、`anthropic.messages`、`openai.images.generations`。
   - **Upstream protocol / operation**：Target 实际调用的供应商能力。2.0 仅开放 `passthrough` adapter，因此请求协议与上游协议必须一致；`*` 用于迁移兼容。
   - **`priority`（层）**：数字**越大**越先试（硬序）。
-  - **`weight`（同层）**：配合 Pool / 模型 / 全局路由策略（默认 **affinity**）决定层内顺序。
+  - **`weight`（同层）**：配合 Pool / 模型 / 全局路由策略（默认 **cache_affinity**）决定层内顺序。
   - **`route_group`**：如 `default` / `free`，客户端用 `modelId:group` 选择。
 - 图片生成模型：导入或手建后确认 `output_modalities` 含 `image`、`pricing_profile` 的 `image_billing_mode`（`token` / `per_image`），并挂 **OpenAI 协议** active 路由；细节见 [developers/reference/image-models.md](../developers/reference/image-models.md)。
 - 语音转写模型：导入或手建后确认 `pricing_profile.audio_billing_mode`（`per_second` / `token`）与对应单价块，并挂 **OpenAI 协议** active 路由；细节见 [developers/api/user.md「语音转写」](../developers/api/user.md#语音转写audio-transcriptions)。
-- **路由策略**：按六级解析：Route Pool `strategy` → 模型 `route_policy.rules` 的 `{protocol}.{capability}:{group}` → `{protocol}:{group}` → 模型顶层 `route_policy.strategy` → Admin Config 全局 `ROUTE_STRATEGY` → 代码默认 `affinity`。四种策略及完整键格式见 [developers/reference/route-strategies.md](../developers/reference/route-strategies.md)。
+- **路由策略**：先按 priority 层读 Route Pool `tier_strategies[priority]`（若有）；否则 Route Pool `strategy` → 模型 `route_policy.rules` 的 `{protocol}.{capability}:{group}` → `{protocol}:{group}` → 模型顶层 `route_policy.strategy` → Admin Config 全局 `ROUTE_STRATEGY` → 代码默认 `cache_affinity`。四种策略及完整键格式见 [developers/reference/route-strategies.md](../developers/reference/route-strategies.md)。
 - 在 Route 上配置默认参数，例如思考参数、输出长度或供应商扩展字段。
 - 设置价格口径：先维护模型**目录标准价**，再在路由上设用户计费 / 供应成本的基础倍率；如需对齐供应商高峰 / 闲时价，再配置 **Daily schedule**（每日时段倍率，时区见系统配置的业务时区）。
 - 在请求日志中核对三笔账：供应成本、目录标准价、用户计费是否符合业务预期。

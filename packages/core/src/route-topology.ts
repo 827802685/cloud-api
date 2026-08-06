@@ -86,6 +86,8 @@ export interface RoutePoolRow {
 	route_group: string;
 	name: string;
 	strategy: string | null;
+	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
+	tier_strategies?: string | null;
 	status: string;
 	created_at?: string;
 	updated_at?: string;
@@ -106,5 +108,7 @@ export interface ModelSurfaceRow {
 export type ResolvedModelSurfaceRow = ModelSurfaceRow & {
 	pool_name: string;
 	pool_strategy: string | null;
+	/** JSON map from `route_pools.tier_strategies` */
+	pool_tier_strategies: string | null;
 	pool_status: string;
 };

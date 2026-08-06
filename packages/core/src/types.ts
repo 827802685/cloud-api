@@ -66,7 +66,11 @@ export interface ResolvedGatewayKeyRow extends ApiKeyRow {
 export type ProviderStatus = 'active' | 'disabled';
 
 /** 同层路由排序策略名。 */
-export type RouteStrategyName = 'affinity' | 'weighted_random' | 'strict' | 'round_robin';
+export type RouteStrategyName =
+	| 'cache_affinity'
+	| 'weighted_random'
+	| 'fixed_order'
+	| 'weighted_round_robin';
 
 /** `providers` 表行。 */
 export interface ProviderRow {
