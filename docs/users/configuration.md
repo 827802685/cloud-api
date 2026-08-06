@@ -55,14 +55,17 @@ Route 默认参数合并规则见 [developers/api/user.md](../developers/api/use
 
 ## 4. 配置 Agent Tools（可选）
 
-Agent Tools 是 Proxy 上面向 Agent 的 **可扩展产品 API**（`/v1/tools/*`），**不是** Chat Completions 的一部分。当前已接入联网类工具，后续可继续扩展。在 Admin → **Tools → Configuration**：
+Agent Tools 是 Proxy 上面向 Agent 的 **可扩展产品 API**（`/v1/tools/*`），**不是** Chat Completions 的一部分。在 Admin → **Tools → Configuration**：
 
-- 为当前已支持的工具分别维护引擎 catalog（API Key + 单价）：
+- 每种工具以 Provider 卡片展示各引擎；点击卡片后在右侧抽屉维护凭证与三账本单价：**Standard（目录标准价）/ Charged（用户扣费）/ Metered（供应成本）**。
+- 当前工具与引擎：
   - **Web Search**：博查、Tavily、阿里云 CleverSee、腾讯云联网搜索 WSA
   - **Web Fetch**：Firecrawl、Tavily Extract、Jina Reader
   - **Web Deep Search**：Firecrawl Search、Jina Search
-- 每种工具只选 **一个 Active** 引擎；未配置 Key 的引擎不可激活，调用时返回 **503**。
-- 成功按引擎固定单价扣用户预算；上游失败不扣费。工具日志的 `metered_cost`、`standard_cost`、`charged_cost` 当前均等于该单价，不应用模型 Route 的倍率或 Daily schedule。单价币种由 `BILLING_CURRENCY` 决定。调用记录见 **Tools → Invocations**（与 Request Logs 同源）。
+  - **AI Detection**：多引擎 catalog，当前仅腾讯云 TMS 已实现；按 `billingUnitChars` 字符单元计费
+- **仅保存配置**不会切换线上引擎；**保存并启用**会保存当前草稿并把该 Provider 设为此工具唯一的 Active。未实现或凭证不完整的引擎不可启用。
+- 卡片会提示 Active、未保存、缺少凭证、暂不可用与亏损定价（`charged < metered`）等状态。清空当前 Active 的凭证前，应先切换到另一个凭证完整的引擎。
+- 成功请求分别按三种绝对单价写入 `metered_cost` / `standard_cost` / `charged_cost`，仅 **charged** 累加用户预算；上游失败三列均为 0。Tools 不应用模型 Route 倍率或 Daily schedule。币种由 `BILLING_CURRENCY` 决定，调用记录见 **Tools → Invocations**（与 Request Logs 同源）。
 
 字段与引擎白名单见 [developers/api/user.md](../developers/api/user.md) 中各 Tools 章节。
 

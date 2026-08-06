@@ -67,7 +67,7 @@ flowchart TB
 | App 装配 | `packages/proxy/src/app.ts` | Hono 应用、路由挂载、注入 `repositories` |
 | 鉴权 | `middleware/auth.ts` → `services/api-key-auth.ts` | 提取 sk、校验用户 API Key、懒重置预算周期 |
 | 模型与 Surface 路由 | `resolve-model-route-group.ts`、`model-router.ts` | 解析 `model` / `:route_group`，按 request protocol / operation 查精确或 wildcard Surface，再读取 Pool Targets、JOIN provider（单键 `api_key`） |
-| 策略解析 | `route-strategies/index.ts` → `resolveRouteStrategy` | 六级：Pool → capability rule → protocol rule → model → global → `cache_affinity` |
+| 策略解析 | `route-strategies/index.ts` → `resolveRouteStrategyPlan` | 先解析 Pool → capability rule → protocol rule → model → global → `cache_affinity` 的 base，再叠加 `tier_strategies[priority]` |
 | 代理入口 | `services/proxy.ts` | 三协议（及 Images / Audio）统一调用 `failoverDispatch` |
 | 故障转移 | `services/failover-dispatch.ts` | 编排 attempt、逐 provider 打上游、熔断与 429 全忙 |
 | 调度计划 | `services/route-attempt-planner.ts` | `buildRouteAttemptPlan`：priority 硬序 + 层内策略排序 + 跳过熔断 provider |

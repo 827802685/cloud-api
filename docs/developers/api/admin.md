@@ -572,7 +572,33 @@ curl "http://localhost:8789/api/admin/keys/uuid-here/logs?page=1&page_size=10" \
 | GET | `/admin/providers/:id/api-key` | **揭示明文** `api_key`（`{ success, data: { api_key } }`） |
 | GET / POST | `/admin/providers/import/catalog`、`/import` | 静态模板导入（占位 key，须手动替换） |
 
-`endpoints` JSON 权威形状：`{ "openai"?: { "base"?: string, "endpoints"?: { "chat"|"images.generations"|"images.edits"|"audio.transcriptions": url } }, "anthropic"?: …, "gemini"?: … }`。`base` 走标准路径派生；capability 完整 URL 模板存在则不再追加后缀。
+`endpoints` JSON 权威形状：
+
+```json
+{
+  "openai": {
+    "base": "https://api.example.com/v1",
+    "endpoints": {
+      "chat": "https://api.example.com/v1/chat/completions",
+      "images.generations": "https://api.example.com/v1/images/generations",
+      "images.edits": "https://api.example.com/v1/images/edits",
+      "audio.transcriptions": "https://api.example.com/v1/audio/transcriptions"
+    }
+  },
+  "anthropic": {
+    "base": "https://api.example.com/v1",
+    "endpoints": { "messages": "https://api.example.com/v1/messages" }
+  },
+  "gemini": {
+    "base": "https://generativelanguage.googleapis.com/v1beta/models",
+    "endpoints": {
+      "models.generate": "https://example.com/v1beta/models/{model}:{action}"
+    }
+  }
+}
+```
+
+`base` 走标准路径派生；capability 完整 URL 模板存在则覆盖派生结果。Gemini canonical 键为 **`models.generate`**，模板必须含 `{model}` 与 `{action}`；历史 `generateContent` / `streamGenerateContent` 键仍可读写，但新 UI 与规范化后的路由只生成 `models.generate`。
 
 ### Models / Routes
 

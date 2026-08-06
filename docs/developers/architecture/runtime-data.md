@@ -149,14 +149,16 @@ sequenceDiagram
 > **策略语义与六级解析**：见 **[route-strategies.md](../reference/route-strategies.md)**。
 > **0015 / 0016 切换步骤**：见 **[single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)**。  
 > **0017 Gemini `models.generate` 切换步骤**：见 **[gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)**。
+> **0018 按 priority 层策略切换步骤**：见 **[route-pool-tier-strategies-cutover.md](../../operators/migrations/route-pool-tier-strategies-cutover.md)**。
+> **0019 canonical 策略 ID 切换步骤**：见 **[route-strategy-canonical-ids-cutover.md](../../operators/migrations/route-strategy-canonical-ids-cutover.md)**。
 
-### Schema（迁移 **0015 / 0016 / 0017**，三库同语义）
+### Schema（迁移 **0015–0019**，三库同语义）
 
 | 对象 | 含义 |
 |------|------|
 | **`providers.api_key`** / **`providers.status`** | 一个 Provider = 一把上游密钥；`status` 为 `active` \| `disabled`。**无** `provider_api_keys` 表 |
 | **`model_surfaces`** | 公开请求入口：`model_id + route_group + request_protocol + request_operation` → `route_pool_id` |
-| **`route_pools`** | 一组可故障转移 Target 的容器；`strategy` 可覆盖模型与全局策略 |
+| **`route_pools`** | 一组可故障转移 Target 的容器；`strategy` 可覆盖模型与全局策略，`tier_strategies` 可按 priority 层继续覆盖 |
 | **`model_routes.priority`** | 硬序分层（**DESC**，数字越大越先试） |
 | **`model_routes.weight`** | 同 priority 层内权重（默认 `1`；策略用） |
 | **`model_routes.route_pool_id` / `upstream_operation` / `adapter`** | Target 所属 Pool、上游 capability 与转换方式；2.0 仅支持 `passthrough` |

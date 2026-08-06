@@ -47,11 +47,12 @@ Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route
 
 | 键格式 | 示例 |
 |--------|------|
-| `{protocol}.{capability}:{route_group}` | `openai.chat:default`、`gemini.generateContent:free` |
+| `{protocol}.{capability}:{route_group}` | `openai.chat:default`、`gemini.models.generate:free` |
 | `{protocol}:{route_group}` | `openai:default`、`anthropic:free` |
 
 - 用 `lastIndexOf(':')` 拆分；protocol / capability / route_group 规范化为小写。
 - capability 须属于对应协议白名单（`provider-endpoints`：如 openai 的 `chat`、`images.generations`、`audio.transcriptions` 等）。
+- Gemini 历史键 `gemini.generateContent:*` / `gemini.streamGenerateContent:*` 读取时会归一为 `gemini.models.generate:*`；Admin 新写入只保存 canonical 家族键。
 - `null` / 空串 = 清空，回退全局 `ROUTE_STRATEGY`。
 - Admin：`PATCH /admin/models/:id`，字段 `route_policy`；校验见 `normalizeModelRoutePolicyInput`。
 

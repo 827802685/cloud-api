@@ -16,7 +16,8 @@
 
 - 列为空 / `NULL` 时行为与改造前完全一致（所有层共用 Pool / 模型 / 全局策略）。
 - **无需数据回填**。
-- Proxy 在列缺失时读到 `undefined` → 空 Map → 回退旧逻辑，允许先部署代码再迁移（或先迁移再部署）。
+- **必须先应用 0018，再部署包含本功能的新 Proxy / Admin。** 新代码的 Surface / Route 查询会直接读取 `route_pools.tier_strategies`；列尚不存在时数据库会报错，而不是返回 `undefined`。
+- 先迁移、后部署是兼容的：旧 Proxy / Admin 会忽略新增列；迁移后列为 `NULL` 时仍沿用原有 Pool / 模型 / 全局策略。
 
 ---
 
@@ -27,9 +28,10 @@
 ```bash
 # D1 local / remote
 npm run db:migrate
+npm run db:migrate:remote
 
 # Postgres / MySQL（见 packages/core migrate CLI）
-npm run db:migrate:postgres
+npm run db:migrate:pg
 # 或
 npm run db:migrate:mysql
 ```

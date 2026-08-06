@@ -293,7 +293,19 @@ Admin 中 Provider 的权威配置为 **`providers.endpoints`** JSON（迁移 `0
 { "gemini": { "base": "https://generativelanguage.googleapis.com/v1beta/models" } }
 ```
 
-`base` 须配置到 **`{model}` 之前**的完整路径前缀（网关不再自动补 `/v1beta/models`）；出站由 `resolveUpstreamEndpoint` 派生为 `{base}/{upstreamModel}:{action}`。非标准厂商可在 `endpoints.gemini.endpoints.generateContent` / `streamGenerateContent` 写完整 URL 模板（须含 `{model}`）。
+`base` 须配置到 **`{model}` 之前**的完整路径前缀（网关不再自动补 `/v1beta/models`）；出站由 `resolveUpstreamEndpoint` 派生为 `{base}/{upstreamModel}:{action}`。非标准厂商优先配置统一模板：
+
+```json
+{
+  "gemini": {
+    "endpoints": {
+      "models.generate": "https://example.com/v1beta/models/{model}:{action}"
+    }
+  }
+}
+```
+
+`models.generate` 模板必须同时包含 **`{model}`** 与 **`{action}`**，一次配置覆盖 `generateContent` 和 `streamGenerateContent`。旧的 `generateContent` / `streamGenerateContent` 独立模板仍可读写以兼容历史数据；运行时优先级为 `models.generate` → 对应旧 action 模板 → `base` 派生。新配置不应继续拆成两个旧键。
 
 **客户端入口**始终为 `POST /v1beta/models/...`（与 `@google/genai` SDK 兼容）。
 
