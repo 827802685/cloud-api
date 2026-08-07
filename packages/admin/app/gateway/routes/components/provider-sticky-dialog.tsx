@@ -426,9 +426,16 @@ export function ProviderStickyDialog(props: Props) {
 														</div>
 													</div>
 													<div>
-														<div className="mb-0.5 flex justify-between text-[10px] text-gray-500">
+														<div className="mb-0.5 flex justify-between gap-1 text-[10px] text-gray-500">
 															<span>{t('weightShare')}</span>
-															<span>{Math.round(row.weightShare * 100)}%</span>
+															<span className="shrink-0 font-mono">
+																{row.weight > 0
+																	? t('weightShareValue', {
+																			weight: row.weight,
+																			pct: Math.round(row.weightShare * 100),
+																		})
+																	: '—'}
+															</span>
 														</div>
 														<div className="h-1.5 overflow-hidden rounded bg-gray-200">
 															<div
