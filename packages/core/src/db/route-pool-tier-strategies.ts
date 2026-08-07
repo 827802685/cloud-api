@@ -3,7 +3,7 @@
  *
  * 结构：
  * ```json
- * { "10": "cache_affinity", "0": "fixed_order" }
+ * { "10": "hash_affinity", "0": "weight_priority" }
  * ```
  * - key 为整数 priority（字符串形式亦可）
  * - value 须为合法 `RouteStrategyName`

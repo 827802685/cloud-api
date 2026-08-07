@@ -10,17 +10,17 @@ import {
 	resolveModelRoutePolicyStrategy,
 } from '@octafuse/core';
 import type { RouteOrderStrategy } from './types';
-import { orderByCacheAffinity } from './cache-affinity';
+import { orderByHashAffinity } from './hash-affinity';
 import { orderByWeightedRandom } from './weighted-random';
-import { orderByFixedOrder } from './fixed-order';
+import { orderByWeightPriority } from './weight-priority';
 import { orderByWeightedRoundRobin } from './weighted-round-robin';
 
 export type { RouteOrderContext, RouteOrderStrategy } from './types';
 
 export const ROUTE_STRATEGIES: Record<RouteStrategyName, RouteOrderStrategy> = {
-	cache_affinity: orderByCacheAffinity,
+	hash_affinity: orderByHashAffinity,
 	weighted_random: orderByWeightedRandom,
-	fixed_order: orderByFixedOrder,
+	weight_priority: orderByWeightPriority,
 	weighted_round_robin: orderByWeightedRoundRobin,
 };
 
@@ -82,9 +82,9 @@ export function buildTierKeyPrefix(baseModelId: string, routeGroup: string, prot
 	return `${baseModelId}|${routeGroup}|${protocol}`;
 }
 
-export { orderByCacheAffinity } from './cache-affinity';
+export { orderByHashAffinity } from './hash-affinity';
 export { orderByWeightedRandom } from './weighted-random';
-export { orderByFixedOrder } from './fixed-order';
+export { orderByWeightPriority } from './weight-priority';
 export { orderByWeightedRoundRobin, resetWeightedRoundRobinStateForTests } from './weighted-round-robin';
 export { fnv1a32, routeAffinityScore } from './route-affinity-hash';
 export { DEFAULT_ROUTE_STRATEGY };

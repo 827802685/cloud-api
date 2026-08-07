@@ -10,9 +10,10 @@ export type RouteStrategyPickerProps = {
 	/** Currently selected strategy id, or '' for inherit. */
 	value: string;
 	onChange: (value: string) => void;
-	/** When set, empty selection shows inherit → this strategy. */
+	/** When set, empty selection highlights the inherited strategy. */
 	allowInherit?: boolean;
 	inheritedStrategy?: string;
+	/** @deprecated Kept for call-site compatibility; no longer shown in the picker. */
 	inheritedSourceLabel?: string;
 	disabled?: boolean;
 	className?: string;
@@ -30,7 +31,6 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 		onChange,
 		allowInherit = false,
 		inheritedStrategy,
-		inheritedSourceLabel,
 		disabled = false,
 		className,
 		dense = false,
@@ -44,44 +44,16 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 
 	const selectStrategy = (next: string) => {
 		if (disabled) return;
+		// With inherit enabled, clicking the active override again clears back to inherit.
+		if (allowInherit && value && next === value) {
+			onChange('');
+			return;
+		}
 		onChange(next);
 	};
 
 	return (
 		<div className={className}>
-			{allowInherit ? (
-				<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-					{inheritedStrategy ? (
-						<p className="text-xs text-gray-500">
-							<span className="font-medium text-gray-600">{t('inheritedResult')}</span>
-							<span className="mx-1.5 text-gray-300">·</span>
-							<span className="font-mono text-gray-700">{inheritedStrategy}</span>
-							{inheritedSourceLabel ? (
-								<>
-									<span className="mx-1.5 text-gray-300">·</span>
-									<span>{inheritedSourceLabel}</span>
-								</>
-							) : null}
-						</p>
-					) : (
-						<span />
-					)}
-					<button
-						type="button"
-						onClick={() => selectStrategy('')}
-						disabled={disabled}
-						aria-pressed={!value}
-						className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${
-							!value
-								? 'bg-indigo-50 text-indigo-700 ring-indigo-200'
-								: 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50 hover:text-indigo-700'
-						}`}
-					>
-						{t('inherit')}
-					</button>
-				</div>
-			) : null}
-
 			<div
 				role="radiogroup"
 				aria-labelledby={`${groupId}-label`}
@@ -92,7 +64,6 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 				</span>
 				{ROUTE_STRATEGY_META_LIST.map((meta) => {
 					const selected = effective === meta.id;
-					const usingInherit = selected && allowInherit && !value;
 					const showMotion = selected || hovered === meta.id;
 					return (
 						<button
@@ -112,34 +83,13 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 									: 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-slate-50'
 							}`}
 						>
-							<div className="relative min-h-[2.5rem] pr-20">
-								<div className="flex min-w-0 items-center gap-1.5 pr-1">
-									<div className="truncate text-sm font-semibold leading-5 text-gray-900">
-										{t(strategyTitleKey(meta.id))}
-									</div>
-									{meta.recommended ? (
-										<span className="shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-amber-800">
-											{t('recommended')}
-										</span>
-									) : null}
+							<div>
+								<div className="truncate text-sm font-semibold leading-5 text-gray-900">
+									{t(strategyTitleKey(meta.id))}
 								</div>
 								<div className="mt-0.5 truncate font-mono text-[10px] leading-4 text-gray-400">
 									{meta.machineId}
 								</div>
-								{(usingInherit || selected) && (
-									<span className="absolute right-0 top-0 flex flex-col items-end gap-1">
-										{usingInherit ? (
-											<span className="whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-indigo-700">
-												{t('inherit')}
-											</span>
-										) : null}
-										{selected ? (
-											<span className="whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-emerald-700">
-												{t('effective')}
-											</span>
-										) : null}
-									</span>
-								)}
 							</div>
 
 							<div className="mt-2.5">

@@ -7,46 +7,41 @@ export type RouteStrategyMeta = {
 	id: RouteStrategyName;
 	/** Shown as a secondary monospace badge; never localized. */
 	machineId: RouteStrategyName;
-	recommended: boolean;
 	diagram: RouteStrategyDiagramKind;
 };
 
 const META_BY_ID: Record<RouteStrategyName, RouteStrategyMeta> = {
-	cache_affinity: {
-		id: 'cache_affinity',
-		machineId: 'cache_affinity',
-		recommended: true,
-		diagram: 'cache_affinity',
+	hash_affinity: {
+		id: 'hash_affinity',
+		machineId: 'hash_affinity',
+		diagram: 'hash_affinity',
 	},
-	fixed_order: {
-		id: 'fixed_order',
-		machineId: 'fixed_order',
-		recommended: false,
-		diagram: 'fixed_order',
+	weight_priority: {
+		id: 'weight_priority',
+		machineId: 'weight_priority',
+		diagram: 'weight_priority',
 	},
 	weighted_random: {
 		id: 'weighted_random',
 		machineId: 'weighted_random',
-		recommended: false,
 		diagram: 'weighted_random',
 	},
 	weighted_round_robin: {
 		id: 'weighted_round_robin',
 		machineId: 'weighted_round_robin',
-		recommended: false,
 		diagram: 'weighted_round_robin',
 	},
 };
 
 /**
- * Admin UI card order (deterministic first, then load-balance).
+ * Admin UI card order (most commonly used first).
  * Persisted enum order remains `ROUTE_STRATEGY_NAMES` in core.
  */
 export const ROUTE_STRATEGY_UI_ORDER = [
-	'cache_affinity',
-	'fixed_order',
-	'weighted_random',
 	'weighted_round_robin',
+	'weighted_random',
+	'hash_affinity',
+	'weight_priority',
 ] as const satisfies readonly RouteStrategyName[];
 
 export const ROUTE_STRATEGY_META_LIST: RouteStrategyMeta[] = ROUTE_STRATEGY_UI_ORDER.map(

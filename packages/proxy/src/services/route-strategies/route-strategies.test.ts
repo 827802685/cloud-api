@@ -55,8 +55,8 @@ describe('buildAffinityKey / buildTierKeyPrefix', () => {
 describe('canonical strategy registry', () => {
 	it('registers only canonical IDs and rejects legacy names', () => {
 		assert.deepEqual(Object.keys(ROUTE_STRATEGIES).sort(), [
-			'cache_affinity',
-			'fixed_order',
+			'hash_affinity',
+			'weight_priority',
 			'weighted_random',
 			'weighted_round_robin',
 		]);
@@ -74,9 +74,9 @@ describe('canonical strategy registry', () => {
 				protocol: 'openai',
 				capability: 'chat',
 				routeGroup: 'default',
-				repos: mockRepos('cache_affinity'),
+				repos: mockRepos('hash_affinity'),
 			}),
-			'cache_affinity'
+			'hash_affinity'
 		);
 		resetRouteStrategyCacheForTests();
 		assert.equal(
@@ -92,14 +92,14 @@ describe('canonical strategy registry', () => {
 	});
 });
 
-describe('fixed_order / weighted_round_robin ordering', () => {
+describe('weight_priority / weighted_round_robin ordering', () => {
 	it('orders by weight DESC then providerId ASC', () => {
 		const routes = [
 			makeRoute('b', { routeWeight: 1 }),
 			makeRoute('a', { routeWeight: 5 }),
 			makeRoute('c', { routeWeight: 5 }),
 		];
-		const ordered = ROUTE_STRATEGIES.fixed_order(routes, {
+		const ordered = ROUTE_STRATEGIES.weight_priority(routes, {
 			affinityKey: 'k',
 			tierKey: 't|0',
 		});
@@ -124,12 +124,12 @@ describe('fixed_order / weighted_round_robin ordering', () => {
 	});
 });
 
-describe('cache_affinity ordering', () => {
+describe('hash_affinity ordering', () => {
 	it('is deterministic for the same affinityKey', () => {
 		const routes = [makeRoute('p-a'), makeRoute('p-b'), makeRoute('p-c', { routeWeight: 3 })];
 		const ctx = { affinityKey: 'user|model|default|openai', tierKey: 'model|default|openai|0' };
-		const a = ROUTE_STRATEGIES.cache_affinity(routes, ctx);
-		const b = ROUTE_STRATEGIES.cache_affinity(routes, ctx);
+		const a = ROUTE_STRATEGIES.hash_affinity(routes, ctx);
+		const b = ROUTE_STRATEGIES.hash_affinity(routes, ctx);
 		assert.deepEqual(
 			a.map((r) => r.providerId),
 			b.map((r) => r.providerId)
@@ -151,10 +151,10 @@ describe('cache_affinity ordering', () => {
 describe('resolveRouteStrategy five-level', () => {
 	it('uses capability rule over protocol / model / global', async () => {
 		const raw = JSON.stringify({
-			strategy: 'cache_affinity',
+			strategy: 'hash_affinity',
 			rules: {
 				'openai:default': { strategy: 'weighted_random' },
-				'openai.chat:default': { strategy: 'fixed_order' },
+				'openai.chat:default': { strategy: 'weight_priority' },
 			},
 		});
 		const strategy = await resolveRouteStrategy({
@@ -164,12 +164,12 @@ describe('resolveRouteStrategy five-level', () => {
 			routeGroup: 'default',
 			repos: mockRepos('weighted_round_robin'),
 		});
-		assert.equal(strategy, 'fixed_order');
+		assert.equal(strategy, 'weight_priority');
 	});
 
 	it('falls back to protocol rule then model strategy then global', async () => {
 		const raw = JSON.stringify({
-			strategy: 'cache_affinity',
+			strategy: 'hash_affinity',
 			rules: {
 				'openai:default': { strategy: 'weighted_random' },
 			},
@@ -186,13 +186,13 @@ describe('resolveRouteStrategy five-level', () => {
 		);
 		assert.equal(
 			await resolveRouteStrategy({
-				routePolicyRaw: JSON.stringify({ strategy: 'fixed_order' }),
+				routePolicyRaw: JSON.stringify({ strategy: 'weight_priority' }),
 				protocol: 'anthropic',
 				capability: 'messages',
 				routeGroup: 'default',
 				repos: mockRepos('weighted_round_robin'),
 			}),
-			'fixed_order'
+			'weight_priority'
 		);
 		resetRouteStrategyCacheForTests();
 		assert.equal(
@@ -214,7 +214,7 @@ describe('resolveRouteStrategy five-level', () => {
 				routeGroup: 'default',
 				repos: mockRepos(null),
 			}),
-			'cache_affinity'
+			'hash_affinity'
 		);
 	});
 
@@ -222,7 +222,7 @@ describe('resolveRouteStrategy five-level', () => {
 		const raw = JSON.stringify({
 			rules: {
 				'gemini.streamGenerateContent:default': { strategy: 'weighted_random' },
-				'gemini.generateContent:default': { strategy: 'fixed_order' },
+				'gemini.generateContent:default': { strategy: 'weight_priority' },
 			},
 		});
 		const gen = await resolveRouteStrategy({
@@ -230,25 +230,25 @@ describe('resolveRouteStrategy five-level', () => {
 			protocol: 'gemini',
 			capability: 'models.generate',
 			routeGroup: 'default',
-			repos: mockRepos('cache_affinity'),
+			repos: mockRepos('hash_affinity'),
 		});
 		const streamAlias = await resolveRouteStrategy({
 			routePolicyRaw: raw,
 			protocol: 'gemini',
 			capability: 'streamGenerateContent',
 			routeGroup: 'default',
-			repos: mockRepos('cache_affinity'),
+			repos: mockRepos('hash_affinity'),
 		});
-		assert.equal(gen, 'fixed_order');
-		assert.equal(streamAlias, 'fixed_order');
+		assert.equal(gen, 'weight_priority');
+		assert.equal(streamAlias, 'weight_priority');
 	});
 
 	it('keeps same affinity order for generateContent and streamGenerateContent when policy is shared', async () => {
 		const routes = [makeRoute('g1'), makeRoute('g2'), makeRoute('g3')];
 		const affinityKey = buildAffinityKey('u', 'gemini-pro', 'default', 'gemini');
 		const ctx = { affinityKey, tierKey: `${buildTierKeyPrefix('gemini-pro', 'default', 'gemini')}|0` };
-		const orderGen = ROUTE_STRATEGIES.cache_affinity(routes, ctx).map((r) => r.providerId);
-		const orderStream = ROUTE_STRATEGIES.cache_affinity(routes, ctx).map((r) => r.providerId);
+		const orderGen = ROUTE_STRATEGIES.hash_affinity(routes, ctx).map((r) => r.providerId);
+		const orderStream = ROUTE_STRATEGIES.hash_affinity(routes, ctx).map((r) => r.providerId);
 		assert.deepEqual(orderGen, orderStream);
 	});
 });

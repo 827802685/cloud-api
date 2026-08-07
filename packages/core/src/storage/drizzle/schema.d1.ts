@@ -88,7 +88,7 @@ export const routePoolsTable = sqliteTable('route_pools', {
 	routeGroup: text('route_group').notNull().default('default'),
 	name: text('name').notNull(),
 	strategy: text('strategy'),
-	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
+	/** JSON map: {"10":"hash_affinity","0":"weight_priority"} — per-priority-tier overrides */
 	tierStrategies: text('tier_strategies'),
 	/** Provider sticky routing: 0/1 */
 	stickyEnabled: integer('sticky_enabled').notNull().default(0),

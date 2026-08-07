@@ -10,9 +10,9 @@
 
 | 名称 | 行为 | 缓存亲和 | 负载均衡 |
 |------|------|----------|----------|
-| **`cache_affinity`**（默认） | 加权 Rendezvous hash：对 `(affinityKey, providerId)` 稳定打分，再按 `weight` 加权；同分按 `providerId` 升序 | **高**（同用户同模型同协议稳定首选） | 随 weight 倾斜，非均匀随机 |
+| **`hash_affinity`**（默认） | 加权 Rendezvous hash：对 `(affinityKey, providerId)` 稳定打分，再按 `weight` 加权；同分按 `providerId` 升序 | **高**（同用户同模型同协议稳定首选） | 随 weight 倾斜，非均匀随机 |
 | **`weighted_random`** | 按 `weight` 无放回加权随机打散 | 低 | **高** |
-| **`fixed_order`** | `weight` DESC，再 `providerId` ASC（确定性） | 无随机 | 固定优先高 weight |
+| **`weight_priority`** | `weight` DESC，再 `providerId` ASC（确定性） | 无随机 | 固定优先高 weight |
 | **`weighted_round_robin`** | 按 weight 展开序列，进程内计数器轮转后去重 | 无 | 进程内轮转（Workers 多 isolate 各自计数） |
 
 Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route-affinity-hash.ts`）。
@@ -37,10 +37,10 @@ Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route
 
 ```json
 {
-  "strategy": "cache_affinity",
+  "strategy": "hash_affinity",
   "rules": {
-    "openai:default": { "strategy": "cache_affinity" },
-    "openai.chat:default": { "strategy": "fixed_order" }
+    "openai:default": { "strategy": "hash_affinity" },
+    "openai.chat:default": { "strategy": "weight_priority" }
   }
 }
 ```
@@ -70,16 +70,16 @@ Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route
 3. **protocol × route_group** rule
 4. **model 顶层** `route_policy.strategy`
 5. **全局** `system_config.ROUTE_STRATEGY`（进程内缓存 **30s**；非法值回退代码默认）
-6. **代码默认** `cache_affinity`（`DEFAULT_ROUTE_STRATEGY`）
+6. **代码默认** `hash_affinity`（`DEFAULT_ROUTE_STRATEGY`）
 
-`tier_strategies` 列存 JSON map，例如 `{ "10": "cache_affinity", "0": "fixed_order" }`。未配置的层使用 base。
+`tier_strategies` 列存 JSON map，例如 `{ "10": "hash_affinity", "0": "weight_priority" }`。未配置的层使用 base。
 
 写入 Pool：`PATCH /admin/routes/pools/:poolId`，body 可为：
 
 ```json
 {
   "strategy": "weighted_random",
-  "tier_strategies": { "10": "cache_affinity", "0": "fixed_order" }
+  "tier_strategies": { "10": "hash_affinity", "0": "weight_priority" }
 }
 ```
 
@@ -95,9 +95,9 @@ Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route
 
 | 场景 | 建议 | 原因 |
 |------|------|------|
-| Chat / Messages / Gemini 文本 | **`cache_affinity`**（全局默认即可） | 提升 prompt cache 命中 |
-| Images / Audio（无强 cache 需求） | 对应 Route Pool 可设 **`weighted_random`** 或保持 cache_affinity | 更均匀分摊上游 |
-| 明确主备（同层） | **`fixed_order`** + 不同 `weight` | 确定性优先高 weight |
+| Chat / Messages / Gemini 文本 | **`hash_affinity`**（全局默认即可） | 提升 prompt cache 命中 |
+| Images / Audio（无强 cache 需求） | 对应 Route Pool 可设 **`weighted_random`** 或保持 hash_affinity | 更均匀分摊上游 |
+| 明确主备（同层） | **`weight_priority`** + 不同 `weight` | 确定性优先高 weight |
 | 单进程 Node、要轮转 | **`weighted_round_robin`** | 注意 CF Workers 多 isolate 不共享计数器 |
 
 跨供应商主备仍优先用 **不同 `priority` 层**（硬序）；同层策略只决定层内顺序。
@@ -117,7 +117,7 @@ Route Pool 可另开 **Provider 粘性**（`sticky_enabled` + `sticky_idle_ttl_s
 
 Admin：Routes Flow 中 Route Group 节点下方 Chip → 配置弹窗。运维迁移见 [route-pool-sticky-routing-cutover.md](../../operators/migrations/route-pool-sticky-routing-cutover.md)。
 
-与 **`cache_affinity`** 的区别：后者是无状态哈希「稳定首选」；sticky 是跨请求成功记忆 + 可跨 Tier。
+与 **`hash_affinity`** 的区别：后者是无状态哈希「稳定首选」；sticky 是跨请求成功记忆 + 可跨 Tier。
 
 ---
 

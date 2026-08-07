@@ -41,7 +41,7 @@ describe('buildRouteAttemptPlan', () => {
 		const plan = buildRouteAttemptPlan(
 			routes,
 			{ affinityKey: 'u|m|default|openai', tierKeyPrefix: 'm|default|openai' },
-			'fixed_order'
+			'weight_priority'
 		);
 		assert.deepEqual(
 			plan.attempts.map((r) => r.providerId),
@@ -56,7 +56,7 @@ describe('buildRouteAttemptPlan', () => {
 		const plan = buildRouteAttemptPlan(
 			routes,
 			{ affinityKey: 'u|m|default|openai', tierKeyPrefix: 'm|default|openai' },
-			'fixed_order',
+			'weight_priority',
 			t0
 		);
 		assert.deepEqual(
@@ -73,7 +73,7 @@ describe('buildRouteAttemptPlan', () => {
 		const plan = buildRouteAttemptPlan(
 			[makeRoute('p1')],
 			{ affinityKey: 'u|m|default|openai', tierKeyPrefix: 'm|default|openai' },
-			'cache_affinity',
+			'hash_affinity',
 			t0
 		);
 		assert.equal(plan.attempts.length, 0);
@@ -90,7 +90,7 @@ describe('buildRouteAttemptPlan', () => {
 		const plan = buildRouteAttemptPlan(
 			routes,
 			{ affinityKey: 'u|m|default|openai', tierKeyPrefix: 'm|default|openai' },
-			'fixed_order'
+			'weight_priority'
 		);
 		assert.deepEqual(
 			plan.attempts.map((r) => r.providerId),
@@ -111,8 +111,8 @@ describe('buildRouteAttemptPlan', () => {
 			'weighted_random',
 			Date.now(),
 			new Map([
-				[10, 'fixed_order'],
-				[0, 'fixed_order'],
+				[10, 'weight_priority'],
+				[0, 'weight_priority'],
 			])
 		);
 		assert.deepEqual(
@@ -131,9 +131,9 @@ describe('buildRouteAttemptPlan', () => {
 		const plan = buildRouteAttemptPlan(
 			routes,
 			{ affinityKey: 'u|m|default|openai', tierKeyPrefix: 'm|default|openai' },
-			'fixed_order',
+			'weight_priority',
 			Date.now(),
-			new Map([[10, 'fixed_order']])
+			new Map([[10, 'weight_priority']])
 		);
 		assert.deepEqual(
 			plan.attempts.map((r) => r.providerId),

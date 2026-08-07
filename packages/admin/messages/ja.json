@@ -775,11 +775,12 @@
 			"inheritedResult": "現在の継承結果",
 			"effective": "適用中",
 			"guideTitle": "戦略ガイド",
-			"guideHint": "戦略カードを選択し、保存前に現在の Target への効果を確認できます。",
+			"guideHint": "戦略カードをクリックして選択します。",
+			"cacheHitGuideTitle": "キャッシュヒット率を高めたい場合",
+			"cacheHitGuideBody": "ハッシュ割当は、同じユーザーが優先する Provider を固定するため、標準でキャッシュがヒットしやすくなります。別の戦略を選ぶ場合は、ルートプールで「Provider スティッキー」を有効にしてください。前回成功した Provider を優先して切り替えを減らし、キャッシュヒット率を高めます。",
 			"bestFor": "適した用途",
 			"tradeoff": "注意点",
 			"labelSeparator": "：",
-			"recommended": "推奨",
 			"tierLevel": "この層の戦略",
 			"tierLevelHint": "この priority 層内の Target 順序だけに適用されます。空欄ならルートプール既定を継承します。",
 			"tierInheritReadonlyHint": "プール既定とグローバル戦略はここでは変更しません。ルートプールまたは Config で設定してください。",
@@ -794,59 +795,59 @@
 				"default": "システム既定"
 			},
 			"display": {
-				"cache_affinity": "キャッシュ親和",
+				"hash_affinity": "ハッシュ割当",
 				"weighted_random": "重み付きランダム",
-				"fixed_order": "固定順序",
+				"weight_priority": "重み優先",
 				"weighted_round_robin": "重み付きラウンドロビン"
 			},
 			"diagramCaption": {
-				"cache_affinity": "同じユーザー鍵 → 同じ Target に粘着",
-				"fixed_order": "全リクエスト → 共通の固定順",
-				"weighted_random": "リクエストごとに重み %",
+				"hash_affinity": "同じユーザー → 同じ先",
+				"weight_priority": "全員が同じ名簿を共有",
+				"weighted_random": "毎回重みでくじ引き",
 				"weighted_round_robin": "先頭を交代"
 			},
 			"description": {
-				"cache_affinity": {
-					"summary": "userId + モデル + グループ + プロトコルのハッシュで粘着します。同じユーザーは同じ Provider に安定して乗り（上流 Prompt Cache に有利）、ユーザーが違えば別の Provider になり得ます。重みは全体分布だけに効き、全員共通のプライマリではありません。",
-					"bestFor": "Prompt Cache と同一ユーザーのセッション局所性",
-					"tradeoff": "短時間の流量は完全に均等とは限りません"
+				"hash_affinity": {
+					"summary": "「ユーザー + モデル + グループ + プロトコル」から固定の行き先を決めます。同じユーザーはいつも同じ先から試し、別のユーザーは別の先になり得ます。",
+					"bestFor": "同一ユーザーを同じ Provider に安定させ、上流 Prompt Cache のヒットを上げたいとき",
+					"tradeoff": "ユーザーが少ないと流量の偏りが目立ちやすい"
 				},
-				"fixed_order": {
-					"summary": "全リクエストが同じ固定試行順を共有します。優先度内は重み降順、同値は Provider ID。スティッキールーティングと違い、同じユーザーを同じ Provider に固定しません。",
-					"bestFor": "明確なプライマリ／バックアップ",
-					"tradeoff": "先頭 Provider に流量が集中します"
+				"weight_priority": {
+					"summary": "全リクエストが同じ固定名簿を共有します。重みが最も高いものが先頭、残りは予備で、呼び出し元は関係ありません。",
+					"bestFor": "明確な主／予備、結果の予測しやすさ、調査しやすさ",
+					"tradeoff": "主がほとんどの流量を受け、予備は失敗するまでほぼ使われません"
 				},
 				"weighted_round_robin": {
-					"summary": "重みで展開した順序をローテーションし、Provider を交互に先頭にします。",
-					"bestFor": "均等なローテーションと容量分散",
-					"tradeoff": "カウンターは実行インスタンス単位で、全体同期されません"
+					"summary": "重みに応じて先頭を交代します。重み 3 と 1 なら、おおよそ 4 回中 3 回は前者を先に試します。",
+					"bestFor": "複数 Provider を使い分け、容量や枠を分けたいとき",
+					"tradeoff": "カウンターは実行インスタンスごとで、全体では完全には揃いません"
 				},
 				"weighted_random": {
-					"summary": "リクエストごとに重み付きランダムで選択し、重複なしの再試行順を作ります。",
-					"bestFor": "比率分割、A/B テスト、コスト配分",
-					"tradeoff": "同じユーザーでも Provider が頻繁に変わる場合があります"
+					"summary": "リクエストごとに重みでくじ引きし、先頭を決めます。重み 60% の Provider は長期的に約 60% の初回試行を受けます。",
+					"bestFor": "比率分割、A/B 比較、コスト配分",
+					"tradeoff": "連続する 2 リクエストが別の Provider になることがあります"
 				}
 			},
 			"effectTitle": "戦略効果プレビュー",
 			"effectHint": "有効な Target から順序を説明します。実リクエストは送信しません。",
 			"effect": {
-				"cache_affinity": "親和キー = userId|model|group|protocol。同じキーは安定した先頭 Target を持ち、失敗時は同層の残りを試します。ユーザーが違えば先頭も異なり得ます。",
-				"fixed_order": "番号は全リクエスト共通の固定試行順です。重みが大きいほど先で、ユーザーには依存しません。",
-				"weighted_round_robin": "同じ優先度内で重みに応じて先頭 Target を交代します。開始位置は実行インスタンスのカウンターに依存します。",
-				"weighted_random": "各リクエストの先頭 Target を重みで選びます。割合は同じ優先度内の概算です。"
+				"hash_affinity": "同じユーザーは毎回同じ Provider から始め、失敗したら同じ層の残りを順に試します。ユーザーが違えば先頭も異なり得ます。",
+				"weight_priority": "番号は全リクエスト共通の固定試行順です。重みが大きいほど先で、ユーザーには依存しません。",
+				"weighted_round_robin": "同じ優先度内で重みに応じて先頭を交代します。開始位置は実行インスタンスのカウンターに依存します。",
+				"weighted_random": "各リクエストの先頭を重みで選びます。割合は同じ優先度内の概算です。"
 			},
-			"priorityFirst": "粘性が未ヒットのとき、Priority は常に戦略より先です。上位層の全 Target が失敗した場合のみ次の層へ進みます。",
+			"priorityFirst": "戦略は同一優先度層内の順序だけを決めます。Priority が常に先で、上位層の全 Target が失敗した場合のみ次の層へ進みます。",
 			"runtimeHealthHint": "実行時はサーキットが開いている Provider も先に除外されるため、稼働順はヘルス状態で変化します。",
 			"roundRobinInstanceHint": "Cloudflare Workers では isolate ごとにカウンターが独立するため、ラウンドロビンは全体均等ではなくベストエフォートです。",
 			"singleTargetEffect": "利用可能な Target は {count} 個です。2 個未満では全戦略の先頭結果は同じです。",
 			"firstAttemptLayer": "最初の試行層",
 			"fallbackLayer": "フォールバック層",
 			"inactiveExcluded": "無効な Route または Provider はプレビューから除外されます。",
-			"hintCache": "cache_affinity 以外は prompt cache のヒット率が下がる可能性があります。",
-			"hintNoCache": "上流に prompt cache はありません。weighted_random または weighted_round_robin を推奨。",
-			"cache_affinity": "cache_affinity",
+			"hintCache": "ハッシュ割当以外の戦略は prompt cache のヒット率が下がる可能性があります。",
+			"hintNoCache": "上流に prompt cache はありません。重み付きランダムまたは重み付きラウンドロビンを推奨。",
+			"hash_affinity": "hash_affinity",
 			"weighted_random": "weighted_random",
-			"fixed_order": "fixed_order",
+			"weight_priority": "weight_priority",
 			"weighted_round_robin": "weighted_round_robin"
 		},
 		"providerSticky": {

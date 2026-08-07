@@ -11,23 +11,23 @@ describe('parseRoutePoolTierStrategies', () => {
 		assert.equal(parseRoutePoolTierStrategies('').size, 0);
 		assert.equal(parseRoutePoolTierStrategies('not json').size, 0);
 		assert.equal(parseRoutePoolTierStrategies('[]').size, 0);
-		assert.equal(parseRoutePoolTierStrategies('"cache_affinity"').size, 0);
+		assert.equal(parseRoutePoolTierStrategies('"hash_affinity"').size, 0);
 	});
 
 	it('parses valid priority → strategy map and ignores bad entries', () => {
 		const map = parseRoutePoolTierStrategies(
 			JSON.stringify({
-				'10': 'cache_affinity',
-				'0': 'fixed_order',
-				bad: 'cache_affinity',
+				'10': 'hash_affinity',
+				'0': 'weight_priority',
+				bad: 'hash_affinity',
 				'1.5': 'weighted_random',
 				'2': 'nope',
 				'3': 1,
 			})
 		);
 		assert.equal(map.size, 2);
-		assert.equal(map.get(10), 'cache_affinity');
-		assert.equal(map.get(0), 'fixed_order');
+		assert.equal(map.get(10), 'hash_affinity');
+		assert.equal(map.get(0), 'weight_priority');
 	});
 
 	it('accepts negative integer priorities', () => {
@@ -46,18 +46,18 @@ describe('normalizeRoutePoolTierStrategiesInput', () => {
 
 	it('normalizes object and string inputs', () => {
 		assert.equal(
-			normalizeRoutePoolTierStrategiesInput({ '10': 'cache_affinity', '0': 'fixed_order' }),
-			JSON.stringify({ '10': 'cache_affinity', '0': 'fixed_order' })
+			normalizeRoutePoolTierStrategiesInput({ '10': 'hash_affinity', '0': 'weight_priority' }),
+			JSON.stringify({ '10': 'hash_affinity', '0': 'weight_priority' })
 		);
 		assert.equal(
-			normalizeRoutePoolTierStrategiesInput('{"10":"cache_affinity"}'),
-			JSON.stringify({ '10': 'cache_affinity' })
+			normalizeRoutePoolTierStrategiesInput('{"10":"hash_affinity"}'),
+			JSON.stringify({ '10': 'hash_affinity' })
 		);
 	});
 
 	it('throws on invalid key or strategy', () => {
 		assert.throws(
-			() => normalizeRoutePoolTierStrategiesInput({ foo: 'cache_affinity' }),
+			() => normalizeRoutePoolTierStrategiesInput({ foo: 'hash_affinity' }),
 			/integer priority/
 		);
 		assert.throws(

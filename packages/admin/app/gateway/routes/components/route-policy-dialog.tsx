@@ -28,19 +28,6 @@ export function RoutePolicyDialog(props: Props) {
 	const isTierMode = dialog.priority !== undefined;
 	const capabilities = dialog.poolId || isTierMode ? [] : CAPABILITIES_BY_PROTOCOL[dialog.protocol] ?? [];
 	const tierInheritStrategy = form.protocolStrategy || dialog.inheritedStrategy;
-	const tierInheritSourceLabel = form.protocolStrategy
-		? t('source.pool')
-		: t(`source.${dialog.inheritedSource}`);
-	const effectiveStrategy = isTierMode
-		? form.tierStrategy || tierInheritStrategy
-		: form.protocolStrategy || dialog.inheritedStrategy;
-	const activeTargets = dialog.targets.filter(
-		(target) =>
-			target.active && (dialog.priority === undefined || target.priority === dialog.priority)
-	);
-	const activePriorities = [...new Set(activeTargets.map((target) => target.priority))].sort(
-		(a, b) => b - a
-	);
 
 	const strategyLabel = (value: string) => {
 		if (!value) {
@@ -50,14 +37,12 @@ export function RoutePolicyDialog(props: Props) {
 					: dialog.inheritedStrategy;
 			return `${t('inherit')} → ${inherited}`;
 		}
-		if (value === 'cache_affinity') return t('display.cache_affinity');
+		if (value === 'hash_affinity') return t('display.hash_affinity');
 		if (value === 'weighted_random') return t('display.weighted_random');
-		if (value === 'fixed_order') return t('display.fixed_order');
+		if (value === 'weight_priority') return t('display.weight_priority');
 		if (value === 'weighted_round_robin') return t('display.weighted_round_robin');
 		return value;
 	};
-
-	const inheritedSourceLabel = t(`source.${dialog.inheritedSource}`);
 
 	return (
 		<div
@@ -158,7 +143,6 @@ export function RoutePolicyDialog(props: Props) {
 					{isTierMode ? (
 						<div>
 							<div className="mb-1">
-								<h3 className="text-sm font-semibold text-gray-900">{t('tierLevel')}</h3>
 								<p className="mt-0.5 text-xs text-gray-500">{t('tierLevelHint')}</p>
 							</div>
 							<RouteStrategyPicker
@@ -166,13 +150,9 @@ export function RoutePolicyDialog(props: Props) {
 								onChange={(next) => onFormChange({ ...form, tierStrategy: next })}
 								allowInherit
 								inheritedStrategy={tierInheritStrategy}
-								inheritedSourceLabel={tierInheritSourceLabel}
 								disabled={saving || !dialog.poolId}
 								className="mt-3"
 							/>
-							<p className="mt-3 text-[11px] leading-relaxed text-gray-500">
-								{t('tierInheritReadonlyHint')}
-							</p>
 						</div>
 					) : (
 						<div>
@@ -185,97 +165,19 @@ export function RoutePolicyDialog(props: Props) {
 								onChange={(next) => onFormChange({ ...form, protocolStrategy: next })}
 								allowInherit
 								inheritedStrategy={dialog.inheritedStrategy}
-								inheritedSourceLabel={inheritedSourceLabel}
 								disabled={saving}
 								className="mt-3"
 							/>
 						</div>
 					)}
-
-					<div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3.5">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<div>
-								<h3 className="text-sm font-semibold text-gray-900">{t('effectTitle')}</h3>
-								<p className="mt-0.5 text-xs text-gray-500">{t('effectHint')}</p>
-							</div>
-							<span className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200">
-								{effectiveStrategy}
-							</span>
-						</div>
-						<p className="mt-3 text-xs leading-relaxed text-gray-700">
-							{t(`effect.${effectiveStrategy}`)}
+					<div
+						role="note"
+						className="rounded-lg border border-sky-200 bg-sky-50/70 px-4 py-3"
+					>
+						<p className="text-sm font-semibold text-sky-900">{t('cacheHitGuideTitle')}</p>
+						<p className="mt-1 text-xs leading-relaxed text-sky-800">
+							{t('cacheHitGuideBody')}
 						</p>
-						<p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
-							{t('priorityFirst')}
-						</p>
-						<p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-							{t('runtimeHealthHint')}
-						</p>
-						{effectiveStrategy === 'weighted_round_robin' ? (
-							<p className="mt-1 text-[11px] leading-relaxed text-amber-700">
-								{t('roundRobinInstanceHint')}
-							</p>
-						) : null}
-						{activeTargets.length <= 1 ? (
-							<p className="mt-2 rounded-md bg-white/80 px-2.5 py-2 text-xs text-amber-700 ring-1 ring-inset ring-amber-200">
-								{t('singleTargetEffect', { count: activeTargets.length })}
-							</p>
-						) : null}
-						{activePriorities.length > 0 ? (
-							<div className="mt-3 space-y-2">
-								{activePriorities.map((priority, index) => {
-									const layer = activeTargets
-										.filter((target) => target.priority === priority)
-										.sort((a, b) =>
-											effectiveStrategy === 'fixed_order'
-												? b.weight - a.weight || a.providerId.localeCompare(b.providerId)
-												: a.providerName.localeCompare(b.providerName)
-										);
-									const totalWeight = layer.reduce(
-										(sum, target) => sum + Math.max(1, target.weight),
-										0
-									);
-									return (
-										<div key={priority} className="rounded-md border border-emerald-100 bg-white/85 p-2.5">
-											<div className="mb-2 flex items-center gap-2">
-												<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">
-													P{priority}
-												</span>
-												<span className="text-[10px] font-medium text-gray-500">
-													{index === 0 ? t('firstAttemptLayer') : t('fallbackLayer')}
-												</span>
-											</div>
-											<div className="space-y-1.5">
-												{layer.map((target, targetIndex) => (
-													<div
-														key={target.id}
-														className="flex min-w-0 items-center gap-2 text-xs"
-													>
-														<span className="w-4 shrink-0 text-right font-mono text-[10px] text-gray-400">
-															{effectiveStrategy === 'fixed_order' ? targetIndex + 1 : '•'}
-														</span>
-														<span className="min-w-0 flex-1 truncate font-medium text-gray-700">
-															{target.providerName}
-														</span>
-														<span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-violet-700">
-															W{target.weight}
-														</span>
-														{effectiveStrategy === 'weighted_random' ? (
-															<span className="w-12 shrink-0 text-right font-mono text-[10px] text-emerald-700">
-																{Math.round((Math.max(1, target.weight) / totalWeight) * 100)}%
-															</span>
-														) : null}
-													</div>
-												))}
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						) : null}
-						{dialog.targets.some((target) => !target.active) ? (
-							<p className="mt-2 text-[11px] text-gray-500">{t('inactiveExcluded')}</p>
-						) : null}
 					</div>
 				</div>
 				<div className="flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-gray-50/60 px-6 py-3.5">

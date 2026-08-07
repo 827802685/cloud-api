@@ -775,11 +775,12 @@
 			"inheritedResult": "当前实际继承",
 			"effective": "当前效果",
 			"guideTitle": "策略说明",
-			"guideHint": "点击策略卡片即可选择；保存前可在下方预览当前 Target 的处理方式。",
+			"guideHint": "点击策略卡片即可选择。",
+			"cacheHitGuideTitle": "想提高缓存命中率？",
+			"cacheHitGuideBody": "哈希分配会让同一用户优先使用固定的 Provider，天然更容易命中缓存。若选择其他策略，请在路由池开启「Provider 粘性」；系统会优先复用上一次成功的 Provider，减少来回切换，提高缓存命中率。",
 			"bestFor": "适合",
 			"tradeoff": "取舍",
 			"labelSeparator": "：",
-			"recommended": "推荐",
 			"tierLevel": "本层策略",
 			"tierLevelHint": "仅影响该 priority 层内的 Target 排序。留空则继承路由池默认策略。",
 			"tierInheritReadonlyHint": "路由池默认与全局策略不在此修改，请到路由池入口或 Config 中调整。",
@@ -794,59 +795,59 @@
 				"default": "系统默认"
 			},
 			"display": {
-				"cache_affinity": "缓存亲和",
+				"hash_affinity": "哈希分配",
 				"weighted_random": "加权随机",
-				"fixed_order": "固定顺序",
+				"weight_priority": "权重优先",
 				"weighted_round_robin": "加权轮询"
 			},
 			"diagramCaption": {
-				"cache_affinity": "同用户键粘滞同一 Target",
-				"fixed_order": "所有请求共用固定顺序",
-				"weighted_random": "每次请求按权重 %",
-				"weighted_round_robin": "轮流首选"
+				"hash_affinity": "同一用户固定一家",
+				"weight_priority": "全体共用一份名单",
+				"weighted_random": "每次按权重抓阄",
+				"weighted_round_robin": "轮流当首选"
 			},
 			"description": {
-				"cache_affinity": {
-					"summary": "用 userId + 模型 + 分组 + 协议做哈希粘滞：同一用户对同一模型会稳定落到同一 Provider（利于上游 Prompt Cache）；不同用户可能落到不同 Provider。权重只影响整体分布，不是所有人共用一个主 Provider。",
-					"bestFor": "Prompt Cache、同用户会话连续性",
-					"tradeoff": "短时间流量不一定完全均匀"
+				"hash_affinity": {
+					"summary": "按「用户 + 模型 + 分组 + 协议」算出固定归属，同一个用户总是先走同一家，不同用户可能分到不同家。",
+					"bestFor": "让同一用户长期稳定在一家，提高上游 Prompt Cache 命中",
+					"tradeoff": "用户数少时流量会明显不均"
 				},
-				"fixed_order": {
-					"summary": "所有请求共用同一固定尝试顺序：同优先级内按权重从高到低，权重相同时按 Provider ID。与粘性路由不同，不会让同一用户稳定命中同一 Provider。",
-					"bestFor": "明确主备、结果可预测",
-					"tradeoff": "首选 Provider 会承担大部分流量"
+				"weight_priority": {
+					"summary": "所有请求共用一份固定名单，权重最高的排第一、其余依次当备用，与调用者是谁无关。",
+					"bestFor": "明确主备、结果可预测、便于排查",
+					"tradeoff": "主用几乎承担全部流量，备用平时闲置"
 				},
 				"weighted_round_robin": {
-					"summary": "按权重展开轮询序列，让请求依次落到不同 Provider。",
-					"bestFor": "均匀轮转、容量分摊",
-					"tradeoff": "计数器按运行实例维护，并非跨实例全局同步"
+					"summary": "按权重轮流当首选，权重 3 和 1 的两家大致每 4 次请求有 3 次先走前者、1 次先走后者。",
+					"bestFor": "想让多家供应商都用上、额度平摊",
+					"tradeoff": "每个运行实例各自计数，跨实例不完全同步"
 				},
 				"weighted_random": {
-					"summary": "每次请求按权重随机选择，并为失败后的重试生成无重复候选顺序。",
-					"bestFor": "按比例分流、A/B 或成本分配",
-					"tradeoff": "同一用户可能频繁切换 Provider"
+					"summary": "每次请求按权重抓阄决定先找谁，占 60% 权重的供应商长期约拿到 60% 的首次请求。",
+					"bestFor": "按比例分流、A/B 对比、成本分配",
+					"tradeoff": "相邻两次请求可能落到不同供应商"
 				}
 			},
 			"effectTitle": "策略效果预览",
 			"effectHint": "基于当前启用的 Target 解释选择顺序，不会发送真实请求。",
 			"effect": {
-				"cache_affinity": "亲和键 = userId|model|group|protocol。同一键稳定首选同一 Target；失败时继续尝试该层其余 Target。不同用户的首选可以不同。",
-				"fixed_order": "数字表示所有请求共用的固定尝试顺序：权重越高越靠前，与用户无关。",
-				"weighted_round_robin": "同优先级内按权重轮流成为首选 Target；实际起点随当前运行实例的计数器变化。",
-				"weighted_random": "每次请求按权重随机决定首选 Target；百分比是该优先级内首次命中的近似占比。"
+				"hash_affinity": "同一个用户每次都从同一家开始，这家失败再按顺序试同层其余供应商；不同用户的首选可以不同。",
+				"weight_priority": "数字表示所有请求共用的固定尝试顺序：权重越高越靠前，与用户无关。",
+				"weighted_round_robin": "同优先级内按权重轮流成为首选；实际起点随当前运行实例的计数器变化。",
+				"weighted_random": "每次请求按权重随机决定首选；百分比是该优先级内首次命中的近似占比。"
 			},
-			"priorityFirst": "未命中粘性时，Priority 始终优先于策略：只有最高优先级全部失败后，才进入下一回退层。",
+			"priorityFirst": "策略只决定同一层内的顺序：Priority 始终优先，只有最高优先级全部失败后，才进入下一回退层。",
 			"runtimeHealthHint": "实际请求还会先排除熔断中的 Provider，因此运行时顺序可能随健康状态变化。",
 			"roundRobinInstanceHint": "在 Cloudflare Workers 上，每个 isolate 各自维护计数器，轮询仅为尽力均匀，并非全局协调。",
 			"singleTargetEffect": "当前有 {count} 个可用 Target；少于 2 个时，各策略的首选结果相同。",
 			"firstAttemptLayer": "首选层",
 			"fallbackLayer": "回退层",
 			"inactiveExcluded": "停用的 Route 或 Provider 已从预览中排除。",
-			"hintCache": "非 cache_affinity 可能降低 prompt cache 命中率。",
-			"hintNoCache": "上游无 prompt cache；建议 weighted_random 或 weighted_round_robin。",
-			"cache_affinity": "cache_affinity",
+			"hintCache": "除哈希分配外，其他策略可能降低 prompt cache 命中率。",
+			"hintNoCache": "上游无 prompt cache；建议加权随机或加权轮询。",
+			"hash_affinity": "hash_affinity",
 			"weighted_random": "weighted_random",
-			"fixed_order": "fixed_order",
+			"weight_priority": "weight_priority",
 			"weighted_round_robin": "weighted_round_robin"
 		},
 		"providerSticky": {

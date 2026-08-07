@@ -20,12 +20,12 @@ describe('route-strategy-meta', () => {
 		}
 	});
 
-	it('puts affinity and strict before load-balance strategies', () => {
+	it('orders cards by common usage (load-balance first)', () => {
 		assert.deepEqual([...ROUTE_STRATEGY_UI_ORDER], [
-			'cache_affinity',
-			'fixed_order',
-			'weighted_random',
 			'weighted_round_robin',
+			'weighted_random',
+			'hash_affinity',
+			'weight_priority',
 		]);
 	});
 
@@ -34,15 +34,6 @@ describe('route-strategy-meta', () => {
 			assert.equal(meta.machineId, meta.id);
 			assert.equal(meta.diagram, meta.id);
 		}
-	});
-
-	it('marks affinity as recommended', () => {
-		const affinity = getRouteStrategyMeta('cache_affinity');
-		const rr = getRouteStrategyMeta('weighted_round_robin');
-		assert.ok(affinity);
-		assert.ok(rr);
-		assert.equal(affinity.recommended, true);
-		assert.equal(rr.recommended, false);
 	});
 
 	it('returns null for unknown strategy ids', () => {

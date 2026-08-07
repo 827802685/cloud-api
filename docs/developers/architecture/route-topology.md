@@ -66,7 +66,7 @@ model + route_group + request protocol + operation
 3. `models.route_policy.rules[protocol:route_group]`
 4. `models.route_policy.strategy`
 5. `system_config.ROUTE_STRATEGY`
-6. 代码默认 `cache_affinity`
+6. 代码默认 `hash_affinity`
 
 Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` 可在同一 Pool 内让高/低 priority 层使用不同排序算法。完整算法见 [route-strategies.md](../reference/route-strategies.md)。
 
@@ -74,7 +74,7 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` �
 
 - `POST /admin/routes` 可传 `request_protocol`、`request_operation`、`upstream_protocol`、`upstream_operation`、`adapter`；服务端会创建或复用对应 Surface / Pool。
 - `PATCH /admin/routes/:id` 可调整 Target；当请求协议或 operation 改变时会重新关联对应 Pool。
-- `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "cache_affinity", "tier_strategies": { "10": "fixed_order" }, "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 } }`；各字段可选；`strategy`/`tier_strategies` 的 `null` / 空值表示清空并继承下一级；`sticky_routing` 写入时递增 `sticky_epoch`。
+- `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "hash_affinity", "tier_strategies": { "10": "weight_priority" }, "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 } }`；各字段可选；`strategy`/`tier_strategies` 的 `null` / 空值表示清空并继承下一级；`sticky_routing` 写入时递增 `sticky_epoch`。
 - `GET /admin/routes` 返回 `route_pool_id`、`pool_strategy`、`pool_tier_strategies` 与序列化的 `surfaces`，供 Admin 绘制路由流。
 
 对外调用 Admin 时，路径前面加 `/api`，即 `/api/admin/routes/...`。

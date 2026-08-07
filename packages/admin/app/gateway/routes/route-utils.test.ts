@@ -130,15 +130,15 @@ describe('resolveEffectiveRouteStrategy', () => {
 	it('prefers tier override over pool strategy', () => {
 		const effective = resolveEffectiveRouteStrategy({
 			poolStrategy: 'weighted_random',
-			poolTierStrategies: JSON.stringify({ '10': 'fixed_order' }),
+			poolTierStrategies: JSON.stringify({ '10': 'weight_priority' }),
 			priority: 10,
 			protocol: 'openai',
 			requestOperation: 'chat',
 			routeGroup: 'default',
-			globalStrategy: 'cache_affinity',
+			globalStrategy: 'hash_affinity',
 		});
 		assert.deepEqual(effective, {
-			strategy: 'fixed_order',
+			strategy: 'weight_priority',
 			source: 'tier',
 			inherited: false,
 		});
@@ -147,12 +147,12 @@ describe('resolveEffectiveRouteStrategy', () => {
 	it('inherits pool strategy when the tier has no override', () => {
 		const effective = resolveEffectiveRouteStrategy({
 			poolStrategy: 'weighted_random',
-			poolTierStrategies: JSON.stringify({ '0': 'fixed_order' }),
+			poolTierStrategies: JSON.stringify({ '0': 'weight_priority' }),
 			priority: 10,
 			protocol: 'openai',
 			requestOperation: 'chat',
 			routeGroup: 'default',
-			globalStrategy: 'cache_affinity',
+			globalStrategy: 'hash_affinity',
 		});
 		assert.deepEqual(effective, {
 			strategy: 'weighted_random',
@@ -168,7 +168,7 @@ describe('resolveEffectiveRouteStrategy', () => {
 			protocol: 'openai',
 			requestOperation: 'chat',
 			routeGroup: 'default',
-			globalStrategy: 'cache_affinity',
+			globalStrategy: 'hash_affinity',
 		});
 		assert.deepEqual(effective, {
 			strategy: 'weighted_round_robin',

@@ -67,9 +67,9 @@ export type ProviderStatus = 'active' | 'disabled';
 
 /** 同层路由排序策略名。 */
 export type RouteStrategyName =
-	| 'cache_affinity'
+	| 'hash_affinity'
 	| 'weighted_random'
-	| 'fixed_order'
+	| 'weight_priority'
 	| 'weighted_round_robin';
 
 /** `providers` 表行。 */

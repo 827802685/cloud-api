@@ -1,6 +1,6 @@
 /**
  * Route Pool Provider sticky routing — lookup / plan merge / CAS bind·touch·clear.
- * Orthogonal to layer-in strategies (`cache_affinity` etc.).
+ * Orthogonal to layer-in strategies (`hash_affinity` etc.).
  */
 import type { GatewayRepositories } from '@octafuse/core';
 import { hashAffinityKey } from '@octafuse/core/db/route-affinity-key';

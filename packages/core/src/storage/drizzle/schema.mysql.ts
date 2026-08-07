@@ -120,7 +120,7 @@ export const routePoolsTable = mysqlTable('route_pools', {
 	routeGroup: varchar('route_group', { length: COL.ROUTE_GROUP }).notNull().default('default'),
 	name: varchar('name', { length: COL.NAME }).notNull(),
 	strategy: varchar('strategy', { length: COL.STATUS }),
-	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
+	/** JSON map: {"10":"hash_affinity","0":"weight_priority"} — per-priority-tier overrides */
 	tierStrategies: text('tier_strategies'),
 	stickyEnabled: int('sticky_enabled').notNull().default(0),
 	stickyIdleTtlSeconds: int('sticky_idle_ttl_seconds').notNull().default(3600),

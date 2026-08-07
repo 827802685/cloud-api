@@ -185,7 +185,7 @@ export interface GatewayModelRoute {
   route_pool_id?: string | null;
   pool_name?: string | null;
   pool_strategy?: string | null;
-  /** JSON map from `route_pools.tier_strategies`: {"10":"cache_affinity","0":"fixed_order"} */
+  /** JSON map from `route_pools.tier_strategies`: {"10":"hash_affinity","0":"weight_priority"} */
   pool_tier_strategies?: string | null;
   /** Provider sticky routing from `route_pools` */
   pool_sticky_enabled?: boolean | number | null;

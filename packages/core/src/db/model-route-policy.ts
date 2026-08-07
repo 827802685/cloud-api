@@ -4,10 +4,10 @@
  * 结构：
  * ```json
  * {
- *   "strategy": "cache_affinity",
+ *   "strategy": "hash_affinity",
  *   "rules": {
- *     "openai:default": { "strategy": "cache_affinity" },
- *     "openai.chat:default": { "strategy": "fixed_order" }
+ *     "openai:default": { "strategy": "hash_affinity" },
+ *     "openai.chat:default": { "strategy": "weight_priority" }
  *   }
  * }
  * ```
@@ -31,13 +31,13 @@ import {
 import { UPSTREAM_PROTOCOLS, type UpstreamProtocol } from '../upstream-protocol';
 
 export const ROUTE_STRATEGY_NAMES = [
-	'cache_affinity',
+	'hash_affinity',
 	'weighted_random',
-	'fixed_order',
+	'weight_priority',
 	'weighted_round_robin',
 ] as const satisfies readonly RouteStrategyName[];
 
-export const DEFAULT_ROUTE_STRATEGY: RouteStrategyName = 'cache_affinity';
+export const DEFAULT_ROUTE_STRATEGY: RouteStrategyName = 'hash_affinity';
 
 const CAPABILITIES_BY_PROTOCOL: Record<UpstreamProtocol, readonly ProviderEndpointCapability[]> = {
 	openai: OPENAI_ENDPOINT_CAPABILITIES,

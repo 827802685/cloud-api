@@ -21,6 +21,7 @@
 | 2.1.2 → 2.2.0：Gemini operation 收敛（迁移 0017） | [migrations/gemini-models-generate-cutover.md](./migrations/gemini-models-generate-cutover.md) |
 | 2.1.2 → 2.2.0：Route Pool 按 priority 层覆盖策略（迁移 0018） | [migrations/route-pool-tier-strategies-cutover.md](./migrations/route-pool-tier-strategies-cutover.md) |
 | 2.1.2 → 2.2.0：路由策略 canonical ID 硬切换（迁移 0019） | [migrations/route-strategy-canonical-ids-cutover.md](./migrations/route-strategy-canonical-ids-cutover.md) |
+| 路由策略展示对齐 ID 硬切换（迁移 0021：`hash_affinity` / `weight_priority`） | [migrations/route-strategy-display-ids-cutover.md](./migrations/route-strategy-display-ids-cutover.md) |
 | User audit 兼容导出移除说明 | [migrations/user-audit-legacy-exports.md](./migrations/user-audit-legacy-exports.md) |
 
 ## 本地演练

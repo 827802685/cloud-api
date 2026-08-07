@@ -86,7 +86,7 @@ export interface RoutePoolRow {
 	route_group: string;
 	name: string;
 	strategy: string | null;
-	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
+	/** JSON map: {"10":"hash_affinity","0":"weight_priority"} — per-priority-tier overrides */
 	tier_strategies?: string | null;
 	/** Provider sticky routing (0/1 or boolean depending on driver) */
 	sticky_enabled?: boolean | number | null;

@@ -1,23 +1,21 @@
-# 路由策略 ID 硬切换（0019）
+# 路由策略展示对齐 ID 硬切换（0021）
 
-> **后续**：0021 已将 `cache_affinity` → `hash_affinity`、`fixed_order` → `weight_priority`。见 [route-strategy-display-ids-cutover.md](./route-strategy-display-ids-cutover.md)。下文保留 0019 当时的目标 ID，便于对照历史迁移。
-
-将持久化与运行时的路由策略 ID 统一为描述性 snake_case：
+将持久化与运行时的路由策略 ID 与 Admin 展示名对齐：
 
 | 旧 ID | 新 ID（canonical） |
 |-------|---------------------|
-| `affinity` | `cache_affinity` |
-| `strict` | `fixed_order` |
-| `round_robin` | `weighted_round_robin` |
+| `cache_affinity` | `hash_affinity` |
+| `fixed_order` | `weight_priority` |
 | `weighted_random` | （不变） |
+| `weighted_round_robin` | （不变） |
 
-**无旧 ID 别名**：迁移后的 Core / Proxy / Admin **只接受**新 ID；写入旧 ID → `400`。未迁移的数据在新代码下会被当作非法并回退到默认 `cache_affinity`（或忽略该层覆盖），因此必须在维护窗口内完成「迁移 + 同版本部署」。
+**无旧 ID 别名**：迁移后的 Core / Proxy / Admin **只接受**新 ID；写入旧 ID → `400`。未迁移的数据在新代码下会被当作非法并回退到默认 `hash_affinity`（或忽略该层覆盖），因此必须在维护窗口内完成「迁移 + 同版本部署」。
 
 迁移文件（三库同步）：
 
-- `packages/core/migrations-d1/0019_route_strategy_canonical_ids.sql`
-- `packages/core/migrations-postgres/0019_route_strategy_canonical_ids.sql`
-- `packages/core/migrations-mysql/0019_route_strategy_canonical_ids.sql`
+- `packages/core/migrations-d1/0021_route_strategy_display_ids.sql`
+- `packages/core/migrations-postgres/0021_route_strategy_display_ids.sql`
+- `packages/core/migrations-mysql/0021_route_strategy_display_ids.sql`
 
 改写位置：
 
@@ -26,14 +24,14 @@
 3. `route_pools.tier_strategies`（JSON map 的 **value**）
 4. `models.route_policy`（仅 `"strategy":"旧ID"` / `"strategy": "旧ID"`，避免误改 rule key）
 
-不改写：历史审计日志、已发布 CHANGELOG、历史迁移中的示例注释。
+不改写：历史审计日志、已发布 CHANGELOG、历史迁移（含 0019）中的示例注释。
 
 ---
 
 ## 维护窗口步骤（必做）
 
 1. **暂停** Admin 配置写入与 Proxy 业务流量（或进入只读维护）。
-2. **应用 0019**（按当前环境选 D1 / Postgres / MySQL 迁移流水线）。
+2. **应用 0021**（按当前环境选 D1 / Postgres / MySQL 迁移流水线）。
 3. **立即部署**同一发布版本的 Core + Proxy + Admin（**禁止**旧新版本混跑）。
 4. 用下方校验 SQL 确认旧 ID 计数为 0。
 5. 冒烟：Config 全局策略、Routes Pool / 每层策略、保存非法旧 ID 应 400；推理请求层内排序符合预期。
@@ -49,31 +47,28 @@
 SELECT 'system_config' AS loc, COUNT(*) AS old_ids
 FROM system_config
 WHERE key = 'ROUTE_STRATEGY'
-  AND value IN ('affinity', 'strict', 'round_robin')
+  AND value IN ('cache_affinity', 'fixed_order')
 UNION ALL
 SELECT 'route_pools.strategy', COUNT(*)
 FROM route_pools
-WHERE strategy IN ('affinity', 'strict', 'round_robin')
+WHERE strategy IN ('cache_affinity', 'fixed_order')
 UNION ALL
 SELECT 'route_pools.tier_strategies', COUNT(*)
 FROM route_pools
 WHERE tier_strategies IS NOT NULL
   AND (
-    tier_strategies LIKE '%"affinity"%'
-    OR tier_strategies LIKE '%"strict"%'
-    OR tier_strategies LIKE '%"round_robin"%'
+    tier_strategies LIKE '%"cache_affinity"%'
+    OR tier_strategies LIKE '%"fixed_order"%'
   )
 UNION ALL
 SELECT 'models.route_policy', COUNT(*)
 FROM models
 WHERE route_policy IS NOT NULL
   AND (
-    route_policy LIKE '%"strategy":"affinity"%'
-    OR route_policy LIKE '%"strategy": "affinity"%'
-    OR route_policy LIKE '%"strategy":"strict"%'
-    OR route_policy LIKE '%"strategy": "strict"%'
-    OR route_policy LIKE '%"strategy":"round_robin"%'
-    OR route_policy LIKE '%"strategy": "round_robin"%'
+    route_policy LIKE '%"strategy":"cache_affinity"%'
+    OR route_policy LIKE '%"strategy": "cache_affinity"%'
+    OR route_policy LIKE '%"strategy":"fixed_order"%'
+    OR route_policy LIKE '%"strategy": "fixed_order"%'
   );
 ```
 

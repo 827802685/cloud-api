@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Minor Changes
+
+- 路由策略 ID 与 Admin 展示名对齐：`cache_affinity` → `hash_affinity`，`fixed_order` → `weight_priority`（迁移 **0021**，无旧 ID 别名；维护窗口见 [route-strategy-display-ids-cutover.md](./docs/operators/migrations/route-strategy-display-ids-cutover.md)）。
+
 ## 2.2.0
 
 ### Minor Changes
@@ -9,7 +15,7 @@
   ### Proxy
 
   - **Gemini operation 收敛**：公开 Surface 与上游 Target 统一使用 `models.generate`，流式与非流式请求共享同一 Route Pool；真实 wire action 继续使用 `generateContent` / `streamGenerateContent` 并写入 `route_trace.gemini.action`。
-  - **Canonical 路由策略**：仅接受 `cache_affinity`、`weighted_random`、`fixed_order`、`weighted_round_robin`；不再接受 `affinity`、`strict`、`round_robin`。
+  - **Canonical 路由策略**：仅接受 `cache_affinity`、`weighted_random`、`fixed_order`、`weighted_round_robin`；不再接受 `affinity`、`strict`、`round_robin`。（后续 Unreleased / 0021 已再改为 `hash_affinity` / `weight_priority`。）
   - **按层策略**：Route Pool 可通过 `tier_strategies` 为不同 priority 层设置独立排序策略，未覆盖的层继续使用 Pool / 模型 / 全局策略。
 
   ### Admin

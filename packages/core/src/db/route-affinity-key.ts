@@ -3,7 +3,7 @@
  * affinityKey = userId|baseModelId|routeGroup|protocol (no capability).
  */
 
-/** Build the plaintext affinity key used for sticky + cache_affinity scoring. */
+/** Build the plaintext affinity key used for sticky + hash_affinity scoring. */
 export function buildAffinityKey(
 	userId: string,
 	baseModelId: string,

@@ -22,7 +22,7 @@ Authorization: Bearer sk-admin-xxx
 存储 / 查询 / 业务日界 / `BUSINESS_TIMEZONE` 的完整约定见 **[time-and-timezone.md](../reference/time-and-timezone.md)**。摘要：库内 UTC；API 时间字段返回 ISO 8601 UTC（`Z`）；Admin 墙钟与业务日界按 `BUSINESS_TIMEZONE`。
 
 - **计费币种**：`system_config.BILLING_CURRENCY` 仅允许 **`USD`** 或 **`CNY`**（各库的 **`0002_seed.sql`** 默认 `USD`），与 `pricing_profile` / Key 预算数值单位一致；`GET /v1/me` 返回 `billing_currency`（见用户接口文档）。**`PUT /admin/config`** 写入该键时由服务端白名单校验。
-- **全局路由策略**：`system_config.ROUTE_STRATEGY`（默认 `cache_affinity`；四选一，见 [route-strategies.md](../reference/route-strategies.md)）。**`PUT /admin/config`** 白名单校验；Route Pool / 模型级配置可覆盖。
+- **全局路由策略**：`system_config.ROUTE_STRATEGY`（默认 `hash_affinity`；四选一，见 [route-strategies.md](../reference/route-strategies.md)）。**`PUT /admin/config`** 白名单校验；Route Pool / 模型级配置可覆盖。
 - **Proxy 错误告警（可选）**：`ALERT_WEBHOOK_WECOM_URL`、`ALERT_WEBHOOK_FEISHU_URL` 存**完整**群机器人 Webhook URL（含 query `key` / hook id）。**未配置或值为空则不告警**。Proxy 在 **`api_key_request_logs.status = error`** 且用量写入成功后，分别向已配置的 URL 发送一条**按错误类型归类**的文本摘要（企业微信 `msgtype=text`、飞书 `msg_type=text`）：首行含类别与优先级（如上游超时、供应商鉴权、限流、5xx、敏感内容拦截、请求/模型错误、路由配置），并分组展示影响用户、路由/协议、供应商、原始 `error_message`、处理建议与发生时间（UTC+8）；发送失败只打日志，不影响请求。键名常量见 `@octafuse/core` 导出 `ALERT_WEBHOOK_WECOM_URL_KEY` / `ALERT_WEBHOOK_FEISHU_URL_KEY`。
 
 ### `/admin/keys` 统一响应格式
@@ -619,8 +619,8 @@ curl "http://localhost:8789/api/admin/keys/uuid-here/logs?page=1&page_size=10" \
 
 ```json
 {
-  "strategy": "cache_affinity",
-  "tier_strategies": { "10": "cache_affinity", "0": "fixed_order" },
+  "strategy": "hash_affinity",
+  "tier_strategies": { "10": "hash_affinity", "0": "weight_priority" },
   "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 }
 }
 ```
@@ -645,10 +645,10 @@ curl "http://localhost:8789/api/admin/keys/uuid-here/logs?page=1&page_size=10" \
 
 ```json
 {
-  "strategy": "cache_affinity",
+  "strategy": "hash_affinity",
   "rules": {
-    "openai:default": { "strategy": "cache_affinity" },
-    "openai.chat:default": { "strategy": "fixed_order" }
+    "openai:default": { "strategy": "hash_affinity" },
+    "openai.chat:default": { "strategy": "weight_priority" }
   }
 }
 ```
@@ -822,7 +822,7 @@ curl -sS "$GATEWAY_URL/v1/images/generations" \
 请求体：`{ "key": "string", "value": "string" }`（`key` 必填；`value` 可省略或 `null` 视为空字符串）。
 
 - **`BILLING_CURRENCY`**：仅允许写入 **`USD`** 或 **`CNY`**（大写）；否则返回 `400` 与 `success: false`。
-- **`ROUTE_STRATEGY`**：仅允许 **`cache_affinity`** \| **`weighted_random`** \| **`fixed_order`** \| **`weighted_round_robin`**（小写）；非法 → `400`。这是全局同层路由策略缺省，模型 `route_policy` 与 `route_pools.strategy` 可覆盖。详见 [route-strategies.md](../reference/route-strategies.md)。Proxy 进程内缓存约 **30s**。
+- **`ROUTE_STRATEGY`**：仅允许 **`hash_affinity`** \| **`weighted_random`** \| **`weight_priority`** \| **`weighted_round_robin`**（小写）；非法 → `400`。这是全局同层路由策略缺省，模型 `route_policy` 与 `route_pools.strategy` 可覆盖。详见 [route-strategies.md](../reference/route-strategies.md)。Proxy 进程内缓存约 **30s**。
 
 Agent Tools 也通过该接口维护配置：
 

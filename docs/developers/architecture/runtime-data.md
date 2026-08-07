@@ -91,8 +91,8 @@ flowchart TB
 - 迁移 **`0015_single_provider_key`**：`providers` 恢复单列 **`api_key`** + **`status`**；删除 **`provider_api_keys`**；`model_routes.weight`；`models.route_policy` 替换 `sticky_config`；种子 **`ROUTE_STRATEGY`**。切换步骤见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
 - 迁移 **`0016_route_surfaces_pools`**：新增 `model_surfaces` / `route_pools`；`model_routes` 增加 `route_pool_id`、`upstream_operation`、`adapter`；请求日志增加 Surface / Pool / Target 与路由追踪字段。完整模型见 [route-topology.md](./route-topology.md)。
 - 迁移 **`0017_gemini_models_generate`**：将 Gemini `generateContent` / `streamGenerateContent` Surface 合并为家族 operation **`models.generate`**；规范化 `model_routes.upstream_operation`；冲突 Pool 降级为 `inactive` 并加 `[v220-conflict]` 名字前缀。切换步骤见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
-- 迁移 **`0018_route_pool_tier_strategies`**：`route_pools` 新增 **`tier_strategies` TEXT**（JSON map：`{"10":"cache_affinity","0":"fixed_order"}`），支持按 priority 层覆盖同层路由策略。切换步骤见 [route-pool-tier-strategies-cutover.md](../../operators/migrations/route-pool-tier-strategies-cutover.md)。
-- 迁移 **`0019_route_strategy_canonical_ids`**：将活跃配置中的策略 ID 硬切换为 `cache_affinity` / `fixed_order` / `weighted_round_robin`（`weighted_random` 不变）。覆盖 `system_config.ROUTE_STRATEGY`、`route_pools.strategy`、`route_pools.tier_strategies`、`models.route_policy`。维护窗口步骤与校验 SQL 见 [route-strategy-canonical-ids-cutover.md](../../operators/migrations/route-strategy-canonical-ids-cutover.md)。
+- 迁移 **`0018_route_pool_tier_strategies`**：`route_pools` 新增 **`tier_strategies` TEXT**（JSON map：`{"10":"hash_affinity","0":"weight_priority"}`），支持按 priority 层覆盖同层路由策略。切换步骤见 [route-pool-tier-strategies-cutover.md](../../operators/migrations/route-pool-tier-strategies-cutover.md)。
+- 迁移 **`0019_route_strategy_canonical_ids`**：将活跃配置中的策略 ID 硬切换为 `hash_affinity` / `weight_priority` / `weighted_round_robin`（`weighted_random` 不变）。覆盖 `system_config.ROUTE_STRATEGY`、`route_pools.strategy`、`route_pools.tier_strategies`、`models.route_policy`。维护窗口步骤与校验 SQL 见 [route-strategy-canonical-ids-cutover.md](../../operators/migrations/route-strategy-canonical-ids-cutover.md)。
 - 迁移 **`0020_route_pool_sticky_routing`**：`route_pools` 增加 `sticky_enabled` / `sticky_idle_ttl_seconds` / `sticky_epoch`；新表 **`route_pool_sticky_bindings`**（跨 isolate 共享 Provider 粘性）。见 [route-pool-sticky-routing-cutover.md](../../operators/migrations/route-pool-sticky-routing-cutover.md)。
 
 #### Endpoint capability 维护规则
@@ -164,7 +164,7 @@ sequenceDiagram
 | **`model_routes.weight`** | 同 priority 层内权重（默认 `1`；策略用） |
 | **`model_routes.route_pool_id` / `upstream_operation` / `adapter`** | Target 所属 Pool、上游 capability 与转换方式；2.0 仅支持 `passthrough` |
 | **`models.route_policy`** | 可选 TEXT JSON：`strategy` + `rules`；`NULL` = 回退全局 |
-| **`system_config.ROUTE_STRATEGY`** | 全局缺省策略（默认 `cache_affinity`；进程内缓存 30s） |
+| **`system_config.ROUTE_STRATEGY`** | 全局缺省策略（默认 `hash_affinity`；进程内缓存 30s） |
 
 已移除：`provider_api_keys`、`limit_config`（网关 RPM/TPM/并发软限流）、`models.sticky_config`（旧粘性 key 绑定；由 Pool 级 **Provider sticky** + `route_pool_sticky_bindings` 替代）。
 
@@ -172,10 +172,10 @@ sequenceDiagram
 
 ### 运行时组件（`packages/proxy/src/services/`）
 
-- **`route-strategies/*`** — 同层排序：`cache_affinity`（加权 Rendezvous）、`weighted_random`、`fixed_order`、`weighted_round_robin`。
+- **`route-strategies/*`** — 同层排序：`hash_affinity`（加权 Rendezvous）、`weighted_random`、`weight_priority`、`weighted_round_robin`。
 - **`route-attempt-planner.ts`（`buildRouteAttemptPlan`）** — priority 硬序 → 层内策略 → 过滤熔断中的 provider。
 - **`provider-circuit-breaker.ts`** — 按 **`providerId`**：429（`Retry-After` 或 5s→60s）、401/403（**5min**）、普通 5xx（连续 3 次后 10s）；524 / fetch 不跨请求熔断。
 - **`user-model-circuit-breaker.ts`** — 按 **user + model**：敏感内容与普通上游 400 **共用**递增退避 **20s → 1min → 3min → 5min → 10min**（成功清零）；短路仅用 `circuit.sensitive_content` / `circuit.client_error` 区分。**Images / Audio** 不参与普通 400（`client_error`）熔断，仍参与敏感内容熔断（见 [proxy-request-lifecycle.md](./proxy-request-lifecycle.md) §2.2）。
 - **`failover-dispatch.ts`** — `attempts` 为空时 **429** + `Retry-After`（`circuit.upstream_capacity_exhausted`）；循环内复查已熔断 provider；否则按序打上游，全部失败返回最后一次上游响应。
 
-> **一致性注意**：熔断与 weighted round-robin 计数均为**单实例进程内存**。Cloudflare Workers 多 isolate 各自独立，属软状态；Node 单进程更接近精确。默认 **`cache_affinity`** 在协议粒度上稳定首选 provider，以利于上游 prompt cache（affinityKey **不含** capability）。**Provider sticky** 绑定存共享 DB（D1/Postgres/MySQL），跨 isolate 一致；读写失败 fail-open 到常规路由。
+> **一致性注意**：熔断与 weighted round-robin 计数均为**单实例进程内存**。Cloudflare Workers 多 isolate 各自独立，属软状态；Node 单进程更接近精确。默认 **`hash_affinity`** 在协议粒度上稳定首选 provider，以利于上游 prompt cache（affinityKey **不含** capability）。**Provider sticky** 绑定存共享 DB（D1/Postgres/MySQL），跨 isolate 一致；读写失败 fail-open 到常规路由。

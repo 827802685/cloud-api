@@ -478,9 +478,9 @@ function RequestSurfaceNode({
 
 function strategyDisplayKey(strategy: string): string {
 	if (
-		strategy === 'cache_affinity' ||
+		strategy === 'hash_affinity' ||
 		strategy === 'weighted_random' ||
-		strategy === 'fixed_order' ||
+		strategy === 'weight_priority' ||
 		strategy === 'weighted_round_robin'
 	) {
 		return strategy;
@@ -575,9 +575,9 @@ function PriorityTierPanel({
 	});
 	const displayKey = strategyDisplayKey(strategy.strategy);
 	const displayName =
-		displayKey === 'cache_affinity' ||
+		displayKey === 'hash_affinity' ||
 		displayKey === 'weighted_random' ||
-		displayKey === 'fixed_order' ||
+		displayKey === 'weight_priority' ||
 		displayKey === 'weighted_round_robin'
 			? tStrategy(`display.${displayKey}`)
 			: strategy.strategy;

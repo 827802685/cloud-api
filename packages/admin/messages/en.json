@@ -775,11 +775,12 @@
 			"inheritedResult": "Currently resolves to",
 			"effective": "Effective",
 			"guideTitle": "Strategy guide",
-			"guideHint": "Select a strategy card, then preview how it handles the current targets before saving.",
+			"guideHint": "Select a strategy card to apply.",
+			"cacheHitGuideTitle": "Want a higher cache hit rate?",
+			"cacheHitGuideBody": "Hash affinity keeps each user on a preferred Provider, making cache hits more likely by default. If you choose another strategy, enable “Provider sticky” on the route pool. Requests will prefer the last successful Provider, reducing switches and improving cache hits.",
 			"bestFor": "Best for",
 			"tradeoff": "Trade-off",
 			"labelSeparator": ": ",
-			"recommended": "Recommended",
 			"tierLevel": "Tier strategy",
 			"tierLevelHint": "Applies only to Target ordering within this priority tier. Leave empty to inherit the route-pool default.",
 			"tierInheritReadonlyHint": "Pool default and global strategy are not edited here — change them on the route pool or in Config.",
@@ -794,59 +795,59 @@
 				"default": "System default"
 			},
 			"display": {
-				"cache_affinity": "Cache affinity",
+				"hash_affinity": "Hash affinity",
 				"weighted_random": "Weighted random",
-				"fixed_order": "Fixed order",
+				"weight_priority": "Weight priority",
 				"weighted_round_robin": "Weighted round-robin"
 			},
 			"diagramCaption": {
-				"cache_affinity": "same user key → sticky target",
-				"fixed_order": "all requests → same fixed order",
-				"weighted_random": "each request → by weight %",
-				"weighted_round_robin": "rotate first choice"
+				"hash_affinity": "same user → same provider",
+				"weight_priority": "everyone shares one list",
+				"weighted_random": "each request draws by weight",
+				"weighted_round_robin": "take turns as first choice"
 			},
 			"description": {
-				"cache_affinity": {
-					"summary": "Sticky hash on userId + model + group + protocol: the same user keeps the same preferred provider (helps upstream prompt cache); different users may pin to different providers. Weights only shape the overall mix — this is not one global primary for everyone.",
-					"bestFor": "Prompt cache and same-user session locality",
-					"tradeoff": "Short-term traffic may not be perfectly even"
+				"hash_affinity": {
+					"summary": "Hashes user + model + group + protocol into a fixed home: the same user always starts with the same provider; different users may land on different ones.",
+					"bestFor": "Keeping one user on one provider to improve upstream prompt cache hits",
+					"tradeoff": "With few users, traffic can look uneven"
 				},
-				"fixed_order": {
-					"summary": "Every request shares one fixed attempt order: weight descending within a priority, then provider ID. Unlike sticky routing, it does not keep a user on the same provider.",
-					"bestFor": "Explicit primary/backup routing and predictability",
-					"tradeoff": "The first provider receives most traffic"
+				"weight_priority": {
+					"summary": "Every request shares one fixed list: highest weight goes first, the rest are backups — who called does not matter.",
+					"bestFor": "Clear primary/backup, predictable results, easier debugging",
+					"tradeoff": "The primary takes almost all traffic; backups stay idle until it fails"
 				},
 				"weighted_round_robin": {
-					"summary": "Rotates through a weight-expanded sequence so providers take turns as first choice.",
-					"bestFor": "Even rotation and capacity sharing",
-					"tradeoff": "Counters are per runtime instance, not globally coordinated"
+					"summary": "Providers take turns as first choice by weight — with weights 3 and 1, about 3 of every 4 requests try the heavier one first.",
+					"bestFor": "Using several providers and sharing capacity or quota",
+					"tradeoff": "Each runtime instance counts on its own; cross-instance balance is approximate"
 				},
 				"weighted_random": {
-					"summary": "Randomly selects by weight per request and builds a no-replacement retry order.",
-					"bestFor": "Proportional traffic splits, A/B tests, or cost allocation",
-					"tradeoff": "The same user may frequently switch providers"
+					"summary": "Each request draws a first provider by weight — a 60% weight tends to get about 60% of first tries over time.",
+					"bestFor": "Proportional splits, A/B tests, or cost allocation",
+					"tradeoff": "Two back-to-back requests may hit different providers"
 				}
 			},
 			"effectTitle": "Strategy effect preview",
 			"effectHint": "Explains ordering from enabled targets only; no real request is sent.",
 			"effect": {
-				"cache_affinity": "Affinity key = userId|model|group|protocol. The same key keeps a stable first target; failures continue in that layer. Different users can prefer different targets.",
-				"fixed_order": "Numbers show the shared fixed attempt order for every request: higher weight comes first, independent of the user.",
+				"hash_affinity": "The same user always starts with the same provider; if it fails, the rest of that layer are tried in order. Different users can prefer different providers.",
+				"weight_priority": "Numbers show the shared fixed attempt order for every request: higher weight comes first, independent of the user.",
 				"weighted_round_robin": "Targets in the same priority take turns as first choice by weight; the actual start depends on this runtime instance's counter.",
 				"weighted_random": "Each request picks its first target by weight; percentages approximate first-choice share within the priority."
 			},
-			"priorityFirst": "When sticky misses, Priority always wins first: the next fallback layer is used only after every target in the higher layer fails.",
+			"priorityFirst": "Strategy only orders targets inside one priority layer: Priority always wins first — the next fallback layer is used only after every target in the higher layer fails.",
 			"runtimeHealthHint": "Runtime also removes circuit-open providers first, so the live order can change with provider health.",
 			"roundRobinInstanceHint": "On Cloudflare Workers, each isolate keeps its own counter, so rotation is best-effort rather than globally even.",
 			"singleTargetEffect": "{count} usable target(s) are available; with fewer than two, every strategy has the same first choice.",
 			"firstAttemptLayer": "First attempt layer",
 			"fallbackLayer": "Fallback layer",
 			"inactiveExcluded": "Disabled routes or providers are excluded from this preview.",
-			"hintCache": "Non-cache_affinity may reduce prompt cache hit rate.",
-			"hintNoCache": "Upstream has no prompt cache; prefer weighted_random or weighted_round_robin.",
-			"cache_affinity": "cache_affinity",
+			"hintCache": "Strategies other than Hash affinity may reduce prompt cache hit rate.",
+			"hintNoCache": "Upstream has no prompt cache; prefer Weighted random or Weighted round-robin.",
+			"hash_affinity": "hash_affinity",
 			"weighted_random": "weighted_random",
-			"fixed_order": "fixed_order",
+			"weight_priority": "weight_priority",
 			"weighted_round_robin": "weighted_round_robin"
 		},
 		"providerSticky": {

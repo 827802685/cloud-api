@@ -48,7 +48,7 @@ export function buildRouteAttemptPlan(
 
 	for (const tier of groupRoutesByPriorityDesc(routes)) {
 		const name = tierOverrides?.get(tier.priority) ?? strategyName;
-		const strategy = ROUTE_STRATEGIES[name] ?? ROUTE_STRATEGIES.cache_affinity;
+		const strategy = ROUTE_STRATEGIES[name] ?? ROUTE_STRATEGIES.hash_affinity;
 		const ordered = strategy(tier.routes, {
 			affinityKey: ctx.affinityKey,
 			tierKey: `${ctx.tierKeyPrefix}|${tier.priority}`,

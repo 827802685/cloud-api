@@ -1,6 +1,6 @@
 # 按层路由策略（迁移 0018）
 
-为 `route_pools` 增加可空列 **`tier_strategies`**（TEXT JSON），允许同一 Pool 内不同 `priority` 层使用不同的同层排序策略（`cache_affinity` / `weighted_random` / `fixed_order` / `weighted_round_robin`）。
+为 `route_pools` 增加可空列 **`tier_strategies`**（TEXT JSON），允许同一 Pool 内不同 `priority` 层使用不同的同层排序策略（`hash_affinity` / `weighted_random` / `weight_priority` / `weighted_round_robin`）。
 
 **迁移文件**（三库同语义）：
 
@@ -58,7 +58,7 @@ WHERE table_schema = 'octafuse_gateway' AND table_name = 'route_pools';
 2. 点击层策略 → 弹窗可设置「本层策略」与折叠的「路由池默认」。
 3. 保存后 `GET /api/admin/routes` 对应行的 `pool_tier_strategies` 含 JSON map。
 4. 层间「Failover 规则」链接打开只读说明弹窗。
-5. Proxy：同一 Pool 配置 `{"10":"fixed_order","0":"weighted_random"}` 后，高 / 低层应分别按对应策略排序（可用单测 `buildRouteAttemptPlan` 覆盖）。
+5. Proxy：同一 Pool 配置 `{"10":"weight_priority","0":"weighted_random"}` 后，高 / 低层应分别按对应策略排序（可用单测 `buildRouteAttemptPlan` 覆盖）。
 
 ---
 
