@@ -689,7 +689,7 @@ function PriorityTierPanel({
 				<button
 					type="button"
 					onClick={onToggleExpanded}
-					className="flex w-full min-w-0 flex-wrap items-center gap-1.5 px-2.5 pb-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+					className="flex w-full min-w-0 flex-wrap items-center gap-1.5 px-2.5 py-2.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
 					aria-label={t('expandTierAria', { priority })}
 				>
 					{summary.previewItems.map((item) => (
