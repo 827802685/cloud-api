@@ -10,6 +10,9 @@ const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr
 				mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
 				mr.route_pool_id, mr.upstream_operation, mr.adapter,
 				rp.name AS pool_name, rp.strategy AS pool_strategy, rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status,
+				rp.sticky_enabled AS pool_sticky_enabled,
+				rp.sticky_idle_ttl_seconds AS pool_sticky_idle_ttl_seconds,
+				rp.sticky_epoch AS pool_sticky_epoch,
 				(SELECT json_group_array(json_object(
 					'id', ms.id,
 					'request_protocol', ms.request_protocol,
@@ -131,7 +134,12 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 
 		async updateRoutePoolPolicy(
 			poolId: string,
-			patch: { strategy?: string | null; tierStrategies?: string | null }
+			patch: {
+				strategy?: string | null;
+				tierStrategies?: string | null;
+				stickyEnabled?: boolean;
+				stickyIdleTtlSeconds?: number;
+			}
 		): Promise<number> {
 			const sets: string[] = [];
 			const bindValues: unknown[] = [];
@@ -143,6 +151,19 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 				sets.push('tier_strategies = ?');
 				bindValues.push(patch.tierStrategies);
 			}
+			const stickyTouched =
+				patch.stickyEnabled !== undefined || patch.stickyIdleTtlSeconds !== undefined;
+			if (patch.stickyEnabled !== undefined) {
+				sets.push('sticky_enabled = ?');
+				bindValues.push(patch.stickyEnabled ? 1 : 0);
+			}
+			if (patch.stickyIdleTtlSeconds !== undefined) {
+				sets.push('sticky_idle_ttl_seconds = ?');
+				bindValues.push(patch.stickyIdleTtlSeconds);
+			}
+			if (stickyTouched) {
+				sets.push('sticky_epoch = sticky_epoch + 1');
+			}
 			if (sets.length === 0) return 0;
 			sets.push(`updated_at = datetime('now')`);
 			const updated = await raw
@@ -150,6 +171,25 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 				.bind(...bindValues, poolId)
 				.run();
 			return updated.meta.changes;
+		},
+
+		async bumpRoutePoolStickyEpoch(poolId: string): Promise<number | null> {
+			const updated = await raw
+				.prepare(
+					`UPDATE route_pools
+					 SET sticky_epoch = sticky_epoch + 1,
+					     updated_at = datetime('now')
+					 WHERE id = ?`
+				)
+				.bind(poolId)
+				.run();
+			if ((updated.meta.changes ?? 0) === 0) return null;
+			const row = await raw
+				.prepare(`SELECT sticky_epoch FROM route_pools WHERE id = ?`)
+				.bind(poolId)
+				.first<{ sticky_epoch: number }>();
+			if (!row) return null;
+			return Number(row.sticky_epoch);
 		},
 
 		async updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number> {

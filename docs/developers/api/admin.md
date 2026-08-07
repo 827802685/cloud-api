@@ -63,7 +63,11 @@ Authorization: Bearer sk-admin-xxx
 | `/admin/models/import/catalog` | GET | 内置静态目录可选项摘要（不含完整 `pricing_profile`） | Admin UI |
 | `/admin/models/import` | POST | 请求体 `{"ids":["…"]}`：仅导入指定预设 → `models`，`model_tags`（按 `BILLING_CURRENCY` 选用 USD/CNY 价；**同 id 不覆盖**，记入 `skipped_existing`） | Admin UI、运维脚本 |
 | `/admin/routes` | GET（`?model_id=&provider_id=`）, POST, GET/PATCH/DELETE `/:id` | `model_surfaces`、`route_pools`、`model_routes`（Surface → Pool → Target） | Admin UI |
-| `/admin/routes/pools/:poolId` | PATCH | `route_pools.strategy` / `tier_strategies`（Pool 级与按层策略覆盖） | Admin UI |
+| `/admin/routes/pools/:poolId` | PATCH | `route_pools.strategy` / `tier_strategies` / `sticky_routing`（Pool 策略与 Provider 粘性） | Admin UI |
+| `/admin/routes/pools/:poolId/sticky/bindings/summary` | GET | 活跃粘性绑定按 target 聚合（epoch 有效且未过期） | Admin UI |
+| `/admin/routes/pools/:poolId/sticky/bindings/lookup` | GET | 按 `user_id` / `email` + surface 上下文反查单用户绑定 | Admin UI |
+| `/admin/routes/pools/:poolId/sticky/bindings/:affinityHash` | DELETE | 强制解绑（不校验 `binding_token`） | Admin UI |
+| `/admin/routes/pools/:poolId/sticky/reset` | POST | bump `sticky_epoch`，使本 pool 全部绑定失效 | Admin UI |
 | `/admin/playground` | POST | Routes：`routeId` 直连上游；Tools：`toolId`+`provider` 读 catalog 直连引擎（均可测、不计费、不写日志、无 failover） | Admin UI、运维联调 |
 | `/admin/stats` | GET | 多表聚合（含 `api_key_request_logs`、`api_keys` 等） | Admin UI |
 | `/admin/config` | GET, PUT | `system_config`（含 `ROUTE_STRATEGY`） | Admin UI |
@@ -616,13 +620,22 @@ curl "http://localhost:8789/api/admin/keys/uuid-here/logs?page=1&page_size=10" \
 ```json
 {
   "strategy": "cache_affinity",
-  "tier_strategies": { "10": "cache_affinity", "0": "fixed_order" }
+  "tier_strategies": { "10": "cache_affinity", "0": "fixed_order" },
+  "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 }
 }
 ```
 
   - **`strategy`**：四策略之一；`null` / 空值表示继承模型 / 全局配置。
   - **`tier_strategies`**：priority（整数键）→ 策略名；`null` / `{}` 清空列。非法 key 或策略名 → **400**。
-  - 两字段均可选，至少提供其一。
+  - **`sticky_routing`**：`{ enabled: boolean, idle_ttl_seconds?: number }`；`idle_ttl_seconds` 默认 3600，范围 60–86400；写入时递增 `sticky_epoch` 使旧绑定失效。
+  - 字段均可选，至少提供其一。
+
+- **Sticky 绑定可观测 / 排障**（挂在 `/admin/routes/pools/:poolId/sticky/*`，须在 `/:id` 通配之前注册）：
+  - **`GET .../sticky/bindings/summary`** → `{ total_active, stale_count, targets: [{ route_target_id, active_count, share, last_updated_at }] }`。活跃行条件：`pool_epoch = route_pools.sticky_epoch` 且 `expires_at > now`。
+  - **`GET .../sticky/bindings/lookup?user_id=&email=&model_id=&route_group=&protocol=&request_operation=`**  
+    用 surface 上下文（`resolveModelSurface`）校验属于该 pool，再按 `SHA-256(userId|model|routeGroup|protocol)` 查绑定。`email` 与 `user_id` 二选一。返回 `{ user_id, affinity_hash, affinity_key, binding }`；`binding` 可为 `null`。
+  - **`DELETE .../sticky/bindings/:affinityHash`**：强制删除该 hash 行（管理端解绑，无 token CAS）。
+  - **`POST .../sticky/reset`**：仅 bump `sticky_epoch`，返回 `{ sticky_epoch }`。历史行不立即删除，随 GC / 覆盖消失。
 
 完整拓扑与 operation 白名单见 [route-topology.md](../architecture/route-topology.md)。
 

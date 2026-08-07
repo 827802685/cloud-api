@@ -7,8 +7,12 @@ import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
 	createModelRouteService,
 	deleteModelRouteService,
+	forceClearStickyBindingService,
 	getModelRouteService,
+	getStickyBindingsSummaryService,
 	listModelRoutesService,
+	lookupStickyBindingService,
+	resetStickyBindingsService,
 	updateModelRouteService,
 	updateRoutePoolPolicyService,
 } from '@/lib/services/admin/model-routes-service';
@@ -52,7 +56,7 @@ adminModelRoutes.post('/', async (c) => {
 
 /** Pool-level strategy / per-tier overrides. Kept under `/routes` so existing Admin proxy/auth wiring is reused. */
 adminModelRoutes.patch('/pools/:poolId', async (c) => {
-	let body: { strategy?: unknown; tier_strategies?: unknown };
+	let body: { strategy?: unknown; tier_strategies?: unknown; sticky_routing?: unknown };
 	try {
 		body = await c.req.json();
 	} catch {
@@ -64,6 +68,69 @@ adminModelRoutes.patch('/pools/:poolId', async (c) => {
 		return c.json({ success: true, message: 'Route pool policy updated successfully' });
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to update route pool policy');
+	}
+});
+
+/** Active sticky binding distribution for a pool. */
+adminModelRoutes.get('/pools/:poolId/sticky/bindings/summary', async (c) => {
+	try {
+		const repos = c.get('repositories');
+		const data = await getStickyBindingsSummaryService(repos, c.req.param('poolId'));
+		return c.json(normalizeApiTimeFields({ success: true, data }));
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to get sticky bindings summary');
+	}
+});
+
+/** Lookup sticky binding for one user (by user_id or email) on a pool. */
+adminModelRoutes.get('/pools/:poolId/sticky/bindings/lookup', async (c) => {
+	try {
+		const repos = c.get('repositories');
+		const data = await lookupStickyBindingService(repos, c.req.param('poolId'), {
+			user_id: c.req.query('user_id'),
+			email: c.req.query('email'),
+			model_id: c.req.query('model_id'),
+			route_group: c.req.query('route_group'),
+			protocol: c.req.query('protocol'),
+			request_operation: c.req.query('request_operation'),
+		});
+		return c.json(normalizeApiTimeFields({ success: true, data }));
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to lookup sticky binding');
+	}
+});
+
+/** Force-clear one sticky binding by affinity hash (no token CAS). */
+adminModelRoutes.delete('/pools/:poolId/sticky/bindings/:affinityHash', async (c) => {
+	try {
+		const repos = c.get('repositories');
+		const data = await forceClearStickyBindingService(
+			repos,
+			c.req.param('poolId'),
+			c.req.param('affinityHash')
+		);
+		return c.json({
+			success: true,
+			message: data.cleared ? 'Sticky binding cleared' : 'No sticky binding found',
+			data,
+		});
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to clear sticky binding');
+	}
+});
+
+/** Bump sticky_epoch to invalidate all bindings for this pool. */
+adminModelRoutes.post('/pools/:poolId/sticky/reset', async (c) => {
+	try {
+		const repos = c.get('repositories');
+		const data = await resetStickyBindingsService(repos, c.req.param('poolId'));
+		return c.json({
+			success: true,
+			message: 'Sticky bindings invalidated (epoch bumped)',
+			data,
+		});
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to reset sticky bindings');
 	}
 });
 

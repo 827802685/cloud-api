@@ -17,8 +17,60 @@ export type RouteProtocolGroupSection<T> = {
 	poolStrategy: string | null;
 	/** Raw JSON from `route_pools.tier_strategies` */
 	poolTierStrategies: string | null;
+	poolStickyEnabled: boolean;
+	poolStickyIdleTtlSeconds: number;
 	group: string;
 	routes: T[];
+};
+
+export type ProviderStickyDialogTarget = {
+	id: string;
+	providerName: string;
+	priority: number;
+	weight: number;
+};
+
+export type ProviderStickyDialogState = {
+	modelId: string;
+	modelTitle: string;
+	protocol: string;
+	protocolLabel: string;
+	group: string;
+	requestOperation: string;
+	poolId: string | null;
+	enabled: boolean;
+	idleTtlSeconds: number;
+	targets: ProviderStickyDialogTarget[];
+};
+
+export type StickyBindingsSummary = {
+	total_active: number;
+	stale_count: number;
+	targets: Array<{
+		route_target_id: string;
+		active_count: number;
+		share: number;
+		last_updated_at: string | null;
+	}>;
+};
+
+export type StickyBindingLookup = {
+	user_id: string;
+	affinity_hash: string;
+	affinity_key: string;
+	binding: null | {
+		route_target_id: string;
+		expires_at: string;
+		pool_epoch: number;
+		remaining_seconds: number;
+		epoch_valid: boolean;
+		expired: boolean;
+	};
+};
+
+export type ProviderStickyFormState = {
+	enabled: boolean;
+	idleTtlSeconds: number;
 };
 
 export type RouteScheduleFormWindow = {

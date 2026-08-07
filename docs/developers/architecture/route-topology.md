@@ -74,7 +74,7 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` �
 
 - `POST /admin/routes` 可传 `request_protocol`、`request_operation`、`upstream_protocol`、`upstream_operation`、`adapter`；服务端会创建或复用对应 Surface / Pool。
 - `PATCH /admin/routes/:id` 可调整 Target；当请求协议或 operation 改变时会重新关联对应 Pool。
-- `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "cache_affinity", "tier_strategies": { "10": "fixed_order" } }`；各字段可选；`null` / 空值表示清空并继承下一级。
+- `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "cache_affinity", "tier_strategies": { "10": "fixed_order" }, "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 } }`；各字段可选；`strategy`/`tier_strategies` 的 `null` / 空值表示清空并继承下一级；`sticky_routing` 写入时递增 `sticky_epoch`。
 - `GET /admin/routes` 返回 `route_pool_id`、`pool_strategy`、`pool_tier_strategies` 与序列化的 `surfaces`，供 Admin 绘制路由流。
 
 对外调用 Admin 时，路径前面加 `/api`，即 `/api/admin/routes/...`。

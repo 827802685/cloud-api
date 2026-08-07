@@ -75,14 +75,7 @@ export async function resolveRouteStrategyPlan(params: {
 }
 
 /** affinityKey = userId|baseModelId|routeGroup|protocol */
-export function buildAffinityKey(
-	userId: string,
-	baseModelId: string,
-	routeGroup: string,
-	protocol: string
-): string {
-	return `${userId}|${baseModelId}|${routeGroup}|${protocol}`;
-}
+export { buildAffinityKey } from '@octafuse/core/db/route-affinity-key';
 
 /** tierKey 前缀 = baseModelId|routeGroup|protocol；完整 tierKey = `${prefix}|${priority}` */
 export function buildTierKeyPrefix(baseModelId: string, routeGroup: string, protocol: string): string {

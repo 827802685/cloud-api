@@ -11,6 +11,7 @@ import { useRoutesPageState } from './use-routes-page-state';
 import { RouteFilterSidebar } from './components/route-filter-sidebar';
 import { RouteFlowOverview } from './components/route-flow-overview';
 import { RouteModal } from './components/route-modal';
+import { ProviderStickyDialog } from './components/provider-sticky-dialog';
 import { RoutePolicyDialog } from './components/route-policy-dialog';
 import { RouteVendorGroup } from './components/route-vendor-group';
 import { RouteWorkspaceHeader } from './components/route-workspace-header';
@@ -111,6 +112,7 @@ function RoutesContent() {
 													}
 													onToggleStatus={state.handleToggleStatus}
 													onOpenStrategyDialog={state.handleOpenStrategyDialog}
+													onOpenProviderStickyDialog={state.handleOpenProviderStickyDialog}
 												/>
 											)
 										)}
@@ -187,6 +189,18 @@ function RoutesContent() {
 					onClose={state.closeStrategyDialog}
 					onFormChange={state.setStrategyForm}
 					onSave={() => void state.handleSaveStrategy()}
+				/>
+			)}
+
+			{state.stickyDialog && (
+				<ProviderStickyDialog
+					dialog={state.stickyDialog}
+					form={state.stickyForm}
+					error={state.stickyError}
+					saving={state.stickySaving}
+					onClose={state.closeStickyDialog}
+					onFormChange={state.setStickyForm}
+					onSave={() => void state.handleSaveProviderSticky()}
 				/>
 			)}
 		</div>

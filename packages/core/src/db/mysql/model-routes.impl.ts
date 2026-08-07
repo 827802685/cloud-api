@@ -1,7 +1,7 @@
 /**
  * MySQL：`model_routes`。
  */
-import type { ResultSetHeader } from 'mysql2/promise';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type { MySqlDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutesRepository } from '../../storage/gateway-repository-interfaces';
 import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repository-dtos';
@@ -12,6 +12,9 @@ const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr
 		mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
 		mr.route_pool_id, mr.upstream_operation, mr.adapter,
 		rp.name AS pool_name, rp.strategy AS pool_strategy, rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status,
+		rp.sticky_enabled AS pool_sticky_enabled,
+		rp.sticky_idle_ttl_seconds AS pool_sticky_idle_ttl_seconds,
+		rp.sticky_epoch AS pool_sticky_epoch,
 		CAST(COALESCE((
 			SELECT JSON_ARRAYAGG(JSON_OBJECT(
 				'id', ms.id,
@@ -144,7 +147,12 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 
 		async updateRoutePoolPolicy(
 			poolId: string,
-			patch: { strategy?: string | null; tierStrategies?: string | null }
+			patch: {
+				strategy?: string | null;
+				tierStrategies?: string | null;
+				stickyEnabled?: boolean;
+				stickyIdleTtlSeconds?: number;
+			}
 		): Promise<number> {
 			const sets: string[] = [];
 			const bindValues: unknown[] = [];
@@ -156,6 +164,19 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 				sets.push('tier_strategies = ?');
 				bindValues.push(patch.tierStrategies);
 			}
+			const stickyTouched =
+				patch.stickyEnabled !== undefined || patch.stickyIdleTtlSeconds !== undefined;
+			if (patch.stickyEnabled !== undefined) {
+				sets.push('sticky_enabled = ?');
+				bindValues.push(patch.stickyEnabled ? 1 : 0);
+			}
+			if (patch.stickyIdleTtlSeconds !== undefined) {
+				sets.push('sticky_idle_ttl_seconds = ?');
+				bindValues.push(patch.stickyIdleTtlSeconds);
+			}
+			if (stickyTouched) {
+				sets.push('sticky_epoch = sticky_epoch + 1');
+			}
 			if (sets.length === 0) return 0;
 			sets.push('updated_at = CURRENT_TIMESTAMP(6)');
 			const [result] = await pool.execute<ResultSetHeader>(
@@ -163,6 +184,23 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 				[...bindValues, poolId]
 			);
 			return result.affectedRows;
+		},
+
+		async bumpRoutePoolStickyEpoch(poolId: string): Promise<number | null> {
+			const [result] = await pool.execute<ResultSetHeader>(
+				`UPDATE route_pools
+				 SET sticky_epoch = sticky_epoch + 1,
+				     updated_at = CURRENT_TIMESTAMP(6)
+				 WHERE id = ?`,
+				[poolId]
+			);
+			if (result.affectedRows === 0) return null;
+			const [rows] = await pool.query<Array<{ sticky_epoch: number } & RowDataPacket>>(
+				`SELECT sticky_epoch FROM route_pools WHERE id = ? LIMIT 1`,
+				[poolId]
+			);
+			if (!rows[0]) return null;
+			return Number(rows[0].sticky_epoch);
 		},
 
 		async updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number> {

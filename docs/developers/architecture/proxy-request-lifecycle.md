@@ -79,7 +79,7 @@ flowchart TB
 
 > **客户端约定**：非 2xx 时以响应头 **`X-OctaFuse-Error-Code`**（及网关自造错误 body 顶层 / 嵌套 `code`）为**分类权威**；`error` / `error.message` 仍保留人类可读原文（上游透传或固定英文短句）。SoloEnt Agent 优先按该点分 code 归一化，再回退英文文案正则。
 
-> **已移除（待后续重设计）**：provider key pool、粘性 key 绑定（`sticky_config`）、网关侧 RPM/TPM/并发软限流（`limit_config`）。一个 Provider = 一把 `api_key` + `status`。
+> **已移除**：provider key pool、旧 `models.sticky_config`、网关侧 RPM/TPM/并发软限流（`limit_config`）。一个 Provider = 一把 `api_key` + `status`。跨请求 Provider 粘性见 Route Pool **Provider sticky**（`route_pool_sticky_bindings`）。
 
 ---
 
@@ -209,7 +209,8 @@ sequenceDiagram
 
 ### 3.3 粘性 / 限流说明
 
-- **无**进程内 sticky key 绑定；默认策略 **`cache_affinity`**（加权 Rendezvous hash）在同用户 + 模型 + group + 协议下给出稳定首选 provider，以利于上游 prompt cache。
+- 默认策略 **`cache_affinity`**（加权 Rendezvous hash）在同用户 + 模型 + group + 协议下给出稳定首选 provider，以利于上游 prompt cache。
+- 可选 **Provider sticky**（Pool 级）：成功后跨请求绑定 Target（共享 DB）；有效时可跨 priority 优先尝试；见 [route-strategies.md](../reference/route-strategies.md)「Provider sticky routing」。
 - **无**网关侧 RPM/TPM/并发软限流；供应商限额由上游 429 与熔断间接体现（后续可能重设计）。
 
 > **Playground 除外**：Admin **`playground-service`** 直连单条 route 打上游，**不经过** `failoverDispatch`，因此无 failover / 策略排序；生产 Proxy 路径才生效。

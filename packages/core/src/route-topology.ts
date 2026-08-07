@@ -88,6 +88,11 @@ export interface RoutePoolRow {
 	strategy: string | null;
 	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
 	tier_strategies?: string | null;
+	/** Provider sticky routing (0/1 or boolean depending on driver) */
+	sticky_enabled?: boolean | number | null;
+	sticky_idle_ttl_seconds?: number | null;
+	/** Bumped when sticky config changes to invalidate bindings */
+	sticky_epoch?: number | null;
 	status: string;
 	created_at?: string;
 	updated_at?: string;
@@ -111,4 +116,8 @@ export type ResolvedModelSurfaceRow = ModelSurfaceRow & {
 	/** JSON map from `route_pools.tier_strategies` */
 	pool_tier_strategies: string | null;
 	pool_status: string;
+	/** Provider sticky routing from `route_pools` */
+	pool_sticky_enabled?: boolean | number | null;
+	pool_sticky_idle_ttl_seconds?: number | null;
+	pool_sticky_epoch?: number | null;
 };

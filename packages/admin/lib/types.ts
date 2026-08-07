@@ -187,6 +187,10 @@ export interface GatewayModelRoute {
   pool_strategy?: string | null;
   /** JSON map from `route_pools.tier_strategies`: {"10":"cache_affinity","0":"fixed_order"} */
   pool_tier_strategies?: string | null;
+  /** Provider sticky routing from `route_pools` */
+  pool_sticky_enabled?: boolean | number | null;
+  pool_sticky_idle_ttl_seconds?: number | null;
+  pool_sticky_epoch?: number | null;
   pool_status?: string | null;
   /** JSON array of public ingress surfaces sharing this pool. */
   surfaces?: string | null;

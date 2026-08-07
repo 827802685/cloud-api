@@ -104,6 +104,23 @@ Affinity 分数：`score = max(1, weight) / -ln(u)`，`u` 来自 FNV-1a（`route
 
 ---
 
+## Provider sticky routing（Pool 前置规则，非第五策略）
+
+Route Pool 可另开 **Provider 粘性**（`sticky_enabled` + `sticky_idle_ttl_seconds`），与上述四种层内策略正交：
+
+1. 无有效绑定时：仍按 **Priority → 层内策略 → Failover** 选路；成功后写入共享表 `route_pool_sticky_bindings`。
+2. 有有效绑定时：将该 Target **跨 Tier 插到尝试序列最前**；成功则滑动续期（默认空闲 1h，60s 内 touch 合并）。
+3. Provider 可归因故障（429 / 5xx / 401–403 / 524 / 网络）→ CAS 解绑并继续常规计划；400/404 / 图片 abort **不解绑**。
+4. 粘到低优先级 Tier 后**不主动探测**高层；仅故障、配置变更（`sticky_epoch++`）或空闲过期后重选。
+5. Lookup 细分：`invalid_circuit`（熔断中）保留旧绑定且不重绑；`invalid_target`（目标不在候选）用 `expectedToken` CAS 覆盖；`invalid_epoch` 由既有 expiry/epoch CAS 覆盖。
+6. `route_trace.sticky` 在 bind/touch CAS settle 后写入，便于观察 `unchanged` / `storage_error`。过期行由机会式 GC（~1/500 请求）清理。
+
+Admin：Routes Flow 中 Route Group 节点下方 Chip → 配置弹窗。运维迁移见 [route-pool-sticky-routing-cutover.md](../../operators/migrations/route-pool-sticky-routing-cutover.md)。
+
+与 **`cache_affinity`** 的区别：后者是无状态哈希「稳定首选」；sticky 是跨请求成功记忆 + 可跨 Tier。
+
+---
+
 ## 如何新增策略
 
 1. 在 `@octafuse/core` 的 `RouteStrategyName` / `ROUTE_STRATEGY_NAMES` 增加名称。

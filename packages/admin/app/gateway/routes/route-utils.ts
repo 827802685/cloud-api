@@ -10,6 +10,7 @@ import {
 	routePolicyRuleKey,
 } from '@octafuse/core/db/model-route-policy';
 import { parseRoutePoolTierStrategies } from '@octafuse/core/db/route-pool-tier-strategies';
+import { parseRoutePoolStickyConfig } from '@octafuse/core/db/route-pool-sticky-types';
 import {
 	ANTHROPIC_ENDPOINT_CAPABILITIES,
 	GEMINI_ENDPOINT_CAPABILITIES,
@@ -167,6 +168,8 @@ export function splitRoutesByProtocolAndRouteGroup<
 		pool_name?: string | null;
 		pool_strategy?: string | null;
 		pool_tier_strategies?: string | null;
+		pool_sticky_enabled?: boolean | number | null;
+		pool_sticky_idle_ttl_seconds?: number | null;
 		surfaces?: string | null;
 	},
 >(
@@ -184,6 +187,10 @@ export function splitRoutesByProtocolAndRouteGroup<
 			const protocol = String(surface.request_protocol ?? r.upstream_protocol).trim().toLowerCase();
 			const requestOperation = String(surface.request_operation ?? '*');
 			const key = `${r.route_pool_id ?? 'legacy'}\u0000${surface.id ?? `${protocol}:${requestOperation}`}\u0000${g}`;
+			const sticky = parseRoutePoolStickyConfig({
+				stickyEnabled: r.pool_sticky_enabled,
+				stickyIdleTtlSeconds: r.pool_sticky_idle_ttl_seconds,
+			});
 			const section =
 				bySection.get(key) ??
 				{
@@ -196,6 +203,8 @@ export function splitRoutesByProtocolAndRouteGroup<
 					poolName: r.pool_name ?? null,
 					poolStrategy: r.pool_strategy ?? null,
 					poolTierStrategies: r.pool_tier_strategies ?? null,
+					poolStickyEnabled: sticky.enabled,
+					poolStickyIdleTtlSeconds: sticky.idleTtlSeconds,
 					group: g,
 					routes: [],
 				};

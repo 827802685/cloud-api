@@ -59,7 +59,10 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 			return raw
 				.prepare(
 					`SELECT ms.*, rp.name AS pool_name, rp.strategy AS pool_strategy,
-					        rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status
+					        rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status,
+					        rp.sticky_enabled AS pool_sticky_enabled,
+					        rp.sticky_idle_ttl_seconds AS pool_sticky_idle_ttl_seconds,
+					        rp.sticky_epoch AS pool_sticky_epoch
 					 FROM model_surfaces ms
 					 JOIN route_pools rp ON rp.id = ms.route_pool_id
 					 WHERE ms.model_id = ?

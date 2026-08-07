@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { ROUTE_STRATEGY_NAMES } from '@octafuse/core/db/model-route-policy';
 import { useTranslations } from 'next-intl';
 import {
@@ -27,10 +26,13 @@ export function RoutePolicyDialog(props: Props) {
 	const t = useTranslations('routes.strategy');
 	const tCommon = useTranslations('common');
 	const isTierMode = dialog.priority !== undefined;
-	const [poolDefaultOpen, setPoolDefaultOpen] = useState(false);
 	const capabilities = dialog.poolId || isTierMode ? [] : CAPABILITIES_BY_PROTOCOL[dialog.protocol] ?? [];
+	const tierInheritStrategy = form.protocolStrategy || dialog.inheritedStrategy;
+	const tierInheritSourceLabel = form.protocolStrategy
+		? t('source.pool')
+		: t(`source.${dialog.inheritedSource}`);
 	const effectiveStrategy = isTierMode
-		? form.tierStrategy || form.protocolStrategy || dialog.inheritedStrategy
+		? form.tierStrategy || tierInheritStrategy
 		: form.protocolStrategy || dialog.inheritedStrategy;
 	const activeTargets = dialog.targets.filter(
 		(target) =>
@@ -44,7 +46,7 @@ export function RoutePolicyDialog(props: Props) {
 		if (!value) {
 			const inherited =
 				isTierMode
-					? form.protocolStrategy || dialog.inheritedStrategy
+					? tierInheritStrategy
 					: dialog.inheritedStrategy;
 			return `${t('inherit')} → ${inherited}`;
 		}
@@ -56,9 +58,6 @@ export function RoutePolicyDialog(props: Props) {
 	};
 
 	const inheritedSourceLabel = t(`source.${dialog.inheritedSource}`);
-	const tierInheritedLabel = form.protocolStrategy
-		? t('source.pool')
-		: inheritedSourceLabel;
 
 	return (
 		<div
@@ -166,11 +165,14 @@ export function RoutePolicyDialog(props: Props) {
 								value={form.tierStrategy}
 								onChange={(next) => onFormChange({ ...form, tierStrategy: next })}
 								allowInherit
-								inheritedStrategy={form.protocolStrategy || dialog.inheritedStrategy}
-								inheritedSourceLabel={tierInheritedLabel}
+								inheritedStrategy={tierInheritStrategy}
+								inheritedSourceLabel={tierInheritSourceLabel}
 								disabled={saving || !dialog.poolId}
 								className="mt-3"
 							/>
+							<p className="mt-3 text-[11px] leading-relaxed text-gray-500">
+								{t('tierInheritReadonlyHint')}
+							</p>
 						</div>
 					) : (
 						<div>
@@ -189,35 +191,6 @@ export function RoutePolicyDialog(props: Props) {
 							/>
 						</div>
 					)}
-
-					{isTierMode ? (
-						<div className="rounded-lg border border-slate-200 bg-slate-50/70">
-							<button
-								type="button"
-								onClick={() => setPoolDefaultOpen((open) => !open)}
-								className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-							>
-								<span>{t('poolDefault')}</span>
-								<span className="text-xs font-medium text-gray-500">
-									{poolDefaultOpen ? '▾' : '▸'}
-								</span>
-							</button>
-							{poolDefaultOpen ? (
-								<div className="border-t border-slate-200 px-3.5 py-3">
-									<p className="mb-3 text-xs text-gray-500">{t('poolDefaultHint')}</p>
-									<RouteStrategyPicker
-										value={form.protocolStrategy}
-										onChange={(next) => onFormChange({ ...form, protocolStrategy: next })}
-										allowInherit
-										inheritedStrategy={dialog.inheritedStrategy}
-										inheritedSourceLabel={inheritedSourceLabel}
-										disabled={saving || !dialog.poolId}
-										dense
-									/>
-								</div>
-							) : null}
-						</div>
-					) : null}
 
 					<div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3.5">
 						<div className="flex flex-wrap items-center justify-between gap-2">

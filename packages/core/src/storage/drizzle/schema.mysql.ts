@@ -122,7 +122,22 @@ export const routePoolsTable = mysqlTable('route_pools', {
 	strategy: varchar('strategy', { length: COL.STATUS }),
 	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
 	tierStrategies: text('tier_strategies'),
+	stickyEnabled: int('sticky_enabled').notNull().default(0),
+	stickyIdleTtlSeconds: int('sticky_idle_ttl_seconds').notNull().default(3600),
+	/** Bumped on sticky config change to invalidate existing bindings */
+	stickyEpoch: int('sticky_epoch').notNull().default(0),
 	status: varchar('status', { length: COL.STATUS }).notNull().default('active'),
+	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { fsp: 6, mode: 'string' }).notNull(),
+});
+
+export const routePoolStickyBindingsTable = mysqlTable('route_pool_sticky_bindings', {
+	routePoolId: varchar('route_pool_id', { length: COL.ID }).notNull(),
+	affinityHash: varchar('affinity_hash', { length: 64 }).notNull(),
+	routeTargetId: varchar('route_target_id', { length: COL.ID }).notNull(),
+	bindingToken: varchar('binding_token', { length: 64 }).notNull(),
+	poolEpoch: int('pool_epoch').notNull().default(0),
+	expiresAt: timestamp('expires_at', { fsp: 6, mode: 'string' }).notNull(),
 	createdAt: timestamp('created_at', { fsp: 6, mode: 'string' }).notNull(),
 	updatedAt: timestamp('updated_at', { fsp: 6, mode: 'string' }).notNull(),
 });

@@ -44,6 +44,7 @@ import {
 	type RouteProtocolGroupSection,
 } from '../types';
 import { FailoverRulesDialog } from './failover-rules-dialog';
+import { ProviderStickyChip } from './provider-sticky-chip';
 
 type OpenStrategyDialog = (
 	modelId: string,
@@ -55,6 +56,19 @@ type OpenStrategyDialog = (
 	poolStrategy?: string | null,
 	requestOperation?: string,
 	extras?: { priority?: number; poolTierStrategies?: string | null }
+) => void;
+
+type OpenProviderStickyDialog = (
+	modelId: string,
+	modelTitle: string,
+	protocol: string,
+	protocolLabel: string,
+	group: string,
+	requestOperation: string,
+	poolId: string | null,
+	enabled: boolean,
+	idleTtlSeconds: number,
+	targets: Array<{ id: string; providerName: string; priority: number; weight: number }>
 ) => void;
 
 type Props = {
@@ -70,6 +84,7 @@ type Props = {
 	onEditModel: (modelId: string) => void;
 	onToggleStatus: (route: RouteListRow) => void;
 	onOpenStrategyDialog: OpenStrategyDialog;
+	onOpenProviderStickyDialog: OpenProviderStickyDialog;
 };
 
 function RouteTarget({
@@ -227,14 +242,39 @@ function RouteTarget({
 	);
 }
 
-function UpstreamToolbar({ onAdd }: { onAdd: () => void }) {
+function UpstreamToolbar({
+	routeGroup,
+	poolId,
+	stickyEnabled,
+	stickyIdleTtlSeconds,
+	onOpenSticky,
+	onAdd,
+}: {
+	routeGroup: string;
+	poolId: string | null;
+	stickyEnabled: boolean;
+	stickyIdleTtlSeconds: number;
+	onOpenSticky: () => void;
+	onAdd: () => void;
+}) {
 	const t = useTranslations('routes.flow');
 
 	return (
 		<div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-			<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-				{t('providerStep')}
-			</span>
+			<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+				<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+					{t('providerStep')}
+				</span>
+				<span className="max-w-full truncate rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+					{t('routeGroup')} · {routeGroup}
+				</span>
+				<ProviderStickyChip
+					enabled={stickyEnabled}
+					idleTtlSeconds={stickyIdleTtlSeconds}
+					poolId={poolId}
+					onClick={onOpenSticky}
+				/>
+			</div>
 			<button
 				type="button"
 				onClick={onAdd}
@@ -257,35 +297,31 @@ function RoutingMatchConnector({
 	const t = useTranslations('routes.flow');
 	const requestedModelId = routeGroup === 'default' ? modelId : `${modelId}:${routeGroup}`;
 
+	const modelBlock = (
+		<span
+			className="line-clamp-2 max-w-full break-all rounded-md bg-sky-50 px-2 py-0.5 text-center font-mono text-[10px] font-semibold leading-3 text-sky-700 ring-1 ring-inset ring-sky-200"
+			title={`model=${requestedModelId}`}
+		>
+			model={requestedModelId}
+		</span>
+	);
+
 	return (
 		<>
+			{/* Desktop: requested model stays on the routing rail. */}
 			<div
-				className="hidden min-w-0 flex-col items-center justify-center gap-1 xl:flex"
+				className="relative hidden min-w-0 items-center justify-center xl:flex"
 				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
 			>
-				<span className="whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
-					{t('routeGroup')} · {routeGroup}
-				</span>
-				<p
-					className="line-clamp-2 break-all text-center font-mono text-[10px] font-medium leading-3 text-blue-600"
-					title={`model=${requestedModelId}`}
-				>
-					model={requestedModelId}
-				</p>
+				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" aria-hidden />
+				<div className="relative z-[1] flex w-full max-w-full justify-center">{modelBlock}</div>
 			</div>
+			{/* Mobile: keep the requested model before the downstream pool. */}
 			<div
-				className="flex min-w-0 flex-col items-center gap-1 py-0.5 xl:hidden"
+				className="flex min-w-0 justify-center py-0.5 xl:hidden"
 				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
 			>
-				<span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
-					{t('routeGroup')} · {routeGroup}
-				</span>
-				<span
-					className="line-clamp-2 max-w-full break-all text-center font-mono text-[10px] font-medium leading-3 text-blue-600"
-					title={`model=${requestedModelId}`}
-				>
-					model={requestedModelId}
-				</span>
+				{modelBlock}
 			</div>
 		</>
 	);
@@ -414,6 +450,7 @@ function FlowBranch({
 	onEdit,
 	onToggleStatus,
 	onOpenStrategyDialog,
+	onOpenProviderStickyDialog,
 }: {
 	section: RouteProtocolGroupSection<RouteListRow>;
 	card: RouteModelGroup;
@@ -427,6 +464,7 @@ function FlowBranch({
 	onEdit: Props['onEdit'];
 	onToggleStatus: Props['onToggleStatus'];
 	onOpenStrategyDialog: Props['onOpenStrategyDialog'];
+	onOpenProviderStickyDialog: Props['onOpenProviderStickyDialog'];
 }) {
 	const t = useTranslations('routes.flow');
 	const tStrategy = useTranslations('routes.strategy');
@@ -460,16 +498,42 @@ function FlowBranch({
 				className="absolute left-0 top-1/2 hidden h-px w-4 bg-blue-300 xl:block"
 				aria-hidden
 			/>
-			<div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(150px,240px)_auto_minmax(420px,1fr)] xl:items-center">
-				<RoutingMatchConnector modelId={card.model_id} routeGroup={section.group} />
+			<div className="grid min-w-0 gap-y-3 xl:grid-cols-[minmax(150px,240px)_auto_minmax(420px,1fr)] xl:items-center">
+				<RoutingMatchConnector
+					modelId={card.model_id}
+					routeGroup={section.group}
+				/>
 
-				<div className="flex items-center justify-center py-0.5 xl:px-0.5" aria-hidden>
+				<div className="flex items-center justify-center py-0.5" aria-hidden>
 					<span className="hidden h-px w-8 bg-blue-300 xl:block" />
 					<ArrowDownIcon className="h-4 w-4 text-blue-400 xl:hidden" />
 				</div>
 
 				<div className="min-w-0">
 					<UpstreamToolbar
+						routeGroup={section.group}
+						poolId={section.poolId}
+						stickyEnabled={section.poolStickyEnabled}
+						stickyIdleTtlSeconds={section.poolStickyIdleTtlSeconds}
+						onOpenSticky={() =>
+							onOpenProviderStickyDialog(
+								card.model_id,
+								card.title,
+								section.protocol,
+								section.protocolLabel,
+								section.group,
+								section.requestOperation,
+								section.poolId,
+								section.poolStickyEnabled,
+								section.poolStickyIdleTtlSeconds,
+								section.routes.map((r) => ({
+									id: r.id,
+									providerName: r.provider_name || r.provider_id,
+									priority: r.priority,
+									weight: Number(r.weight ?? 1) || 1,
+								}))
+							)
+						}
 						onAdd={() => onCreate(card.model_id, {
 							protocol: section.protocol,
 							operation: section.requestOperation,
@@ -589,6 +653,7 @@ function FlowSection({
 	onEdit,
 	onToggleStatus,
 	onOpenStrategyDialog,
+	onOpenProviderStickyDialog,
 }: {
 	surface: RequestSurfaceGroup;
 	card: RouteModelGroup;
@@ -600,6 +665,7 @@ function FlowSection({
 	onEdit: Props['onEdit'];
 	onToggleStatus: Props['onToggleStatus'];
 	onOpenStrategyDialog: Props['onOpenStrategyDialog'];
+	onOpenProviderStickyDialog: Props['onOpenProviderStickyDialog'];
 }) {
 	return (
 		<div className="bg-slate-50/70 px-3 sm:px-4">
@@ -630,6 +696,7 @@ function FlowSection({
 							onEdit={onEdit}
 							onToggleStatus={onToggleStatus}
 							onOpenStrategyDialog={onOpenStrategyDialog}
+							onOpenProviderStickyDialog={onOpenProviderStickyDialog}
 						/>
 					))}
 				</div>
@@ -652,6 +719,7 @@ export function RouteModelFlow(props: Props) {
 		onEditModel,
 		onToggleStatus,
 		onOpenStrategyDialog,
+		onOpenProviderStickyDialog,
 	} = props;
 	const t = useTranslations('routes.card');
 	const tFlow = useTranslations('routes.flow');
@@ -740,6 +808,7 @@ export function RouteModelFlow(props: Props) {
 						onEdit={onEdit}
 						onToggleStatus={onToggleStatus}
 						onOpenStrategyDialog={onOpenStrategyDialog}
+						onOpenProviderStickyDialog={onOpenProviderStickyDialog}
 					/>
 				)) : (
 					<div className="flex min-h-20 items-center justify-center py-5 text-sm font-medium text-gray-400">

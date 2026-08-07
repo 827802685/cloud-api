@@ -112,30 +112,34 @@ export function RouteStrategyPicker(props: RouteStrategyPickerProps) {
 									: 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-slate-50'
 							}`}
 						>
-							<div className="relative min-h-[2.5rem] pr-24">
-								<div className="truncate text-sm font-semibold leading-5 text-gray-900">
-									{t(strategyTitleKey(meta.id))}
+							<div className="relative min-h-[2.5rem] pr-20">
+								<div className="flex min-w-0 items-center gap-1.5 pr-1">
+									<div className="truncate text-sm font-semibold leading-5 text-gray-900">
+										{t(strategyTitleKey(meta.id))}
+									</div>
+									{meta.recommended ? (
+										<span className="shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-amber-800">
+											{t('recommended')}
+										</span>
+									) : null}
 								</div>
 								<div className="mt-0.5 truncate font-mono text-[10px] leading-4 text-gray-400">
 									{meta.machineId}
 								</div>
-								<span className="absolute right-0 top-0 flex flex-col items-end gap-1">
-									{meta.recommended ? (
-										<span className="whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-amber-800">
-											{t('recommended')}
-										</span>
-									) : null}
-									{usingInherit ? (
-										<span className="whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-indigo-700">
-											{t('inherit')}
-										</span>
-									) : null}
-									{selected ? (
-										<span className="whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-emerald-700">
-											{t('effective')}
-										</span>
-									) : null}
-								</span>
+								{(usingInherit || selected) && (
+									<span className="absolute right-0 top-0 flex flex-col items-end gap-1">
+										{usingInherit ? (
+											<span className="whitespace-nowrap rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-indigo-700">
+												{t('inherit')}
+											</span>
+										) : null}
+										{selected ? (
+											<span className="whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-emerald-700">
+												{t('effective')}
+											</span>
+										) : null}
+									</span>
+								)}
 							</div>
 
 							<div className="mt-2.5">

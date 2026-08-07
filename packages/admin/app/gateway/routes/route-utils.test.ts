@@ -7,6 +7,7 @@ import {
 	hasBasePricingInversion,
 	requestOperationsForModel,
 	resolveEffectiveRouteStrategy,
+	splitRoutesByProtocolAndRouteGroup,
 	upstreamOperationsForProviderModel,
 } from './route-utils';
 
@@ -174,5 +175,52 @@ describe('resolveEffectiveRouteStrategy', () => {
 			source: 'model',
 			inherited: true,
 		});
+	});
+});
+
+describe('provider sticky pool mapping', () => {
+	it('maps pool sticky columns onto protocol sections with defaults', () => {
+		const sections = splitRoutesByProtocolAndRouteGroup([
+			{
+				id: 'r1',
+				route_pool_id: 'pool-1',
+				pool_name: 'Pool',
+				route_group: 'default',
+				upstream_protocol: 'openai',
+				pool_sticky_enabled: 1,
+				pool_sticky_idle_ttl_seconds: 1800,
+				surfaces: JSON.stringify([
+					{
+						id: 'surf-1',
+						request_protocol: 'openai',
+						request_operation: 'chat',
+						status: 'active',
+					},
+				]),
+			},
+			{
+				id: 'r2',
+				route_pool_id: 'pool-2',
+				pool_name: 'Pool 2',
+				route_group: 'default',
+				upstream_protocol: 'openai',
+				pool_sticky_enabled: 0,
+				pool_sticky_idle_ttl_seconds: null,
+				surfaces: JSON.stringify([
+					{
+						id: 'surf-2',
+						request_protocol: 'openai',
+						request_operation: 'chat',
+						status: 'active',
+					},
+				]),
+			},
+		]);
+		const stickyOn = sections.find((s) => s.poolId === 'pool-1');
+		const stickyOff = sections.find((s) => s.poolId === 'pool-2');
+		assert.equal(stickyOn?.poolStickyEnabled, true);
+		assert.equal(stickyOn?.poolStickyIdleTtlSeconds, 1800);
+		assert.equal(stickyOff?.poolStickyEnabled, false);
+		assert.equal(stickyOff?.poolStickyIdleTtlSeconds, 3600);
 	});
 });

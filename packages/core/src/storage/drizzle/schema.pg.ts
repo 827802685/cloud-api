@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, integer, numeric, real, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, numeric, real, boolean, uniqueIndex, check } from 'drizzle-orm/pg-core';
 
 export const usersTable = pgTable(
 	'users',
@@ -93,7 +93,22 @@ export const routePoolsTable = pgTable('route_pools', {
 	strategy: text('strategy'),
 	/** JSON map: {"10":"cache_affinity","0":"fixed_order"} — per-priority-tier overrides */
 	tierStrategies: text('tier_strategies'),
+	stickyEnabled: boolean('sticky_enabled').notNull().default(false),
+	stickyIdleTtlSeconds: integer('sticky_idle_ttl_seconds').notNull().default(3600),
+	/** Bumped on sticky config change to invalidate existing bindings */
+	stickyEpoch: integer('sticky_epoch').notNull().default(0),
 	status: text('status').notNull().default('active'),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull(),
+});
+
+export const routePoolStickyBindingsTable = pgTable('route_pool_sticky_bindings', {
+	routePoolId: text('route_pool_id').notNull(),
+	affinityHash: text('affinity_hash').notNull(),
+	routeTargetId: text('route_target_id').notNull(),
+	bindingToken: text('binding_token').notNull(),
+	poolEpoch: integer('pool_epoch').notNull().default(0),
+	expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull(),
 });

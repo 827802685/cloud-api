@@ -132,6 +132,12 @@ export async function recordUsage(
 		adapter?: string | null;
 		/** Gemini wire action from URL (`generateContent` / `streamGenerateContent`); stored in route_trace. */
 		gemini_wire_action?: string | null;
+		/** Provider sticky routing observation (merged into route_trace.sticky). */
+		sticky_trace?: {
+			lookup: string;
+			attempted_target: string | null;
+			result: string;
+		} | null;
 		usage: UsageFromStream;
 		model_pricing_profile?: string | null;
 		route_price_override_json?: string | null;
@@ -276,6 +282,7 @@ export async function recordUsage(
 				...(params.gemini_wire_action
 					? { gemini: { action: params.gemini_wire_action } }
 					: {}),
+				...(params.sticky_trace ? { sticky: params.sticky_trace } : {}),
 			}),
 			inputTokens: params.usage.input_tokens,
 			outputTokens: params.usage.output_tokens,

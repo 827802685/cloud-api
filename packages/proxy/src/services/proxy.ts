@@ -22,6 +22,7 @@ import {
 	type ProxyDispatchMeta,
 } from './failover-dispatch';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
+import type { StickyTraceSnapshot } from './provider-sticky-routing';
 import type { RequestTimingAttempt, RequestTimingCollector } from './request-timing';
 
 export type { FailoverDispatchOptions, ProxyDispatchMeta } from './failover-dispatch';
@@ -64,6 +65,10 @@ export interface ProxyResult {
 	suppressErrorAlert: boolean;
 	/** Images 等协议透传已解析字段，避免 route 侧重复 parse */
 	meta?: ProxyDispatchMeta;
+	/** Sticky routing observation for `route_trace` */
+	stickyTrace?: StickyTraceSnapshot;
+	/** Background bind/touch mutations (schedule via waitUntil) */
+	stickyMutationPromise?: Promise<unknown> | null;
 }
 
 /** 无用量或解析失败时的零值占位（避免 undefined 传播）。 */

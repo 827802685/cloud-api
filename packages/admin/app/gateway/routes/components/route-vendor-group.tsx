@@ -34,6 +34,18 @@ type Props = {
 		requestOperation?: string,
 		extras?: { priority?: number; poolTierStrategies?: string | null }
 	) => void;
+	onOpenProviderStickyDialog: (
+		modelId: string,
+		modelTitle: string,
+		protocol: string,
+		protocolLabel: string,
+		group: string,
+		requestOperation: string,
+		poolId: string | null,
+		enabled: boolean,
+		idleTtlSeconds: number,
+		targets: Array<{ id: string; providerName: string; priority: number; weight: number }>
+	) => void;
 };
 
 export function RouteVendorGroup(props: Props) {
@@ -53,6 +65,7 @@ export function RouteVendorGroup(props: Props) {
 		onEditModel,
 		onToggleStatus,
 		onOpenStrategyDialog,
+		onOpenProviderStickyDialog,
 	} = props;
 
 	const t = useTranslations('routes.vendor');
@@ -98,6 +111,7 @@ export function RouteVendorGroup(props: Props) {
 						onEditModel={onEditModel}
 						onToggleStatus={onToggleStatus}
 						onOpenStrategyDialog={onOpenStrategyDialog}
+						onOpenProviderStickyDialog={onOpenProviderStickyDialog}
 					/>
 				))}
 			</div>

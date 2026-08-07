@@ -45,6 +45,9 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 					pool_strategy: pgPools.strategy,
 					pool_tier_strategies: pgPools.tierStrategies,
 					pool_status: pgPools.status,
+					pool_sticky_enabled: pgPools.stickyEnabled,
+					pool_sticky_idle_ttl_seconds: pgPools.stickyIdleTtlSeconds,
+					pool_sticky_epoch: pgPools.stickyEpoch,
 					model_name: pgModels.displayName,
 					provider_name: pgProviders.name,
 				})
@@ -94,6 +97,13 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				pool_strategy: r.pool_strategy,
 				pool_tier_strategies: r.pool_tier_strategies,
 				pool_status: r.pool_status,
+				pool_sticky_enabled: r.pool_sticky_enabled,
+				pool_sticky_idle_ttl_seconds:
+					r.pool_sticky_idle_ttl_seconds == null
+						? null
+						: Number(r.pool_sticky_idle_ttl_seconds),
+				pool_sticky_epoch:
+					r.pool_sticky_epoch == null ? null : Number(r.pool_sticky_epoch),
 				model_name: r.model_name,
 				provider_name: r.provider_name,
 			}));
@@ -196,36 +206,47 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 
 		async updateRoutePoolPolicy(
 			poolId: string,
-			patch: { strategy?: string | null; tierStrategies?: string | null }
-		): Promise<number> {
-			if (patch.strategy === undefined && patch.tierStrategies === undefined) return 0;
-			if (patch.strategy !== undefined && patch.tierStrategies !== undefined) {
-				const rows = await pg<Array<{ id: string }>>`
-					UPDATE route_pools
-					SET strategy = ${patch.strategy},
-						tier_strategies = ${patch.tierStrategies},
-						updated_at = CURRENT_TIMESTAMP
-					WHERE id = ${poolId}
-					RETURNING id
-				`;
-				return rows.length;
+			patch: {
+				strategy?: string | null;
+				tierStrategies?: string | null;
+				stickyEnabled?: boolean;
+				stickyIdleTtlSeconds?: number;
 			}
-			if (patch.strategy !== undefined) {
-				const rows = await pg<Array<{ id: string }>>`
-					UPDATE route_pools
-					SET strategy = ${patch.strategy}, updated_at = CURRENT_TIMESTAMP
-					WHERE id = ${poolId}
-					RETURNING id
-				`;
-				return rows.length;
+		): Promise<number> {
+			const stickyTouched =
+				patch.stickyEnabled !== undefined || patch.stickyIdleTtlSeconds !== undefined;
+			if (
+				patch.strategy === undefined &&
+				patch.tierStrategies === undefined &&
+				!stickyTouched
+			) {
+				return 0;
 			}
 			const rows = await pg<Array<{ id: string }>>`
 				UPDATE route_pools
-				SET tier_strategies = ${patch.tierStrategies ?? null}, updated_at = CURRENT_TIMESTAMP
+				SET
+					strategy = CASE WHEN ${patch.strategy !== undefined} THEN ${patch.strategy ?? null} ELSE strategy END,
+					tier_strategies = CASE WHEN ${patch.tierStrategies !== undefined} THEN ${patch.tierStrategies ?? null} ELSE tier_strategies END,
+					sticky_enabled = CASE WHEN ${patch.stickyEnabled !== undefined} THEN ${patch.stickyEnabled ?? false} ELSE sticky_enabled END,
+					sticky_idle_ttl_seconds = CASE WHEN ${patch.stickyIdleTtlSeconds !== undefined} THEN ${patch.stickyIdleTtlSeconds ?? 3600} ELSE sticky_idle_ttl_seconds END,
+					sticky_epoch = CASE WHEN ${stickyTouched} THEN sticky_epoch + 1 ELSE sticky_epoch END,
+					updated_at = CURRENT_TIMESTAMP
 				WHERE id = ${poolId}
 				RETURNING id
 			`;
 			return rows.length;
+		},
+
+		async bumpRoutePoolStickyEpoch(poolId: string): Promise<number | null> {
+			const rows = await pg<Array<{ sticky_epoch: number | string }>>`
+				UPDATE route_pools
+				SET sticky_epoch = sticky_epoch + 1,
+					updated_at = CURRENT_TIMESTAMP
+				WHERE id = ${poolId}
+				RETURNING sticky_epoch
+			`;
+			if (!rows[0]) return null;
+			return Number(rows[0].sticky_epoch);
 		},
 
 		async updateModelRouteByPatch(id: string, patch: Record<string, unknown>): Promise<number> {
