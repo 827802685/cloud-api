@@ -52,35 +52,73 @@ Its core capabilities include:
 
 ## How It Differs from Other Open-Source AI Gateways
 
-[New API](https://github.com/QuantumNous/new-api), [LiteLLM](https://github.com/BerriAI/litellm), [Sub2API](https://github.com/Wei-Shaw/sub2api), and [Bifrost](https://github.com/maximhq/bifrost) are mature open-source AI gateways with different strengths. The table below evaluates them through Octafuse's focus on **Agent capability delivery and AI resource operations**, breaking the comparison into onboarding, routing, governance, billing, and deployment.
+[New API](https://github.com/QuantumNous/new-api), [LiteLLM](https://github.com/BerriAI/litellm), [Sub2API](https://github.com/Wei-Shaw/sub2api), and [Bifrost](https://github.com/maximhq/bifrost) are mature open-source AI gateways with different strengths. Octafuse focuses more specifically on **Agent capability delivery and AI resource operations**, with its main differences concentrated in five areas:
+
+| Focus area | Built-in Octafuse mechanism | Best suited for |
+|---|---|---|
+| Agent capabilities | Web search, web fetch, deep search, plus tool invocation logs and billing | Serving models and tools to Agents through one gateway |
+| Resource onboarding | Provider / model presets, multi-protocol endpoints, and one-click import | Managing distributed AI resources centrally |
+| Fine-grained routing | Independent route pools, layered policies, cache affinity, failover, and circuit breaking | Balancing reliability, cache hit rate, and cost |
+| Operations and billing | Three ledgers for catalog price, provider cost, and user charge, with time-of-day and multimodal pricing | Internal accounting, quota management, or external services |
+| Flexible deployment | Docker with multiple databases, or Cloudflare Workers with D1 | Self-hosting, edge deployment, and low-cost adoption |
+
+**Rating guide:**
 
 - **✅ Complete**: The public edition provides a cohesive mechanism covering the main scenarios in this dimension
 - **🟡 Strong**: Mature core support, with comparatively narrower coverage or operational depth
 - **🟠 Basic**: A usable foundation that still requires substantial external components or custom development
 - **⚪ None**: Official public documentation does not list a comparable built-in capability
 
-| Area | Capability dimension | Octafuse Gateway | New API | LiteLLM | Sub2API | Bifrost |
-|------|----------------------|------------------|---------|---------|---------|---------|
-| Onboarding | Provider / model presets and one-click import | **✅ Complete** | 🟡 Strong | 🟡 Strong | 🟡 Strong | 🟡 Strong |
-| Onboarding | Native protocol and multimodal coverage | **🟡 Strong (in progress)** | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
-| Agent | Built-in web search, fetch, and deep search | **✅ Complete** | ⚪ None | 🟠 Basic | 🟠 Basic | 🟠 Basic |
-| Agent | Tool Provider configuration, invocation logs, and billing | **✅ Complete** | ⚪ None | 🟡 Strong | 🟠 Basic | 🟠 Basic |
-| Routing | Protocol / operation-level Surfaces and independent Route Pools | **✅ Complete** | 🟠 Basic | 🟡 Strong | 🟡 Strong | 🟡 Strong |
-| Routing | Multiple distribution strategies and layered overrides | **✅ Complete** | 🟡 Strong | ✅ Complete | 🟡 Strong | 🟡 Strong |
-| Routing | Prompt Cache affinity routing | **✅ Complete** | 🟡 Strong | ✅ Complete | ✅ Complete | ✅ Complete |
-| Routing | Priority failover and Provider circuit breakers | **✅ Complete** | 🟡 Strong | ✅ Complete | 🟡 Strong | ✅ Complete |
-| Governance | External system, user, and API Key hierarchy | **✅ Complete** | 🟡 Strong | ✅ Complete | 🟡 Strong | ✅ Complete |
-| Governance | Recurring budgets, status, and model access control | **✅ Complete** | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
-| Billing | Three ledgers: catalog price, provider cost, and user charge | **✅ Complete** | ⚪ None | ⚪ None | ✅ Complete | ⚪ None |
-| Billing | Business-timezone time-of-day multipliers | **✅ Complete** | ⚪ None | ⚪ None | 🟡 Strong | ⚪ None |
-| Billing | Differentiated image / audio pricing | **✅ Complete** | 🟡 Strong | 🟡 Strong | 🟡 Strong | 🟠 Basic |
-| Billing | Per-call Agent tool billing | **✅ Complete** | ⚪ None | 🟡 Strong | 🟠 Basic | 🟠 Basic |
-| Operations | Admin console, management APIs, and observability | **✅ Complete** | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
-| Deployment | SQLite / D1, Postgres, and MySQL support | **✅ Complete** | ✅ Complete | 🟠 Basic | 🟠 Basic | 🟡 Strong |
-| Deployment | Docker self-hosting | **✅ Complete** | ✅ Complete | ✅ Complete | ✅ Complete | ✅ Complete |
-| Deployment | Cloudflare Workers edge deployment | **✅ Complete** | ⚪ None | ⚪ None | ⚪ None | ⚪ None |
+<details>
+<summary><strong>Expand the full capability comparison (22 items)</strong></summary>
 
-Ratings are based on each project's current public repository and official documentation, with emphasis on whether the capability is built in as a cohesive mechanism. Performance, community size, commercial support, and custom-development potential are out of scope. This table reflects Octafuse's product positioning rather than ranking every feature across all projects. Refer to each project's latest official documentation for current capabilities and licensing.
+### Onboarding and Agent capabilities
+
+| Capability | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Provider / model presets and one-click import | ✅ | 🟡 | 🟡 | 🟡 | 🟡 |
+| Native protocol and multimodal coverage | 🟡¹ | ✅ | ✅ | ✅ | ✅ |
+| Built-in web search, fetch, and deep search | ✅ | ⚪ | 🟠 | 🟠 | 🟠 |
+| Tool provider configuration, invocation logs, and billing | ✅ | ⚪ | 🟡 | 🟠 | 🟠 |
+
+### Routing and governance
+
+| Capability | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Protocol / operation-level request surfaces and independent route pools | ✅ | 🟠 | 🟡 | 🟡 | 🟡 |
+| Multiple distribution strategies and layered overrides | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
+| Prompt Cache affinity routing | ✅ | 🟡 | ✅ | ✅ | ✅ |
+| Priority failover and provider circuit breakers | ✅ | 🟡 | ✅ | 🟡 | ✅ |
+| External system, user, and API key hierarchy | ✅ | 🟡 | ✅ | 🟡 | ✅ |
+| Recurring budgets, status, and model access control | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Billing
+
+| Capability | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Three ledgers: catalog price, provider cost, and user charge | ✅ | ⚪ | ⚪ | ✅ | ⚪ |
+| Business-timezone time-of-day multipliers | ✅ | ⚪ | ⚪ | 🟡 | ⚪ |
+| Differentiated image / audio pricing | ✅ | 🟡 | 🟡 | 🟡 | 🟠 |
+| Per-call Agent tool billing | ✅ | ⚪ | 🟡 | 🟠 | 🟠 |
+
+### Operations and deployment
+
+| Capability | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Admin console | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Management API | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Observability | ✅ | ✅ | ✅ | ✅ | ✅ |
+| SQLite / D1 | ✅ | ✅ | ⚪ | ⚪ | ✅ |
+| PostgreSQL | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MySQL | ✅ | ✅ | ⚪ | ⚪ | ⚪ |
+| Docker self-hosting | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Cloudflare Workers edge deployment | ✅ | ⚪ | ⚪ | ⚪ | ⚪ |
+
+<sup>1</sup> Octafuse's native protocol and multimodal coverage is still being expanded.
+
+</details>
+
+Ratings are based on each project's current public repository and official documentation, with emphasis on whether the capability is built in as a cohesive mechanism. Performance, community size, commercial support, and custom-development potential are out of scope. This comparison reflects Octafuse's product positioning rather than ranking every feature across all projects. Refer to each project's latest official documentation for current capabilities and licensing.
 
 ## Quick Start
 
