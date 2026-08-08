@@ -40,6 +40,7 @@
 | 路由策略（hash_affinity / weighted_random / …） | [developers/reference/route-strategies.md](./developers/reference/route-strategies.md) |
 | 2.0 升级（单键 Provider + 路由拓扑，0015 / 0016） | [operators/migrations/single-provider-key-cutover.md](./operators/migrations/single-provider-key-cutover.md) |
 | 2.2.0 升级（Gemini / 按层策略 / canonical ID，0017–0019） | [operators/README.md](./operators/README.md#迁移与切换) |
+| 2.3.0 升级（Provider Sticky / 展示 ID 对齐，0020–0021） | [operators/README.md](./operators/README.md#迁移与切换) |
 | 文档规范 | [CONVENTIONS.md](./CONVENTIONS.md) |
 
 ## 文档规范

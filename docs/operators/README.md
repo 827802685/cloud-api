@@ -21,8 +21,11 @@
 | 2.1.2 → 2.2.0：Gemini operation 收敛（迁移 0017） | [migrations/gemini-models-generate-cutover.md](./migrations/gemini-models-generate-cutover.md) |
 | 2.1.2 → 2.2.0：Route Pool 按 priority 层覆盖策略（迁移 0018） | [migrations/route-pool-tier-strategies-cutover.md](./migrations/route-pool-tier-strategies-cutover.md) |
 | 2.1.2 → 2.2.0：路由策略 canonical ID 硬切换（迁移 0019） | [migrations/route-strategy-canonical-ids-cutover.md](./migrations/route-strategy-canonical-ids-cutover.md) |
-| 路由策略展示对齐 ID 硬切换（迁移 0021：`hash_affinity` / `weight_priority`） | [migrations/route-strategy-display-ids-cutover.md](./migrations/route-strategy-display-ids-cutover.md) |
+| 2.2.0 → 2.3.0：Route Pool Provider Sticky（迁移 0020） | [migrations/route-pool-sticky-routing-cutover.md](./migrations/route-pool-sticky-routing-cutover.md) |
+| 2.2.0 → 2.3.0：路由策略展示对齐 ID 硬切换（迁移 0021：`hash_affinity` / `weight_priority`） | [migrations/route-strategy-display-ids-cutover.md](./migrations/route-strategy-display-ids-cutover.md) |
 | User audit 兼容导出移除说明 | [migrations/user-audit-legacy-exports.md](./migrations/user-audit-legacy-exports.md) |
+
+升级到 **2.3.0** 时应在同一维护窗口内按 **0020 → 0021 → 同版本 Proxy / Admin 部署**执行；0021 无旧策略 ID 别名，禁止新旧版本混跑。
 
 ## 本地演练
 

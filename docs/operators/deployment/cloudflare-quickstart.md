@@ -29,9 +29,9 @@ Proxy 和 Admin 是两个独立 Worker，但 D1 绑定名都为 `DB`，且必须
 
 ## 版本基线
 
-当前仓库版本为 **Octafuse Gateway 2.0.0**，D1 迁移共 **16 个**（截至 `0016_route_surfaces_pools.sql`）。从 1.11.x 升级前必须先阅读 [2.0 升级指南](../migrations/single-provider-key-cutover.md)。
+当前仓库版本为 **Octafuse Gateway 2.3.0**，D1 迁移共 **21 个**（截至 `0021_route_strategy_display_ids.sql`）。跨版本升级必须按编号应用全部未执行迁移；从 1.11.x 升级先阅读 [2.0 升级指南](../migrations/single-provider-key-cutover.md)，从 2.2.0 升级 2.3.0 见 [迁移与切换索引](../README.md#迁移与切换)（0020 → 0021）。
 
-下列构建体积来自 2026-07-24 对 `1.10.2` 的历史实测，仅用于量级参考；2.0 部署应以本次终端输出为准：
+下列构建体积来自 2026-07-24 对 `1.10.2` 的历史实测，仅用于量级参考；当前部署应以本次终端输出为准：
 
 | 组件 | 实测版本 / 结果 |
 |------|-----------------|
@@ -41,7 +41,7 @@ Proxy 和 Admin 是两个独立 Worker，但 D1 绑定名都为 `DB`，且必须
 | `@opennextjs/cloudflare` | 1.19.4 |
 | Proxy gzip | 194.31 KiB |
 | Admin gzip | 2925.55 KiB |
-| 当时 D1 migrations | 13 个全部成功（2.0 当前为 16 个） |
+| 当时 D1 migrations | 13 个全部成功（2.3.0 当前为 21 个） |
 
 Cloudflare Workers Free 的单 Worker gzip 上限为 3 MiB；Admin 实测低于该上限，但余量不大。部署时应检查自己终端中的 `Total Upload ... gzip`，不要只依赖本文的历史数值。限制以 [Cloudflare Workers Limits](https://developers.cloudflare.com/workers/platform/limits/#worker-size) 为准。若免费额度余量吃紧或流量上来，也推荐升级 [Workers Paid](https://developers.cloudflare.com/workers/platform/pricing/)（约 $5/月）——量大管饱，性价比极高。
 

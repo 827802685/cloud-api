@@ -47,6 +47,7 @@ Provider 导入模板的维护说明见 [developers/reference/provider-import-pr
 - 图片生成模型：导入或手建后确认 `output_modalities` 含 `image`、`pricing_profile` 的 `image_billing_mode`（`token` / `per_image`），并挂 **OpenAI 协议** active 路由；细节见 [developers/reference/image-models.md](../developers/reference/image-models.md)。
 - 语音转写模型：导入或手建后确认 `pricing_profile.audio_billing_mode`（`per_second` / `token`）与对应单价块，并挂 **OpenAI 协议** active 路由；细节见 [developers/api/user.md「语音转写」](../developers/api/user.md#语音转写audio-transcriptions)。
 - **路由策略**：先按 priority 层读 Route Pool `tier_strategies[priority]`（若有）；否则 Route Pool `strategy` → 模型 `route_policy.rules` 的 `{protocol}.{capability}:{group}` → `{protocol}:{group}` → 模型顶层 `route_policy.strategy` → Admin Config 全局 `ROUTE_STRATEGY` → 代码默认 `hash_affinity`。四种策略及完整键格式见 [developers/reference/route-strategies.md](../developers/reference/route-strategies.md)。
+- **Provider Sticky（可选）**：在 Routes Flow 的 Route Group / Pool 节点打开 Sticky 配置，按 Pool 启用并设置空闲 TTL（默认 3600 秒）。它不是第五种层内策略：`hash_affinity` 用无状态哈希稳定首选，Sticky 则记住上次成功 Target，并可在绑定有效时跨 priority 优先尝试。弹窗还可查看绑定分布与路由权重、按用户解绑，或通过 `sticky_epoch` 整池失效；默认关闭。完整语义见 [developers/reference/route-strategies.md「Provider sticky routing」](../developers/reference/route-strategies.md#provider-sticky-routingpool-前置规则非第五策略)。
 - 在 Route 上配置默认参数，例如思考参数、输出长度或供应商扩展字段。
 - 设置价格口径：先维护模型**目录标准价**，再在路由上设用户计费 / 供应成本的基础倍率；如需对齐供应商高峰 / 闲时价，再配置 **Daily schedule**（每日时段倍率，时区见系统配置的业务时区）。
 - 在请求日志中核对三笔账：供应成本、目录标准价、用户计费是否符合业务预期。
@@ -104,7 +105,7 @@ curl -sS http://localhost:8787/v1/me \
 
 日常排障优先看：
 
-- 请求日志：是否命中正确模型、Request Surface、Route Pool、Target 与 Provider；重点查看 `request_operation`、`model_surface_id`、`route_pool_id`、`route_target_id`、`route_trace`。`provider_key_*` 现为 provider id / name / key 指纹；Tools 行为 `model_id` 形如 `tool:web-search`。
+- 请求日志：是否命中正确模型、Request Surface、Route Pool、Target 与 Provider；重点查看 `request_operation`、`model_surface_id`、`route_pool_id`、`route_target_id`、`route_trace`。启用 Sticky 后查看 `route_trace.sticky.lookup`、`attempted_target` 与 `result`，结合 cache read token 和 failover 次数判断绑定收益及异常解绑。`provider_key_*` 现为 provider id / name / key 指纹；Tools 行为 `model_id` 形如 `tool:web-search`。
 - 错误状态：401 多半是认证问题；403 常见于预算或配额；502 多与路由或上游有关；全部上游熔断时可能为网关 **429**；Tools 未配置 Active Key 时为 **503**。
 - 成本字段：区分 **供应成本**、**目录标准价**、**用户计费**（日志 / API 字段分别为 `metered_cost`、`standard_cost`、`charged_cost`）；Images / Audio 另见 `billing_kind`（及 image count / `audio_duration_seconds` 等列）。
 - 审计日志：确认预算扣减、周期重置、Key 生命周期等事件。

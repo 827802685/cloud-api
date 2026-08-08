@@ -20,6 +20,7 @@
 | Docker / Postgres / MySQL / Hybrid 自托管 | [docker.md](./docker.md)（含 [§8 如何更新版本](./docker.md#8-如何更新版本)） |
 | Cloudflare 已上线实例升级 | [cloudflare-quickstart.md §12](./cloudflare-quickstart.md#12-后续升级) |
 | 2.1.2 → 2.2.0 数据迁移与维护窗口 | [迁移索引](../README.md#迁移与切换)（0017 → 0018 → 0019） |
+| 2.2.0 → 2.3.0 数据迁移与维护窗口 | [迁移索引](../README.md#迁移与切换)（0020 → 0021） |
 | Zeabur 等容器平台 | [zeabur.md](./zeabur.md) |
 | D1 ↔ Postgres ETL / 对账 | [d1-postgres-cutover.md](../migrations/d1-postgres-cutover.md) |
 | 本地开发组合 | [local-development.md](../../developers/local-development.md) |

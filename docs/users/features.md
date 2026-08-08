@@ -11,7 +11,7 @@ Octafuse Gateway 是可自托管的 **AI 能力网关与运营控制面**：统�
 | Provider | 一个上游模型供应商或兼容端点；**一把**上游 API Key + `active` / `disabled`。 |
 | Model / Route group | Gateway 暴露给客户端的模型 ID 与可选分组，例如 `model-id:default`、`model-id:free`。 |
 | Request Surface | 客户端实际进入模型的协议与操作，例如 OpenAI `chat`、Anthropic `messages`、OpenAI `images.generations`。 |
-| Route Pool | 一个 Surface 指向的故障转移池，包含一组可替换的上游 Target，并可覆盖路由策略。 |
+| Route Pool | 一个 Surface 指向的故障转移池，包含一组可替换的上游 Target，可覆盖路由策略并选择性启用 Provider Sticky。 |
 | Upstream Target | 具体的 Provider + 上游模型，包含 `priority` / `weight`、上游 operation、计费倍率与默认参数。 |
 | Route strategy | 同 Pool、同 priority 层内如何排序候选 Provider：`hash_affinity`（默认）、`weighted_random`、`weight_priority`、`weighted_round_robin`。 |
 | Agent Tool | 通过 `/v1/tools/*` 暴露给 Agent 的可扩展能力；当前包含 `web-search`、`web-fetch`、`web-deep-search`、`ai-detection`。 |
@@ -28,6 +28,7 @@ Octafuse Gateway 是可自托管的 **AI 能力网关与运营控制面**：统�
 | Agent Tools | 面向 Agent 的可扩展产品 API（`/v1/tools/*`）：`web-search` 支持博查、Tavily、阿里云 CleverSee、腾讯云 WSA；`web-fetch` 支持 Firecrawl、Tavily Extract、Jina Reader；`web-deep-search` 支持 Firecrawl Search、Jina Search；`ai-detection` 多引擎 catalog（当前实现腾讯云 TMS）。Admin → **Tools** 为每种工具配置多个引擎并选择一个 Active；联网类工具**按次**、AI 检测按**计费字符单元**写入三账本（供应 / 目录 / 用户），**仅 charged 扣预算**；**上游失败不扣费**。调用记入请求日志（`provider_id=octafuse-tools`）。定价只读见 `GET /v1/tools/pricing`（含 `metered` / `standard` / `charged`，`cost` = charged）。 |
 | 公开 Catalog | `GET /catalog/models` 无需用户 Key，聚合 active 路由的模型与协议能力，适合门户 discovery；与需鉴权的 `GET /v1/models`（默认 LLM、含 `default,free` route group）分工不同。 |
 | 路由与故障转移 | 客户端请求先按协议 / operation 命中 Request Surface，再进入 Route Pool：Pool 内按 **priority** 分层，同层按 **策略 + weight** 排序；失败则换下一 Provider（provider 级熔断）。默认策略 **hash_affinity** 提高上游 prompt cache 命中。详见 [路由拓扑](../developers/architecture/route-topology.md)与 [路由策略](../developers/reference/route-strategies.md)。 |
+| Provider Sticky | Route Pool 可选择记住用户上次成功的 Target，在空闲 TTL 内跨请求、跨运行实例并可跨 priority 优先尝试；Provider 可归因故障会解绑，配置变更可通过 epoch 整池失效。它与四种层内策略正交、默认关闭，适合提高 Prompt Cache 连续性。 |
 | 预算与计费 | 按用户 Key 记录请求、Token、成本与扣费，支持周期预算和用量查询。模型与 Agent Tools 均区分 **供应成本**、**目录标准价**、**用户计费** 三笔账（Tools 在 catalog 直接配绝对单价，无 Route factor/schedule）；`budget_spent` 只累加 charged。模型路由可配基础倍率与**每日时段倍率**（业务时区下的高峰 / 闲时），对齐各家模型按时段定价。 |
 | 预置 Provider / Models | Admin 可从静态目录一键导入：除官方模型厂外，还覆盖聚合平台与各类 Coding / Token Plan；预填 Base URL 与模型目录价等信息，导入后补齐真实 API Key 并挂路由即可使用。完整清单见官网 [Providers Catalog](https://octafuse.dev/zh/catalog/providers/) 与 [Models Catalog](https://octafuse.dev/zh/catalog/models/)；Coding / Token Plan 的专用 endpoint 不应与普通按量模板混用。 |
 | Provider 管理 | 每 Provider 维护单键、启用状态与 `endpoints`；明文 key 仅经 reveal 接口查看。多账号 = 多个 Provider。 |
@@ -46,6 +47,8 @@ Octafuse Gateway 是可自托管的 **AI 能力网关与运营控制面**：统�
 | `weighted_round_robin` | 按 `weight` 轮转分摊；计数器按运行实例维护，Cloudflare Workers 多 isolate 之间不全局同步。 |
 
 跨供应商硬主备应使用不同 `priority`；上述策略只决定同一 priority 层内的候选顺序。完整算法与覆盖层级见 [路由策略](../developers/reference/route-strategies.md)。
+
+Provider Sticky 不是第五种策略：无有效绑定时仍按上述 priority 与层内策略选路，成功后才记录共享绑定；与无状态 `hash_affinity` 的区别及运维操作见 [Provider sticky routing](../developers/reference/route-strategies.md#provider-sticky-routingpool-前置规则非第五策略)。
 
 行为与计费字段以 [developers/api/user.md](../developers/api/user.md)（含 Images / Audio / Tools）、[developers/reference/image-models.md](../developers/reference/image-models.md) 为准。
 

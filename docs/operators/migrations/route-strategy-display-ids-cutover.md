@@ -1,5 +1,7 @@
 # 路由策略展示对齐 ID 硬切换（0021）
 
+> **OctaFuse v2.3.0 联合升级**：从 2.2.0 升级时须先应用 0020，再在同一维护窗口应用本迁移并部署同版本 Proxy / Admin。Provider Sticky 的 Schema 与运维说明见 [route-pool-sticky-routing-cutover.md](./route-pool-sticky-routing-cutover.md)。
+
 将持久化与运行时的路由策略 ID 与 Admin 展示名对齐：
 
 | 旧 ID | 新 ID（canonical） |
@@ -31,7 +33,7 @@
 ## 维护窗口步骤（必做）
 
 1. **暂停** Admin 配置写入与 Proxy 业务流量（或进入只读维护）。
-2. **应用 0021**（按当前环境选 D1 / Postgres / MySQL 迁移流水线）。
+2. 从 2.2.0 升级时先**应用 0020**，再**应用 0021**（按当前环境选 D1 / Postgres / MySQL 迁移流水线）。
 3. **立即部署**同一发布版本的 Core + Proxy + Admin（**禁止**旧新版本混跑）。
 4. 用下方校验 SQL 确认旧 ID 计数为 0。
 5. 冒烟：Config 全局策略、Routes Pool / 每层策略、保存非法旧 ID 应 400；推理请求层内排序符合预期。

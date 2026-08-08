@@ -51,8 +51,9 @@ model + route_group + request protocol + operation
 3. 查找 active 的精确 Surface；不存在时查 wildcard Surface。
 4. 读取该 Surface 指向的 active Route Pool 及其 active Targets。
 5. 2.0 仅支持 `adapter=passthrough`，因此请求协议必须与上游协议一致；跨协议转换尚未开放。
-6. 按 `priority` 分层，并在同层内应用有效路由策略与 `weight`。
-7. 跳过 disabled / 无 key / 已熔断的 Provider，逐 Target 故障转移。
+6. 若 Pool 启用 Provider Sticky，先查共享绑定；有效且可用的绑定 Target 会跨 `priority` 前置尝试。
+7. 对其余候选按 `priority` 分层，并在同层内应用有效路由策略与 `weight`。
+8. 跳过 disabled / 无 key / 已熔断的 Provider，逐 Target 故障转移；成功后 bind / touch Sticky，Provider 可归因失败时解绑并继续常规计划。
 
 在迁移尚未应用、Surface 查询不可用的滚动发布窗口，Proxy 会暂时回退旧的 `model + route_group + protocol` 查询路径，避免代码与 Schema 部署顺序造成中断。该回退只用于升级兼容，不应长期依赖。
 
@@ -91,7 +92,19 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` �
 - `adapter`
 - `route_trace`
 
-排障时先确认 Surface 是否匹配，再确认 Pool 是否 active、是否存在 active Target，最后检查 Provider 状态、密钥和熔断。`route_trace` 是 JSON 快照，至少包含 `{ surface, pool, target }`；Gemini 请求另含 `gemini.action`（真实 wire action）。它记录最终选中（或最后失败）的拓扑标识，不是完整 attempt 列表。
+排障时先确认 Surface 是否匹配，再确认 Pool 是否 active、是否存在 active Target，最后检查 Provider 状态、密钥和熔断。`route_trace` 是 JSON 快照，至少包含 `{ surface, pool, target }`；Gemini 请求另含 `gemini.action`（真实 wire action）。启用 Provider Sticky 时还可能包含：
+
+```json
+{
+  "sticky": {
+    "lookup": "hit|miss|expired|invalid_epoch|invalid_target|invalid_circuit|disabled",
+    "attempted_target": "model_routes.id",
+    "result": "kept|cleared|bound|rebound|storage_error|unchanged"
+  }
+}
+```
+
+`lookup` 描述读取绑定的结果，`attempted_target` 是被前置尝试的 Target，`result` 在 bind / touch 的 CAS 完成后记录最终绑定动作。可结合 cache read token 与 failover 次数判断 Sticky 是否提高缓存连续性。`route_trace` 记录最终选中（或最后失败）的拓扑标识和关键决策，不是完整 attempt 列表。
 
 Admin 在删除 Target、或 Target 迁移到新 Pool 后，会调用 `deleteRoutePoolIfEmpty`：若旧 Pool 已无任何 Target，则删除其 Surface 与 Pool（避免空 Pool / 孤儿 Surface 泄漏）。
 

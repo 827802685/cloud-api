@@ -2,7 +2,7 @@
 
 同一个 Route Pool 的 `model_routes.priority` 层内，排序策略为可插拔实现。Pool、模型与全局配置共同决定本次请求使用哪一种。
 
-**代码**：`packages/proxy/src/services/route-strategies/` · **路由拓扑**：[route-topology.md](../architecture/route-topology.md) · **生命周期**：[proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md) · **策略 ID 硬切换**：[route-strategy-canonical-ids-cutover.md](../../operators/migrations/route-strategy-canonical-ids-cutover.md)
+**代码**：`packages/proxy/src/services/route-strategies/` · **路由拓扑**：[route-topology.md](../architecture/route-topology.md) · **生命周期**：[proxy-request-lifecycle.md](../architecture/proxy-request-lifecycle.md) · **现行策略 ID 硬切换（0021）**：[route-strategy-display-ids-cutover.md](../../operators/migrations/route-strategy-display-ids-cutover.md) · **2.2.0 历史切换（0019）**：[route-strategy-canonical-ids-cutover.md](../../operators/migrations/route-strategy-canonical-ids-cutover.md)
 
 ---
 

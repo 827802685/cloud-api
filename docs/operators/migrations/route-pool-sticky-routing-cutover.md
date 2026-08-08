@@ -1,5 +1,7 @@
 # 0020 Route Pool Provider Sticky Routing — cutover
 
+> **OctaFuse v2.3.0 联合升级**：从 2.2.0 升级时必须在同一维护窗口按 **0020 → 0021 → 同版本 Proxy / Admin 部署**执行。0021 的策略 ID 无旧别名，见 [route-strategy-display-ids-cutover.md](./route-strategy-display-ids-cutover.md)。
+
 ## Summary
 
 Migration **`0020_route_pool_sticky_routing`** adds:
@@ -11,11 +13,13 @@ Apply the same-named SQL under `packages/core/migrations-{d1,postgres,mysql}/`.
 
 ## Deploy order
 
-1. Run migrate on **all** environments (D1 remote + Postgres/MySQL self-host).
-2. Deploy **Proxy + Admin** on the same release (both understand sticky columns).
-3. Enable sticky per Route Pool in Admin Routes Flow (default remains **off**).
+1. Back up the database and pause Proxy traffic plus Admin configuration writes.
+2. Run migration **0020**, then **0021**, on every environment (D1 remote + Postgres/MySQL self-host).
+3. Deploy **Proxy + Admin** from the same v2.3.0 release; do not mix old and new versions.
+4. Verify the old strategy IDs are gone using the [0021 validation queries](./route-strategy-display-ids-cutover.md#校验-sql旧-id-必须为-0), then restore traffic.
+5. Enable sticky per Route Pool in Admin Routes Flow when needed (default remains **off**).
 
-Old Proxy builds ignore the new columns/table (safe). New Proxy with sticky enabled against an unmigrated DB will fail-open to normal routing and log storage errors.
+For migration 0020 alone, old Proxy builds ignore the new columns/table and a new Proxy with sticky enabled against an unmigrated DB fails open to normal routing. This does **not** make mixed-version v2.3.0 deployment safe: migration 0021 removes old strategy ID aliases.
 
 ## Semantics (operators)
 
