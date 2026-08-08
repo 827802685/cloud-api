@@ -18,7 +18,7 @@ on:
       - "package-lock.json"
       - ".github/workflows/docker-compose-smoke.yml"
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "Dockerfile.proxy"
       - "Dockerfile.admin"
