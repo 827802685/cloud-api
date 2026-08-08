@@ -154,7 +154,22 @@
 - [ ] 新增示例是否可独立复现（不依赖未公开的脚本/数据）？
 - [ ] 与 [`README.md`](../README.md)、[`README.en.md`](../README.en.md)、[`docs/README.md`](./README.md) 的入口与索引是否仍然一致？
 
-## 4. 后续演进
+## 4. 中文术语与 Admin UI 名称
+
+面向使用者与运维的中文文档，正文术语写法见仓库根目录 Cursor 规则：
+
+- [`.cursor/rules/chinese-documentation-terminology.mdc`](../.cursor/rules/chinese-documentation-terminology.mdc)
+
+要点：
+
+- 首次出现或操作指引写成「中文术语（英文 UI 名称）」；同篇后续只用中文。
+- 英文 UI 名称以 [`packages/admin/messages/en.json`](../packages/admin/messages/en.json) 为准，中文界面对照 [`zh.json`](../packages/admin/messages/zh.json)。
+- API 路径、字段名、策略 ID、迁移编号与代码标识符保持原样。
+- 不批量改写 [`docs/releases/`](./releases/)、[`docs/operators/migrations/`](./operators/migrations/)、`.roadmap/`、CHANGELOG 等历史或规划快照。
+
+官网中文文档应与本规则对齐；技术事实冲突时以本仓 `docs/**` 为准。
+
+## 5. 后续演进
 
 - 当 L3 候选项足够多、或开始有外部撰稿/翻译协作时，将相关内容沉淀到独立 `octafuse-website` 仓库；本文表格即为迁移清单初稿。
 - 当某条新规则在多次 PR 中被反复提示，应反向沉淀进 §2.1 / §2.2，使审查可机械化。

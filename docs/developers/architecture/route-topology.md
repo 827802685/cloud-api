@@ -1,4 +1,4 @@
-# 路由拓扑：Request Surface → Route Pool → Upstream Target
+# 路由拓扑：请求入口 → 路由池 → 上游目标
 
 Octafuse Gateway 2.0 在原有 `models` / `model_routes` 之上增加显式路由拓扑，把“客户端如何进入模型”和“请求最终发往哪个上游”拆开表示：
 
@@ -6,29 +6,29 @@ Octafuse Gateway 2.0 在原有 `models` / `model_routes` 之上增加显式路�
 model + route_group + request protocol + operation
                     │
                     ▼
-             Request Surface
+         请求入口（Request Surface）
                     │
                     ▼
-               Route Pool
+            路由池（Route Pool）
                     │
-                    ├── Upstream Target A
-                    ├── Upstream Target B
-                    └── Upstream Target C
+                    ├── 上游目标（Upstream Target）A
+                    ├── 上游目标（Upstream Target）B
+                    └── 上游目标（Upstream Target）C
 ```
 
-这一结构由迁移 `0016_route_surfaces_pools.sql` 引入。旧路由会自动转换为兼容的 wildcard Surface 和 Route Pool，不要求升级时手工重建。
+这一结构由迁移 `0016_route_surfaces_pools.sql` 引入。旧路由会自动转换为兼容的通配请求入口与路由池，不要求升级时手工重建。
 
 ## 三层对象
 
 | 层 | 数据对象 | 作用 |
 |----|----------|------|
-| Request Surface | `model_surfaces` | 以 `model_id + route_group + request_protocol + request_operation` 表示一个公开请求入口，并指向一个 Route Pool。 |
-| Route Pool | `route_pools` | 聚合一组可互相故障转移的 Upstream Target，并可设置 Pool 级路由策略。 |
-| Upstream Target | `model_routes` | 描述具体 Provider、上游模型、`priority`、`weight`、上游协议 / operation、adapter、计费倍率与默认参数。 |
+| 请求入口（Request Surface） | `model_surfaces` | 以 `model_id + route_group + request_protocol + request_operation` 表示一个公开请求入口，并指向一个路由池。 |
+| 路由池（Route Pool） | `route_pools` | 聚合一组可互相故障转移（Failover）的上游目标，并可设置路由池级路由策略。 |
+| 上游目标（Upstream Target） | `model_routes` | 描述具体供应商（Provider）、上游模型、`priority`、`weight`、上游协议 / operation、adapter、计费倍率与默认参数。 |
 
-`route_group` 仍属于客户端模型选择语法的一部分，例如 `model-id:free`；Surface 则在选定 group 后进一步区分客户端协议与 operation。
+`route_group` 仍属于客户端模型选择语法的一部分，例如 `model-id:free`；请求入口则在选定 group 后进一步区分客户端协议与 operation。
 
-## Request operation
+## 请求 operation
 
 当前拓扑白名单中的 operation：
 
@@ -38,30 +38,30 @@ model + route_group + request protocol + operation
 | Anthropic | `messages` |
 | Gemini | **`models.generate`**（generate-content 家族，覆盖流式与非流式） |
 
-`*` 是迁移兼容值。运行时先查精确 operation Surface，查不到时再回退同协议的 `*` Surface。
+`*` 是迁移兼容值。运行时先查精确 operation 的请求入口，查不到时再回退同协议的 `*` 请求入口。
 
-> **Gemini v2.2.0**：Public / Upstream 配置只认 `models.generate`。客户端 URL 仍为 `POST /v1beta/models/{model}:{generateContent|streamGenerateContent}`；Proxy 用 wire action 派生上游 URL，并把真实 action 写入 `route_trace.gemini.action`。历史 `generateContent` / `streamGenerateContent` Surface 由迁移 `0017_gemini_models_generate.sql` 合并。详见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
+> **Gemini v2.2.0**：公开侧 / 上游侧配置只认 `models.generate`。客户端 URL 仍为 `POST /v1beta/models/{model}:{generateContent|streamGenerateContent}`；代理服务（Proxy）用 wire action 派生上游 URL，并把真实 action 写入 `route_trace.gemini.action`。历史 `generateContent` / `streamGenerateContent` 请求入口由迁移 `0017_gemini_models_generate.sql` 合并。详见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
 
-> `responses` 已作为拓扑标识保留，但 2.0 的 Proxy 尚未挂载 `/v1/responses` 用户入口；配置该 Surface 不会自动新增 HTTP endpoint。当前实际开放接口以 [用户 API](../api/user.md) 为准。
+> `responses` 已作为拓扑标识保留，但 2.0 的代理服务尚未挂载 `/v1/responses` 用户入口；配置该请求入口不会自动新增 HTTP endpoint。当前实际开放接口以 [用户 API](../api/user.md) 为准。
 
 ## 运行时解析
 
 1. 从客户端 `model` 解析 `model_id` 与 `route_group`。
 2. 根据入口确定 `request_protocol` 与 `request_operation`。
-3. 查找 active 的精确 Surface；不存在时查 wildcard Surface。
-4. 读取该 Surface 指向的 active Route Pool 及其 active Targets。
+3. 查找 active 的精确请求入口；不存在时查通配请求入口。
+4. 读取该请求入口指向的 active 路由池及其 active 上游目标。
 5. 2.0 仅支持 `adapter=passthrough`，因此请求协议必须与上游协议一致；跨协议转换尚未开放。
-6. 若 Pool 启用 Provider Sticky，先查共享绑定；有效且可用的绑定 Target 会跨 `priority` 前置尝试。
-7. 对其余候选按 `priority` 分层，并在同层内应用有效路由策略与 `weight`。
-8. 跳过 disabled / 无 key / 已熔断的 Provider，逐 Target 故障转移；成功后 bind / touch Sticky，Provider 可归因失败时解绑并继续常规计划。
+6. 若路由池启用供应商粘性（Provider sticky），先查共享绑定；有效且可用的绑定上游目标会跨 `priority` 前置尝试。
+7. 对其余候选按 `priority` 分成优先级层，并在同层内应用有效路由策略与 `weight`。
+8. 跳过 disabled / 无 key / 已熔断的供应商，逐上游目标故障转移；成功后 bind / touch 粘性，供应商可归因失败时解绑并继续常规计划。
 
-在迁移尚未应用、Surface 查询不可用的滚动发布窗口，Proxy 会暂时回退旧的 `model + route_group + protocol` 查询路径，避免代码与 Schema 部署顺序造成中断。该回退只用于升级兼容，不应长期依赖。
+在迁移尚未应用、请求入口查询不可用的滚动发布窗口，代理服务会暂时回退旧的 `model + route_group + protocol` 查询路径，避免代码与 Schema 部署顺序造成中断。该回退只用于升级兼容，不应长期依赖。
 
 ## 策略优先级
 
 有效策略按以下顺序解析（层内排序）：
 
-0. `route_pools.tier_strategies[priority]`（该 priority 层覆盖）
+0. `route_pools.tier_strategies[priority]`（该优先级层覆盖）
 1. `route_pools.strategy`
 2. `models.route_policy.rules[protocol.capability:route_group]`
 3. `models.route_policy.rules[protocol:route_group]`
@@ -69,16 +69,16 @@ model + route_group + request protocol + operation
 5. `system_config.ROUTE_STRATEGY`
 6. 代码默认 `hash_affinity`
 
-Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` 可在同一 Pool 内让高/低 priority 层使用不同排序算法。完整算法见 [route-strategies.md](../reference/route-strategies.md)。
+路由池级策略只影响当前请求入口指向的路由池；`tier_strategies` 可在同一路由池内让高/低优先级层使用不同排序算法。完整算法见 [route-strategies.md](../reference/route-strategies.md)。
 
 ## Admin API
 
-- `POST /admin/routes` 可传 `request_protocol`、`request_operation`、`upstream_protocol`、`upstream_operation`、`adapter`；服务端会创建或复用对应 Surface / Pool。
-- `PATCH /admin/routes/:id` 可调整 Target；当请求协议或 operation 改变时会重新关联对应 Pool。
+- `POST /admin/routes` 可传 `request_protocol`、`request_operation`、`upstream_protocol`、`upstream_operation`、`adapter`；服务端会创建或复用对应请求入口 / 路由池。
+- `PATCH /admin/routes/:id` 可调整上游目标；当请求协议或 operation 改变时会重新关联对应路由池。
 - `PATCH /admin/routes/pools/:poolId`，body 可为 `{ "strategy": "hash_affinity", "tier_strategies": { "10": "weight_priority" }, "sticky_routing": { "enabled": true, "idle_ttl_seconds": 3600 } }`；各字段可选；`strategy`/`tier_strategies` 的 `null` / 空值表示清空并继承下一级；`sticky_routing` 写入时递增 `sticky_epoch`。
-- `GET /admin/routes` 返回 `route_pool_id`、`pool_strategy`、`pool_tier_strategies` 与序列化的 `surfaces`，供 Admin 绘制路由流。
+- `GET /admin/routes` 返回 `route_pool_id`、`pool_strategy`、`pool_tier_strategies` 与序列化的 `surfaces`，供管理后台（Admin）绘制拓扑视图（Topology）。
 
-对外调用 Admin 时，路径前面加 `/api`，即 `/api/admin/routes/...`。
+对外调用管理后台 API 时，路径前面加 `/api`，即 `/api/admin/routes/...`。
 
 ## 请求日志与排障
 
@@ -92,7 +92,7 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` �
 - `adapter`
 - `route_trace`
 
-排障时先确认 Surface 是否匹配，再确认 Pool 是否 active、是否存在 active Target，最后检查 Provider 状态、密钥和熔断。`route_trace` 是 JSON 快照，至少包含 `{ surface, pool, target }`；Gemini 请求另含 `gemini.action`（真实 wire action）。启用 Provider Sticky 时还可能包含：
+排障时先确认请求入口是否匹配，再确认路由池是否 active、是否存在 active 上游目标，最后检查供应商状态、密钥和熔断。`route_trace` 是 JSON 快照，至少包含 `{ surface, pool, target }`；Gemini 请求另含 `gemini.action`（真实 wire action）。启用供应商粘性时还可能包含：
 
 ```json
 {
@@ -104,12 +104,12 @@ Pool 级策略只影响当前请求 Surface 指向的 Pool；`tier_strategies` �
 }
 ```
 
-`lookup` 描述读取绑定的结果，`attempted_target` 是被前置尝试的 Target，`result` 在 bind / touch 的 CAS 完成后记录最终绑定动作。可结合 cache read token 与 failover 次数判断 Sticky 是否提高缓存连续性。`route_trace` 记录最终选中（或最后失败）的拓扑标识和关键决策，不是完整 attempt 列表。
+`lookup` 描述读取绑定的结果，`attempted_target` 是被前置尝试的上游目标，`result` 在 bind / touch 的 CAS 完成后记录最终绑定动作。可结合 cache read token 与故障转移次数判断供应商粘性是否提高缓存连续性。`route_trace` 记录最终选中（或最后失败）的拓扑标识和关键决策，不是完整 attempt 列表。
 
-Admin 在删除 Target、或 Target 迁移到新 Pool 后，会调用 `deleteRoutePoolIfEmpty`：若旧 Pool 已无任何 Target，则删除其 Surface 与 Pool（避免空 Pool / 孤儿 Surface 泄漏）。
+管理后台在删除上游目标、或上游目标迁移到新路由池后，会调用 `deleteRoutePoolIfEmpty`：若旧路由池已无任何上游目标，则删除其请求入口与路由池（避免空路由池 / 孤儿请求入口泄漏）。
 
 ## 升级兼容
 
-迁移 0016 会按历史 `model_id + route_group + upstream_protocol` 建立 Pool，为每个 Pool 建立 `request_operation='*'` 的兼容 Surface，并把历史 `model_routes` 关联进去。升级步骤与验收清单见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
+迁移 0016 会按历史 `model_id + route_group + upstream_protocol` 建立路由池，为每个路由池建立 `request_operation='*'` 的兼容请求入口，并把历史 `model_routes` 关联进去。升级步骤与验收清单见 [single-provider-key-cutover.md](../../operators/migrations/single-provider-key-cutover.md)。
 
-迁移 **0017** 将 Gemini 的 `generateContent` / `streamGenerateContent` Surface 合并为 `models.generate`；冲突 Pool 降级为 inactive 并加 `[v220-conflict]` 前缀。切换步骤见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。
+迁移 **0017** 将 Gemini 的 `generateContent` / `streamGenerateContent` 请求入口合并为 `models.generate`；冲突路由池降级为 inactive 并加 `[v220-conflict]` 前缀。切换步骤见 [gemini-models-generate-cutover.md](../../operators/migrations/gemini-models-generate-cutover.md)。

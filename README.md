@@ -7,7 +7,7 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1-F38020?logo=cloudflare&logoColor=white)](./docs/operators/deployment/cloudflare-quickstart.md)
 [![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](./docs/operators/deployment/docker.md)
 
-**Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、语音转写、Agent Tools，以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
+**Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、语音转写、智能体工具（Agent Tools），以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
 
 **语言：** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **官网：** [octafuse.dev](https://octafuse.dev/)
 
@@ -17,7 +17,7 @@ Octafuse Gateway 的核心目标是**构建统一超级个体（OPC）或企业�
 
 所以它具备以下这些核心能力：
 
-1. 供应商接入：支持接入任意模型厂商或聚合平台的模型服务。同时，内置大量导入模板（含各种 Coding/Token Plan），无需复制黏贴各平台的接入端点，直接一键导入，然后复制对应的 ApiKey 即可完成接入。支持一键导入的完整列表见官网 [Providers Catalog](https://octafuse.dev/zh/catalog/providers/)，若有希望加入预置 Provider 的供应商，欢迎提交 PR。
+1. 供应商（Provider）接入：支持接入任意模型厂商或聚合平台的模型服务。同时，内置大量导入模板（含各种 Coding/Token Plan），无需复制黏贴各平台的接入端点，直接一键导入，然后复制对应的 API 密钥（ApiKey）即可完成接入。支持一键导入的完整列表见官网 [Providers Catalog](https://octafuse.dev/zh/catalog/providers/)，若有希望加入预置供应商的厂商，欢迎提交 PR。
 2. AI模型接入：需要提供哪些 AI 模型的接入，也可以通过预置的模型数据直接导入，无需配置各种模型参数、价格等基本信息。支持一键导入的模型列表见官网 [Models Catalog](https://octafuse.dev/zh/catalog/models/)；若希望接入新的模型，欢迎提交 PR。
 3. 多协议接入：AI 模型全协议接入，目前支持:
     - OpenAI 端点：
@@ -27,36 +27,36 @@ Octafuse Gateway 的核心目标是**构建统一超级个体（OPC）或企业�
       - Models：`GET /v1/models`
     - Anthropic 端点：`POST /v1/messages`
     - Google Gemini 端点：`POST /v1beta/models/{model}:generateContent`（含 `streamGenerateContent`）
-4. Agent 工具接入：通过 `/v1/tools/*` 统一接入各种供 Agent 使用的工具，并提供日志、计费、成本管控，以方便 Agent 同时从 Gateway 接入模型和工具。当前预置工具如下：
+4. 智能体工具接入：通过 `/v1/tools/*` 统一接入各种供 Agent 使用的工具，并提供日志、计费、成本管控，以方便 Agent 同时从 Gateway 接入模型和工具。当前预置工具如下：
     - 联网搜索（`POST /v1/tools/web-search`）：博查、Tavily、阿里云 CleverSee、腾讯云联网搜索 WSA
     - 网页抓取（`POST /v1/tools/web-fetch`）：Firecrawl、Tavily Extract、Jina Reader
     - 深度搜索（`POST /v1/tools/web-deep-search`，搜+读一体）：Firecrawl Search、Jina Search
-    - 更多工具持续接入中，也欢迎 PR 继续丰富 Agent 常用工具。
+    - 更多工具持续接入中，也欢迎 PR 继续丰富智能体常用工具。
 5. AI 能力统一出口：与所有网关一样，它是请求的中枢，即使能力汇总的地方，也是能力集中分发的地方。上面所有接入的 AI 能力都通过Octafuse Gateway 部署后的地址提供统一的接入 BaseUrl。换言之，上面你接入的各种平台、工具的 BaseUrl都不需要记了，只需要记住网关的即可。
 6. 多样的路由策略：当一个模型我们有多个资源的时候，为了更高效的使用资源，可以根据情况配置不同的路由策略。目前支持四种策略：
     - hash_affinity：默认策略；同用户、模型、协议稳定首选上游，**缓存命中率高**，适合依赖 Prompt Cache、会话连续性的场景；短时流量不一定完全均匀
-    - weighted_random：按权重加权随机分流，**负载均衡性高**，适合按比例分摊成本或 A/B；同一用户可能频繁切换 Provider，缓存命中率较低
-    - weight_priority：按权重从高到低固定排序，结果可预测，适合同层明确主备；首选 Provider 会承担大部分流量
+    - weighted_random：按权重加权随机分流，**负载均衡性高**，适合按比例分摊成本或 A/B；同一用户可能频繁切换供应商，缓存命中率较低
+    - weight_priority：按权重从高到低固定排序，结果可预测，适合同层明确主备；首选供应商会承担大部分流量
     - weighted_round_robin：按权重轮转分摊，流量更均匀；计数器按运行实例维护，多实例间不保证全局同步
 7. 用户管理与记账一体化：有了统一接入点之后，剩下用户管理、额度管理、成本管理一堆下游的功能。Octafuse 提供了一套企业化的管理机制，包括：
-    - 支持系统（External system）、用户（User）、ApiKey 三层维度：每个用户因为有一个External system字段，所以可以区分不同的系统或者团队。用户下面是 ApiKey，真正调用 Gateway 能力通过 ApiKey 完成鉴权、扣费和审计。
+    - 支持系统（External system）、用户（User）、API 密钥三层维度：每个用户因为有一个External system字段，所以可以区分不同的系统或者团队。用户下面是 API 密钥，真正调用 Gateway 能力通过 API 密钥完成鉴权、扣费和审计。
     - 三账本设计：每一个调用对于计费涵盖三个费用计算，包括：目录价（模型/工具标准价）、成本价（实际采购价格）、用户价（用户扣除额度）
     - 分时倍率：有的模型有峰谷计费的设计，利用分时倍率可以更精准的计算成本数据；同时如果对外服务，也可以更配置灵活的计价方案来支持运营促销
-8. 管理后台与管理API：
+8. 管理后台（Admin）与管理API：
     - 具备完善的管理后台和管理接口，可以手工维护也可以接入其他系统门户使用
     - 可观测性与数据分析：详细记录了请求细节和各类数据，可以方便查看、统计、分析
-    - 测试与联调：提供 Playground / Simulator 页面功能，用户在接入新供应商和模型的时候，可以快速检验接口配置是否正确，服务商模型是否可靠
+    - 测试与联调：提供调试台（Playground）/ 模拟器（Simulator）页面功能，用户在接入新供应商和模型的时候，可以快速检验接口配置是否正确，服务商模型是否可靠
 9. 灵活的部署方式：
     - 支持 **Cloudflare Workers + D1 免费部署**
     - 支持 Docker + Postgres / MySQL 部署
 
 ## 管理后台一览
 
-| Provider 接入 | Surface → Policy → Upstream 路由拓扑 |
+| 供应商接入 | 请求入口（Request Surface）→ 策略 → 上游目标（Upstream Target） 路由拓扑 |
 |---|---|
-| ![新建 Provider：配置单个上游账号的 API Key 与多协议端点](./docs/assets/screenshots/providers.png) | ![Routes：按协议、operation 和 route group 组织路由策略与上游 Target](./docs/assets/screenshots/routes.png) |
+| ![新建供应商：配置单个上游账号的 API 密钥与多协议端点](./docs/assets/screenshots/providers.png) | ![路由（Routes）：按协议、operation 和路由组组织路由策略与上游目标](./docs/assets/screenshots/routes.png) |
 
-Provider 页面负责接入上游账号与协议端点；Routes 页面把客户端 Request Surface、路由策略和 Upstream Target 放在一条可视链路中。完整配置顺序见 [Admin 配置指南](./docs/users/configuration.md)。
+供应商页面负责接入上游账号与协议端点；路由页面把客户端请求入口、路由策略和上游目标放在一条可视链路中。完整配置顺序见 [管理后台配置指南](./docs/users/configuration.md)。
 
 ## 与其他开源 AI Gateway 的差异
 
@@ -69,17 +69,17 @@ Provider 页面负责接入上游账号与协议端点；Routes 页面把客户�
 | 能力接入 | 供应商 / 模型预设与一键导入 | **✅ 完善** | 🟡 良好 | 🟡 良好 | 🟡 良好 | 🟡 良好 |
 | 能力接入 | 原生协议与多模态覆盖 | **🟡 良好（完善中）** | ✅ 完善 | ✅ 完善 | ✅ 完善 | ✅ 完善 |
 | Agent | 内置联网搜索、抓取与深度搜索 | **✅ 完善** | ⚪ 无 | 🟠 基础 | 🟠 基础 | 🟠 基础 |
-| Agent | 工具 Provider 配置、调用日志与计费 | **✅ 完善** | ⚪ 无 | 🟡 良好 | 🟠 基础 | 🟠 基础 |
-| 路由 | 协议 / operation 级 Surface 与独立 Route Pool | **✅ 完善** | 🟠 基础 | 🟡 良好 | 🟡 良好 | 🟡 良好 |
+| Agent | 工具供应商配置、调用日志与计费 | **✅ 完善** | ⚪ 无 | 🟡 良好 | 🟠 基础 | 🟠 基础 |
+| 路由 | 协议 / operation 级请求入口与独立路由池（Route Pool） | **✅ 完善** | 🟠 基础 | 🟡 良好 | 🟡 良好 | 🟡 良好 |
 | 路由 | 多策略分流与分层覆盖 | **✅ 完善** | 🟡 良好 | ✅ 完善 | 🟡 良好 | 🟡 良好 |
 | 路由 | Prompt Cache 亲和路由 | **✅ 完善** | 🟡 良好 | ✅ 完善 | ✅ 完善 | ✅ 完善 |
-| 路由 | 优先级主备、故障转移与 Provider 熔断 | **✅ 完善** | 🟡 良好 | ✅ 完善 | 🟡 良好 | ✅ 完善 |
-| 治理 | 外部系统、用户与 API Key 分层治理 | **✅ 完善** | 🟡 良好 | ✅ 完善 | 🟡 良好 | ✅ 完善 |
+| 路由 | 优先级主备、故障转移与供应商熔断 | **✅ 完善** | 🟡 良好 | ✅ 完善 | 🟡 良好 | ✅ 完善 |
+| 治理 | 外部系统、用户与 API 密钥分层治理 | **✅ 完善** | 🟡 良好 | ✅ 完善 | 🟡 良好 | ✅ 完善 |
 | 治理 | 周期预算、状态与模型访问控制 | **✅ 完善** | ✅ 完善 | ✅ 完善 | ✅ 完善 | ✅ 完善 |
 | 计费 | 目录价、供应成本、用户扣费三账本 | **✅ 完善** | ⚪ 无 | ⚪ 无 | ✅ 完善 | ⚪ 无 |
 | 计费 | 按业务时区的分时计价倍率 | **✅ 完善** | ⚪ 无 | ⚪ 无 | 🟡 良好 | ⚪ 无 |
 | 计费 | 图像 / 语音差异化计价 | **✅ 完善** | 🟡 良好 | 🟡 良好 | 🟡 良好 | 🟠 基础 |
-| 计费 | Agent 工具按次计费 | **✅ 完善** | ⚪ 无 | 🟡 良好 | 🟠 基础 | 🟠 基础 |
+| 计费 | 智能体工具按次计费 | **✅ 完善** | ⚪ 无 | 🟡 良好 | 🟠 基础 | 🟠 基础 |
 | 运维 | 管理后台、管理 API 与可观测性 | **✅ 完善** | ✅ 完善 | ✅ 完善 | ✅ 完善 | ✅ 完善 |
 | 部署 | SQLite / D1、Postgres 与 MySQL 适配 | **✅ 完善** | ✅ 完善 | 🟠 基础 | 🟠 基础 | 🟡 良好 |
 | 部署 | Docker 自托管部署 | **✅ 完善** | ✅ 完善 | ✅ 完善 | ✅ 完善 | ✅ 完善 |
@@ -95,7 +95,7 @@ Provider 页面负责接入上游账号与协议端点；Routes 页面把客户�
 
 ## 快速开始
 
-需要 **Node.js 20+**。Proxy 与 Admin 需**两个终端**同时运行。
+需要 **Node.js 20+**。代理服务（Proxy）与管理后台需**两个终端**同时运行。
 
 ```bash
 git clone https://github.com/OctaFuse/octafuse-gateway.git
@@ -104,13 +104,13 @@ npm install
 npm run db:migrate
 ```
 
-终端 1 — Proxy（`:8787`）：
+终端 1 — 代理服务（`:8787`）：
 
 ```bash
 npm run dev:proxy
 ```
 
-终端 2 — Admin（`:8789`）：
+终端 2 — 管理后台（`:8789`）：
 
 ```bash
 npm run dev:admin
@@ -118,10 +118,10 @@ npm run dev:admin
 
 | 服务 | 地址 | 说明 |
 |------|------|------|
-| Proxy | http://127.0.0.1:8787 | 推理入口 |
-| Admin | http://127.0.0.1:8789 | 控制台；本地默认账号 **`admin` / `admin`** |
+| 代理服务 | http://127.0.0.1:8787 | 推理入口 |
+| 管理后台 | http://127.0.0.1:8789 | 控制台；本地默认账号 **`admin` / `admin`** |
 
-首次运行 `dev:admin` 会生成 `packages/admin/.dev.vars`。打开 Admin，配置 Provider、Route 和用户 API Key，然后使用该 Key 调用 Proxy。详细步骤与 `curl` 示例见 [docs/users/quickstart.md](./docs/users/quickstart.md)。
+首次运行 `dev:admin` 会生成 `packages/admin/.dev.vars`。打开管理后台，配置供应商、路由和用户 API 密钥，然后使用该密钥调用代理服务。详细步骤与 `curl` 示例见 [docs/users/quickstart.md](./docs/users/quickstart.md)。
 
 ### 部署到 Cloudflare
 
@@ -130,7 +130,7 @@ npx wrangler login
 npm run bootstrap:cloudflare
 ```
 
-详见 [Cloudflare 快速部署](./docs/operators/deployment/cloudflare-quickstart.md)。用于生产环境前，请修改默认 Admin 密码，并轮换 `MASTER_KEY`。
+详见 [Cloudflare 快速部署](./docs/operators/deployment/cloudflare-quickstart.md)。用于生产环境前，请修改默认管理后台密码，并轮换 `MASTER_KEY`。
 
 Docker 自托管及 Postgres / MySQL 数据库方案见 [部署文档索引](./docs/operators/deployment/README.md)。
 
@@ -138,7 +138,7 @@ Docker 自托管及 Postgres / MySQL 数据库方案见 [部署文档索引](./d
 
 | 任务 | 链接 |
 |------|------|
-| 功能地图、Admin 配置、客户端接入 | [docs/users/](./docs/users/) |
+| 功能地图、管理后台配置、客户端接入 | [docs/users/](./docs/users/) |
 | 本地上手与示例请求 | [docs/users/quickstart.md](./docs/users/quickstart.md) |
 | API、集成、本地开发、架构 | [docs/developers/](./docs/developers/) |
 | Cloudflare / Docker / 迁移 | [docs/operators/](./docs/operators/) |

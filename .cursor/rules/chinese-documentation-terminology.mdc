@@ -1,0 +1,67 @@
+---
+description: Gateway 中文文档术语与 Admin 英文 UI 名称的写作规范
+alwaysApply: false
+globs:
+  docs/users/**/*.md
+  docs/developers/architecture/**/*.md
+  docs/developers/reference/route-strategies.md
+  docs/developers/integration.md
+  docs/developers/local-development.md
+  docs/developers/README.md
+  docs/operators/deployment/**/*.md
+  docs/operators/README.md
+  docs/maintainers/**/*.md
+  docs/README.md
+  docs/CONVENTIONS.md
+  README.md
+---
+
+# 中文文档术语规范
+
+- 正文以自然、流畅的中文为主，避免直接把中英文术语混在句子中。
+- UI 中存在英文名称的功能，首次出现或操作指引处写成“中文术语（英文 UI 名称）”。
+- 同一篇文章后续只使用中文术语，不重复添加英文括注。
+- 页面、菜单、按钮等英文 UI 名称必须准确，便于用户在界面中查找；以 `packages/admin/messages/en.json` 为准，中文界面对照 `zh.json`。
+- 配置 ID、API 路径、协议、字段名、代码标识符和专有产品名保持原样并使用代码格式（适用时）。
+- 历史发布、迁移 runbook、CHANGELOG 与 roadmap 中的功能事实、旧策略 ID 和迁移编号不得改写为当前版本语义。
+
+## 排除目录（不要按本规则批量改写）
+
+- `docs/releases/**`、`docs/operators/migrations/**`
+- `.roadmap/**`、`.release/**`、`CHANGELOG.md`、`.changeset/**`
+- `README.en.md`、`README.ja.md`、`README.ko.md`
+- SQL 迁移目录、`packages/admin/messages/**`、`examples/**`
+
+## 常用术语对照
+
+| 后续中文 | 英文 UI / 概念 |
+|----------|----------------|
+| 管理后台 | Admin |
+| 代理服务 | Proxy |
+| 仪表盘 | Dashboard |
+| 供应商 | Provider / Providers |
+| 模型 | Models |
+| 路由 | Routes（页面标题 Model Routes） |
+| 请求入口 | Request Surface / Surface |
+| 路由池 | Route Pool |
+| 上游目标 | Upstream Target / Upstream targets |
+| 路由组 | Route group |
+| 拓扑视图 | Topology |
+| 摘要视图 | Summary |
+| 供应商粘性 | Provider sticky |
+| 调试台 | Playground |
+| 模拟器 | Simulator |
+| 请求日志 | Request Logs |
+| 审计日志 | Audit Logs |
+| 智能体工具 | Agent Tools / Tools |
+| 工具配置 | Tools → Configuration |
+| 工具调用记录 | Tools → Invocations |
+| 主密钥 | Master Key |
+| 引导脚本 | bootstrap |
+
+示例：
+
+- 首次出现：供应商（Provider）、路由池（Route Pool）、上游目标（Upstream Target）。
+- 操作指引：在拓扑视图（Topology）的路由池节点中打开供应商粘性（Provider sticky）设置。
+- 后续表述：供应商、路由池、上游目标、供应商粘性。
+- 配置标识：`hash_affinity`、`route_trace.sticky`、`/v1/models`。

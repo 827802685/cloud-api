@@ -16,7 +16,7 @@
 | 场景 | 文档 |
 |------|------|
 | Cloudflare 首次上云 | [cloudflare-quickstart.md](./cloudflare-quickstart.md) |
-| Cloudflare 运维 / Workers Builds / 多实例 | [cloudflare.md](./cloudflare.md) · 实例 env：[cloudflare-worker/README.md](../../../cloudflare-worker/README.md) |
+| Cloudflare 运维 / Workers Builds / 多实例（代理服务与管理后台） | [cloudflare.md](./cloudflare.md) · 实例 env：[cloudflare-worker/README.md](../../../cloudflare-worker/README.md) |
 | Docker / Postgres / MySQL / Hybrid 自托管 | [docker.md](./docker.md)（含 [§8 如何更新版本](./docker.md#8-如何更新版本)） |
 | Cloudflare 已上线实例升级 | [cloudflare-quickstart.md §12](./cloudflare-quickstart.md#12-后续升级) |
 | 2.1.2 → 2.2.0 数据迁移与维护窗口 | [迁移索引](../README.md#迁移与切换)（0017 → 0018 → 0019） |

@@ -1,8 +1,8 @@
 # Zeabur 部署（Docker + Postgres）
 
-本文说明在 [Zeabur](https://zeabur.com) 上部署 **octafuse-gateway** 的 **Proxy**、**Admin** 与数据库迁移的正确方式。
+本文说明在 [Zeabur](https://zeabur.com) 上部署 **octafuse-gateway** 的代理服务（Proxy）、管理后台（Admin）与数据库迁移的正确方式。
 
-> **推荐（方式 0）**：在 **proxy 或 admin** 常驻 Service 上设置 **`AUTO_MIGRATE=1`**，容器启动时自动执行幂等迁移，**无需**单独的 migrate Service 或 Suspend 操作。见 §3 方式 0。
+> **推荐（方式 0）**：在 **代理服务或管理后台** 常驻 Service 上设置 **`AUTO_MIGRATE=1`**，容器启动时自动执行幂等迁移，**无需**单独的 migrate Service 或 Suspend 操作。见 §3 方式 0。
 >
 > **备选**：`Dockerfile.migrate` 镜像设计为 **Job（跑完即退出）**，**不能**作为 Zeabur 常驻 Service 长期运行。迁移成功后进程以 exit 0 结束，平台会将其视为容器失败并进入 `BackOff restarting failed container` 循环——这与迁移是否成功无关。
 
@@ -16,7 +16,7 @@
 | **gateway-admin** | `Dockerfile.admin` 或 GHCR `*-admin` | 常驻 Service | 8789（HTTP） |
 | **migrate**（可选） | `Dockerfile.migrate` 或 GHCR `*-migrate` | **一次性 Job**（非常驻；`AUTO_MIGRATE` 时可省略） | 无需暴露 |
 
-Proxy 与 Admin **共用同一 `DATABASE_URL`**（外置 Postgres，如 Zeabur Postgres 插件或其它托管库）。
+代理服务与管理后台 **共用同一 `DATABASE_URL`**（外置 Postgres，如 Zeabur Postgres 插件或其它托管库）。
 
 ```mermaid
 flowchart LR
@@ -47,7 +47,7 @@ flowchart LR
 
 ### 方式 0：启动时自迁移（**Zeabur 最推荐**）
 
-proxy / admin 镜像内置 [`../../../docker/entrypoint.app.sh`](../../../docker/entrypoint.app.sh)。在 **一个** 常驻 Service 的环境变量中设置：
+代理服务 / 管理后台镜像内置 [`../../../docker/entrypoint.app.sh`](../../../docker/entrypoint.app.sh)。在 **一个** 常驻 Service 的环境变量中设置：
 
 ```env
 AUTO_MIGRATE=1
@@ -62,7 +62,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/db?options=-c%20timezone%3DUTC
 
 ### 方式 A：本地 / CI 一次性 `docker run`（备选）
 
-不在 Zeabur 上创建 migrate 常驻 Service。每次发版或有新 SQL 迁移时，在部署 proxy/admin **之前**执行：
+不在 Zeabur 上创建 migrate 常驻 Service。每次发版或有新 SQL 迁移时，在部署代理服务 / 管理后台 **之前**执行：
 
 ```bash
 # 仓库根目录；镜像 tag 与 proxy/admin 保持一致
@@ -91,8 +91,8 @@ docker run --rm \
 1. **Add Service → Docker Images**，镜像填 GHCR 的 `*-migrate`（或自建 registry）。
 2. 配置 `DATABASE_URL`、`DATABASE_DRIVER=postgres`；**不要**暴露 HTTP/TCP 端口。
 3. 部署一次，确认日志含 `MIGRATE_DONE`。
-4. 立即进入 **Settings → Suspend Service**，停止该 Service，避免 CrashLoop 与无意义计费。
-5. 下次有新迁移：Resume → 等待 `MIGRATE_DONE` → 再次 Suspend → 再部署 proxy/admin。
+4. 立即进入 **设置（Settings）→ 暂停服务（Suspend Service）**，停止该 Service，避免 CrashLoop 与无意义计费。
+5. 下次有新迁移：Resume → 等待 `MIGRATE_DONE` → 再次 Suspend → 再部署代理服务 / 管理后台。
 
 > Zeabur 当前无原生 Kubernetes Job；**Suspend** 等价于「任务已完成，不再重启」。
 
@@ -129,7 +129,7 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-me
 ```
 
-暴露 **HTTP 8789**。门户侧 `GATEWAY_MASTER_URL` 指向 Admin 对外 URL。
+暴露 **HTTP 8789**。门户侧 `GATEWAY_MASTER_URL` 指向管理后台对外 URL。
 
 ### migrate（仅一次性，勿常驻）
 
@@ -153,32 +153,32 @@ DATABASE_URL=postgresql://user:pass@host:5432/db?options=-c%20timezone%3DUTC
 | admin | `ghcr.io/octafuse/octafuse-gateway-admin:v2.0.0` |
 | migrate | `ghcr.io/octafuse/octafuse-gateway-migrate:v2.0.0` |
 
-在 Zeabur 选择 **Docker Images** 创建 proxy/admin 常驻 Service；migrate 按 §3 方式 A 或 B 处理。
+在 Zeabur 选择 **Docker Images** 创建代理服务 / 管理后台常驻 Service；migrate 按 §3 方式 A 或 B 处理。
 
 ## 6. 与外部门户联调
 
 下游集成方（自建门户 / SaaS）通常需要：
 
-- **Proxy** 对外 URL → `GATEWAY_URL`（客户端推理）
-- **Admin** 对外 URL → `GATEWAY_MASTER_URL`（`/api/admin/*`）
-- `MASTER_KEY` 以库内 `system_config.MASTER_KEY` 为准（迁移 `0002_seed.sql` 默认值，生产务必修改）
+- **代理服务** 对外 URL → `GATEWAY_URL`（客户端推理）
+- **管理后台** 对外 URL → `GATEWAY_MASTER_URL`（`/api/admin/*`）
+- `MASTER_KEY`（主密钥）以库内 `system_config.MASTER_KEY` 为准（迁移 `0002_seed.sql` 默认值，生产务必修改）
 
 完整 env 约定见 [integration.md](../../developers/integration.md)。Postgres 时区建议 URL 带 `options=-c%20timezone%3DUTC`，见 [docker.md](./docker.md) § 时区。
 
 ## 7. 发布后验证
 
 1. **migrate**（若本次执行）：日志含 `[migrate-postgres] 全部完成。` 与 `MIGRATE_DONE`；**无**连续 `BackOff restarting`（migrate Service 应已 Suspend 或未创建）。
-2. **proxy**：`curl -fsS https://<proxy-host>/health`
-3. **admin**：`curl -fsS -o /dev/null -w '%{http_code}\n' https://<admin-host>/`
-4. **admin API**（可选）：`curl -fsS https://<admin-host>/api/admin/config -H 'Authorization: Bearer <MASTER_KEY>'`
+2. **代理服务**：`curl -fsS https://<proxy-host>/health`
+3. **管理后台**：`curl -fsS -o /dev/null -w '%{http_code}\n' https://<admin-host>/`
+4. **管理后台 API**（可选）：`curl -fsS https://<admin-host>/api/admin/config -H 'Authorization: Bearer <MASTER_KEY>'`
 
 ## 8. 常见错误
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
 | migrate 日志成功但 Pod BackOff | migrate 当常驻 Service | 改用 §3 方式 0（`AUTO_MIGRATE=1`），或 Suspend migrate Service，或改用 §3 方式 A |
-| proxy/admin 启动后 500 | 未 migrate 或 `DATABASE_URL` 不一致 | 设 `AUTO_MIGRATE=1` 或先跑 migrate，核对两 Service 连接串相同 |
-| Admin 无法登录 | 未设 `ADMIN_PASSWORD` | 在 Zeabur 环境变量中配置 |
+| 代理服务 / 管理后台启动后 500 | 未 migrate 或 `DATABASE_URL` 不一致 | 设 `AUTO_MIGRATE=1` 或先跑 migrate，核对两 Service 连接串相同 |
+| 管理后台无法登录 | 未设 `ADMIN_PASSWORD` | 在 Zeabur 环境变量中配置 |
 | 构建用了错误 Dockerfile | `ZBPACK_DOCKERFILE_NAME` 写全名 | 用 `ZBPACK_DOCKERFILE_PATH=Dockerfile.admin` |
 
 ## 9. 相关文档

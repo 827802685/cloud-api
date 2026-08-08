@@ -1,10 +1,10 @@
 # 客户端接入
 
-客户端接入 Gateway 时，只需要记住一个 Proxy 根 URL，并把供应商 API Key 替换为用户 API Key：OpenAI SDK 使用 `{proxy}/v1`，Anthropic 使用 `{proxy}/v1/messages`，Gemini 使用 `{proxy}/v1beta/models/...`。
+客户端接入 Gateway 时，只需要记住一个代理服务（Proxy）根 URL，并把供应商 API Key 替换为用户 API Key：OpenAI SDK 使用 `{proxy}/v1`，Anthropic 使用 `{proxy}/v1/messages`，Gemini 使用 `{proxy}/v1beta/models/...`。
 
 ## OpenAI 兼容
 
-Base URL 指向 Proxy：
+Base URL 指向代理服务：
 
 ```text
 http://localhost:8787/v1
@@ -55,7 +55,7 @@ curl -sS http://localhost:8787/v1/audio/transcriptions \
   -F response_format=json
 ```
 
-Agent Tools（需用户 Key；Admin → Tools 已为对应工具配置 Active 引擎与第三方 API Key）提供 `POST /v1/tools/web-search`、`POST /v1/tools/web-fetch`、`POST /v1/tools/web-deep-search`。示例如下：
+智能体工具（Agent Tools；需用户 Key；管理后台 → 智能体工具已为对应工具配置活跃引擎与第三方 API Key）提供 `POST /v1/tools/web-search`、`POST /v1/tools/web-fetch`、`POST /v1/tools/web-deep-search`。示例如下：
 
 ```bash
 curl -sS http://localhost:8787/v1/tools/web-search \
@@ -66,7 +66,7 @@ curl -sS http://localhost:8787/v1/tools/web-search \
 
 ## Anthropic 兼容
 
-Anthropic 风格接口使用 Proxy 的 `/v1/messages`，认证可用 `x-api-key` 或 `Authorization: Bearer`：
+Anthropic 风格接口使用代理服务的 `/v1/messages`，认证可用 `x-api-key` 或 `Authorization: Bearer`：
 
 ```bash
 curl -sS http://localhost:8787/v1/messages \
@@ -78,7 +78,7 @@ curl -sS http://localhost:8787/v1/messages \
 
 ## Gemini 兼容
 
-Gemini 风格接口使用 Proxy 的 `/v1beta/models/...`，认证可用查询参数 `key`、`x-goog-api-key` 或 `Authorization: Bearer`：
+Gemini 风格接口使用代理服务的 `/v1beta/models/...`，认证可用查询参数 `key`、`x-goog-api-key` 或 `Authorization: Bearer`：
 
 ```bash
 curl -sS "http://localhost:8787/v1beta/models/your-route-model:generateContent?key=sk-your-api-key" \
