@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Minor Changes
-
-- 路由策略 ID 与 Admin 展示名对齐：`cache_affinity` → `hash_affinity`，`fixed_order` → `weight_priority`（迁移 **0021**，无旧 ID 别名；维护窗口见 [route-strategy-display-ids-cutover.md](./docs/operators/migrations/route-strategy-display-ids-cutover.md)）。
-
 ## 2.2.0
 
 ### Minor Changes
