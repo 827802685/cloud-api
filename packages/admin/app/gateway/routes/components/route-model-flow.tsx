@@ -327,14 +327,31 @@ function UpstreamToolbar({
 	onAdd: () => void;
 }) {
 	const t = useTranslations('routes.flow');
+	const isDefaultGroup = routeGroup === 'default';
 
 	return (
-		<div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+		<div
+			className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 ${
+				isDefaultGroup
+					? 'border-sky-200 bg-sky-100/70'
+					: 'border-violet-200 bg-violet-100/70'
+			}`}
+		>
 			<div className="flex min-w-0 flex-wrap items-center gap-1.5">
-				<span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+				<span
+					className={`text-[10px] font-semibold uppercase tracking-wider ${
+						isDefaultGroup ? 'text-sky-700' : 'text-violet-700'
+					}`}
+				>
 					{t('providerStep')}
 				</span>
-				<span className="max-w-full truncate rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
+				<span
+					className={`max-w-full truncate rounded-md bg-white/85 px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${
+						isDefaultGroup
+							? 'text-sky-800 ring-sky-200'
+							: 'text-violet-800 ring-violet-200'
+					}`}
+				>
 					{t('routeGroup')} · {routeGroup}
 				</span>
 			</div>
@@ -367,10 +384,15 @@ function RoutingMatchConnector({
 }) {
 	const t = useTranslations('routes.flow');
 	const requestedModelId = routeGroup === 'default' ? modelId : `${modelId}:${routeGroup}`;
+	const isDefaultGroup = routeGroup === 'default';
 
 	const modelBlock = (
 		<span
-			className="line-clamp-2 max-w-full break-all rounded-md bg-sky-50 px-2 py-0.5 text-center font-mono text-[10px] font-semibold leading-3 text-sky-700 ring-1 ring-inset ring-sky-200"
+			className={`line-clamp-2 max-w-full break-all rounded-md px-2 py-0.5 text-center font-mono text-[10px] font-semibold leading-3 ring-1 ring-inset ${
+				isDefaultGroup
+					? 'bg-sky-50 text-sky-700 ring-sky-200'
+					: 'bg-violet-50 text-violet-700 ring-violet-200'
+			}`}
 			title={`model=${requestedModelId}`}
 		>
 			model={requestedModelId}
@@ -384,7 +406,12 @@ function RoutingMatchConnector({
 				className="relative hidden min-w-0 items-center justify-center xl:flex"
 				aria-label={t('routeMatchAria', { group: routeGroup, model: requestedModelId })}
 			>
-				<span className="absolute inset-x-0 top-1/2 h-px bg-blue-300" aria-hidden />
+				<span
+					className={`absolute inset-x-0 top-1/2 h-px ${
+						isDefaultGroup ? 'bg-sky-300' : 'bg-violet-300'
+					}`}
+					aria-hidden
+				/>
 				<div className="relative z-[1] flex w-full max-w-full justify-center">{modelBlock}</div>
 			</div>
 			{/* Mobile: keep the requested model before the downstream pool. */}
@@ -837,6 +864,7 @@ function FlowBranch({
 	};
 
 	const isSummary = density === 'summary';
+	const isDefaultGroup = section.group === 'default';
 	// The branch line targets the visual center of the complete route-group
 	// configuration, regardless of whether provider details are collapsed.
 	const railClass =
@@ -874,7 +902,13 @@ function FlowBranch({
 					<ArrowDownIcon className="h-4 w-4 text-blue-400 xl:hidden" />
 				</div>
 
-				<div className="min-w-0">
+				<div
+					className={`min-w-0 overflow-hidden rounded-xl border shadow-sm ring-1 ${
+						isDefaultGroup
+							? 'border-slate-200/90 border-l-4 border-l-sky-400 bg-white ring-sky-100/90'
+							: 'border-slate-200/90 border-l-4 border-l-violet-400 bg-white ring-violet-100/90'
+					}`}
+				>
 					<UpstreamToolbar
 						routeGroup={section.group}
 						poolId={section.poolId}
@@ -906,11 +940,11 @@ function FlowBranch({
 						})}
 					/>
 					<div
-						className={
+						className={`bg-slate-100/70 p-3 ${
 							isSummary
 								? 'flex min-w-0 flex-col items-stretch gap-1'
 								: 'flex min-w-0 flex-col items-stretch gap-3 md:flex-row md:flex-wrap'
-						}
+						}`}
 						aria-label={t('priorityLadderAria')}
 					>
 						{priorityLayers.map(([priority, routes], layerIndex) => (
@@ -996,7 +1030,7 @@ function FlowSection({
 						<ArrowDownIcon className="h-4 w-4 text-blue-400" />
 					</div>
 				</div>
-				<div className="divide-y divide-slate-200/80">
+				<div>
 					{surface.sections.map((section, branchIndex) => (
 						<FlowBranch
 							key={section.key}
