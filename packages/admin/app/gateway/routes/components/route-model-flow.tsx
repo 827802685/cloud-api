@@ -641,7 +641,7 @@ function PriorityTierPanel({
 			className={
 				isSummary
 					? 'min-w-0 max-w-full rounded-lg border border-slate-200 bg-white/80 shadow-sm'
-					: 'min-w-[18rem] max-w-full rounded-lg border border-slate-200 bg-white/80 p-2.5 shadow-sm'
+					: 'w-fit min-w-0 max-w-full rounded-lg border border-slate-200 bg-white/80 p-2.5 shadow-sm'
 			}
 		>
 			<div
