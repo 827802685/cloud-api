@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import {
 	ArrowDownIcon,
 	ArrowLongRightIcon,
@@ -25,6 +25,7 @@ import {
 } from '@/lib/pricing-ui';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import { tagBadgeClass } from '../../models/model-utils';
+import { fetchStickyBindingsSummary } from '../route-api';
 import type { RouteModelGroup } from '../route-utils';
 import {
 	compareRoutesWithinPriorityLayer,
@@ -47,6 +48,8 @@ import {
 } from '../types';
 import { FailoverRulesDialog } from './failover-rules-dialog';
 import { ProviderStickyChip } from './provider-sticky-chip';
+
+const EMPTY_STICKY_COUNTS = new Map<string, number>();
 
 type PriorityTierPreviewItem = {
 	id: string;
@@ -132,6 +135,7 @@ function RouteTarget({
 	provider,
 	requestProtocol,
 	requestOperation,
+	stickyBindingCount,
 	togglingId,
 	onEdit,
 	onToggleStatus,
@@ -140,6 +144,7 @@ function RouteTarget({
 	provider: GatewayProvider | undefined;
 	requestProtocol: string;
 	requestOperation: string;
+	stickyBindingCount: number;
 	togglingId: string | null;
 	onEdit: (route: RouteListRow) => void;
 	onToggleStatus: (route: RouteListRow) => void;
@@ -177,20 +182,31 @@ function RouteTarget({
 			}`}
 		>
 			<div className="flex items-start gap-2 p-2.5">
-				<button
-					type="button"
-					onClick={() => onToggleStatus(route)}
-					disabled={togglingId === route.id}
-					className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
-						enabled
-							? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700'
-							: 'bg-red-500 text-white ring-red-500 hover:bg-red-600'
-					}`}
-					title={enabled ? tList('routeEnabled') : tList('routeDisabled')}
-					aria-label={enabled ? tList('routeEnabled') : tList('routeDisabled')}
-				>
-					<PowerIcon className="h-3.5 w-3.5" />
-				</button>
+				<div className="flex w-5 shrink-0 flex-col items-center gap-1.5">
+					<button
+						type="button"
+						onClick={() => onToggleStatus(route)}
+						disabled={togglingId === route.id}
+						className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
+							enabled
+								? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700'
+								: 'bg-red-500 text-white ring-red-500 hover:bg-red-600'
+						}`}
+						title={enabled ? tList('routeEnabled') : tList('routeDisabled')}
+						aria-label={enabled ? tList('routeEnabled') : tList('routeDisabled')}
+					>
+						<PowerIcon className="h-2.5 w-2.5" />
+					</button>
+					{stickyBindingCount > 0 ? (
+						<span
+							className="text-[9px] font-semibold tabular-nums leading-none text-emerald-700"
+							title={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
+							aria-label={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
+						>
+							{stickyBindingCount}
+						</span>
+					) : null}
+				</div>
 				<button
 					type="button"
 					onClick={() => onEdit(route)}
@@ -201,7 +217,6 @@ function RouteTarget({
 						<span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-gray-900">
 							{route.provider_name || provider?.name || route.provider_id}
 						</span>
-						<PencilSquareIcon className="h-3 w-3 shrink-0 text-gray-400" />
 					</div>
 					<p className="mt-0.5 truncate font-mono text-[10px] text-gray-500" title={route.provider_model_name}>
 						{route.provider_model_name}
@@ -538,6 +553,7 @@ function PriorityTierPanel({
 	meta,
 	providerMeta,
 	globalRouteStrategy,
+	stickyCountsByTarget,
 	togglingId,
 	onEdit,
 	onToggleStatus,
@@ -554,6 +570,7 @@ function PriorityTierPanel({
 	meta: GatewayModel | undefined;
 	providerMeta: Map<string, GatewayProvider>;
 	globalRouteStrategy: string | null;
+	stickyCountsByTarget: Map<string, number>;
 	togglingId: string | null;
 	onEdit: Props['onEdit'];
 	onToggleStatus: Props['onToggleStatus'];
@@ -726,6 +743,7 @@ function PriorityTierPanel({
 							provider={providerMeta.get(route.provider_id)}
 							requestProtocol={section.protocol}
 							requestOperation={section.requestOperation}
+							stickyBindingCount={stickyCountsByTarget.get(route.id) ?? 0}
 							togglingId={togglingId}
 							onEdit={onEdit}
 							onToggleStatus={onToggleStatus}
@@ -773,6 +791,10 @@ function FlowBranch({
 }) {
 	const t = useTranslations('routes.flow');
 	const [failoverOpen, setFailoverOpen] = useState(false);
+	const [stickySummary, setStickySummary] = useState<{
+		poolId: string;
+		counts: Map<string, number>;
+	} | null>(null);
 	const priorityLayers = [...section.routes.reduce((map, route) => {
 		const layer = map.get(route.priority) ?? [];
 		layer.push(route);
@@ -786,6 +808,33 @@ function FlowBranch({
 	const highestPriority = priorityLayers[0]?.[0];
 	/** Explicit user overrides; missing keys mean "default" (highest priority expanded). */
 	const [tierExpandOverrides, setTierExpandOverrides] = useState<Record<number, boolean>>({});
+	const stickyPoolId = section.poolStickyEnabled ? section.poolId : null;
+
+	useEffect(() => {
+		if (!stickyPoolId) return;
+		let cancelled = false;
+		void fetchStickyBindingsSummary(stickyPoolId).then((result) => {
+			if (cancelled) return;
+			if (!result.success) {
+				setStickySummary({ poolId: stickyPoolId, counts: new Map() });
+				return;
+			}
+			setStickySummary({
+				poolId: stickyPoolId,
+				counts: new Map(
+					result.data.targets.map((row) => [row.route_target_id, row.active_count])
+				),
+			});
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [stickyPoolId]);
+
+	const stickyCountsByTarget =
+		stickyPoolId && stickySummary?.poolId === stickyPoolId
+			? stickySummary.counts
+			: EMPTY_STICKY_COUNTS;
 
 	const isTierExpanded = (priority: number) => {
 		if (density !== 'summary') return true;
@@ -909,6 +958,7 @@ function FlowBranch({
 									meta={meta}
 									providerMeta={providerMeta}
 									globalRouteStrategy={globalRouteStrategy}
+									stickyCountsByTarget={stickyCountsByTarget}
 									togglingId={togglingId}
 									onEdit={onEdit}
 									onToggleStatus={onToggleStatus}

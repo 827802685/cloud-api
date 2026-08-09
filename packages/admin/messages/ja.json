@@ -622,7 +622,8 @@
 			"badgeMeteredTooltip": "原価：{value} · {status}",
 			"badgeScheduleTooltip": "時間帯：{windows}",
 			"providerDisabled": "プロバイダー停止中",
-			"editRoute": "このルートを編集"
+			"editRoute": "このルートを編集",
+			"stickyBoundUsersTooltip": "このプロバイダーの Sticky 有効ユーザー数：{count}"
 		},
 		"vendor": {
 			"label": "ベンダー",

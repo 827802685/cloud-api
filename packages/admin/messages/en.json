@@ -622,7 +622,8 @@
 			"badgeMeteredTooltip": "Metered: {value} · {status}",
 			"badgeScheduleTooltip": "Schedule: {windows}",
 			"providerDisabled": "Provider off",
-			"editRoute": "Edit this route"
+			"editRoute": "Edit this route",
+			"stickyBoundUsersTooltip": "Active sticky users on this provider: {count}"
 		},
 		"vendor": {
 			"label": "Vendor",

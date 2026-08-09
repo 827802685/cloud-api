@@ -622,7 +622,8 @@
 			"badgeMeteredTooltip": "成本：{value} · {status}",
 			"badgeScheduleTooltip": "时段：{windows}",
 			"providerDisabled": "供应商停用",
-			"editRoute": "编辑此路由"
+			"editRoute": "编辑此路由",
+			"stickyBoundUsersTooltip": "此供应商当前 Sticky 有效用户数：{count}"
 		},
 		"vendor": {
 			"label": "模型厂商",

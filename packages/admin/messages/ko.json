@@ -622,7 +622,8 @@
 			"badgeMeteredTooltip": "비용: {value} · {status}",
 			"badgeScheduleTooltip": "시간대: {windows}",
 			"providerDisabled": "공급자 중지",
-			"editRoute": "이 라우트 편집"
+			"editRoute": "이 라우트 편집",
+			"stickyBoundUsersTooltip": "이 공급자의 Sticky 유효 사용자 수: {count}"
 		},
 		"vendor": {
 			"label": "Vendor",
