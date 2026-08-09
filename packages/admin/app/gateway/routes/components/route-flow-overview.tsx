@@ -21,7 +21,7 @@ type Props = {
 	density?: RouteFlowDensity;
 };
 
-export function RouteFlowOverview({ density = 'summary' }: Props) {
+export function RouteFlowOverview({ density = 'topology' }: Props) {
 	const t = useTranslations('routes.flow');
 
 	return (

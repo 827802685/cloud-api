@@ -26,12 +26,12 @@ const FLOW_DENSITY_STORAGE_KEY = 'octafuse.admin.routes.flowDensity';
 const FLOW_DENSITY_EVENT = 'octafuse-admin-routes-flow-density';
 
 function readStoredFlowDensity(): RouteFlowDensity {
-	if (typeof window === 'undefined') return 'summary';
+	if (typeof window === 'undefined') return 'topology';
 	try {
 		const raw = window.localStorage.getItem(FLOW_DENSITY_STORAGE_KEY);
-		return raw === 'topology' ? 'topology' : 'summary';
+		return raw === 'summary' ? 'summary' : 'topology';
 	} catch {
-		return 'summary';
+		return 'topology';
 	}
 }
 
@@ -52,7 +52,7 @@ function RoutesContent() {
 	const flowDensity = useSyncExternalStore(
 		subscribeFlowDensity,
 		readStoredFlowDensity,
-		() => 'summary' as const
+		() => 'topology' as const
 	);
 	const stickyRefreshIntervalMs = useSyncExternalStore(
 		subscribeStickyRefreshInterval,

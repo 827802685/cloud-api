@@ -6,7 +6,7 @@ export type RouteListRow = GatewayModelRoute & {
 	provider_name?: string;
 };
 
-/** Default: collapsed priority-tier summary. Topology keeps the full card flow. */
+/** Default: topology (full card flow). Summary collapses priority tiers. */
 export type RouteFlowDensity = 'summary' | 'topology';
 
 export type RouteProtocolGroupSection<T> = {
