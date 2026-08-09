@@ -587,7 +587,7 @@
 			"tierStrategy": "계층 전략",
 			"tierStrategyEdit": "계층 전략 편집: {strategy} ({source})",
 			"failoverRules": "Failover 규칙",
-			"failoverContinue": "실패 후",
+			"failoverShort": "Failover",
 			"priorityLadderAria": "우선순위 장애 조치 사다리",
 			"expandTier": "공급자 펼치기",
 			"collapseTier": "공급자 접기",

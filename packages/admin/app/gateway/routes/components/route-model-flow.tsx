@@ -551,25 +551,32 @@ function FailoverConnector({
 		<div
 			className={
 				isSummary
-					? 'flex shrink-0 items-center justify-center py-1'
-					: 'flex shrink-0 items-center justify-center py-1 md:px-0.5 md:py-0'
+					? 'flex shrink-0 items-center justify-center py-0.5'
+					: 'flex shrink-0 items-center justify-center py-0.5 md:px-0.5 md:py-0'
 			}
 		>
 			<button
 				type="button"
 				onClick={onOpen}
-				className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 hover:ring-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+				className={
+					isSummary
+						? 'inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
+						: 'inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-slate-500 transition hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:flex-col md:gap-0.5'
+				}
 				title={t('failoverRules')}
+				aria-label={t('failoverRules')}
 			>
 				{isSummary ? (
-					<ArrowDownIcon className="h-3 w-3" />
+					<ArrowDownIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
 				) : (
 					<>
-						<ArrowDownIcon className="h-3 w-3 md:hidden" />
-						<ArrowLongRightIcon className="hidden h-4 w-4 md:block" />
+						<ArrowDownIcon className="h-3.5 w-3.5 shrink-0 md:hidden" aria-hidden />
+						<ArrowLongRightIcon className="hidden h-4 w-4 shrink-0 md:block" aria-hidden />
 					</>
 				)}
-				<span>{isSummary ? t('failoverContinue') : t('failoverRules')}</span>
+				<span className="text-[9px] font-semibold leading-none tracking-wide">
+					{t('failoverShort')}
+				</span>
 			</button>
 		</div>
 	);

@@ -587,7 +587,7 @@
 			"tierStrategy": "層戦略",
 			"tierStrategyEdit": "層戦略を編集：{strategy}（{source}）",
 			"failoverRules": "Failover ルール",
-			"failoverContinue": "失敗後",
+			"failoverShort": "Failover",
 			"priorityLadderAria": "優先度フェイルオーバーラダー",
 			"expandTier": "プロバイダーを展開",
 			"collapseTier": "プロバイダーを折りたたむ",

@@ -587,7 +587,7 @@
 			"tierStrategy": "层策略",
 			"tierStrategyEdit": "编辑层策略：{strategy}（{source}）",
 			"failoverRules": "Failover 规则",
-			"failoverContinue": "失败后",
+			"failoverShort": "Failover",
 			"priorityLadderAria": "优先级故障转移阶梯",
 			"expandTier": "展开供应商",
 			"collapseTier": "折叠供应商",

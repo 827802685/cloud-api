@@ -587,7 +587,7 @@
 			"tierStrategy": "Tier strategy",
 			"tierStrategyEdit": "Edit tier strategy: {strategy} ({source})",
 			"failoverRules": "Failover rules",
-			"failoverContinue": "On failure",
+			"failoverShort": "Failover",
 			"priorityLadderAria": "Priority failover ladder",
 			"expandTier": "Expand providers",
 			"collapseTier": "Collapse providers",
