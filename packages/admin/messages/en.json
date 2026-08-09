@@ -551,12 +551,19 @@
 			"title": "Route Configurations",
 			"filteredBy": "Filtered by: {summary}",
 			"allModelsRoutes": "All models and routes",
-			"newRoute": "New Route",
 			"densityGroupAria": "Route display density",
 			"densitySummary": "Summary",
 			"densityTopology": "Topology",
 			"densitySummaryHint": "Priority ladder with collapsed provider details",
-			"densityTopologyHint": "Full card flow for debugging provider wiring"
+			"densityTopologyHint": "Full card flow for debugging provider wiring",
+			"stickyRefreshLabel": "Sticky data auto-refresh",
+			"stickyRefreshOff": "Auto-refresh off",
+			"stickyRefresh1m": "Every 1 min",
+			"stickyRefresh5m": "Every 5 min",
+			"stickyRefresh10m": "Every 10 min",
+			"stickyRefreshNow": "Refresh sticky",
+			"stickyRefreshEmptyHint": "No sticky-enabled pools on this page",
+			"stickyRefreshUpdatedAgo": "Updated {ago} ago"
 		},
 		"flow": {
 			"overviewTitle": "Request processing flow",

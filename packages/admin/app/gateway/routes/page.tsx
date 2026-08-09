@@ -15,6 +15,11 @@ import { ProviderStickyDialog } from './components/provider-sticky-dialog';
 import { RoutePolicyDialog } from './components/route-policy-dialog';
 import { RouteVendorGroup } from './components/route-vendor-group';
 import { RouteWorkspaceHeader } from './components/route-workspace-header';
+import {
+	readStickyRefreshInterval,
+	subscribeStickyRefreshInterval,
+} from './sticky-refresh-preference';
+import { StickySummaryProvider, useStickyRefreshControls } from './sticky-summary-store';
 import type { RouteFlowDensity } from './types';
 
 const FLOW_DENSITY_STORAGE_KEY = 'octafuse.admin.routes.flowDensity';
@@ -43,10 +48,16 @@ function RoutesContent() {
 	const t = useTranslations('routes');
 	const tCommon = useTranslations('common');
 	const state = useRoutesPageState();
+	const { invalidate } = useStickyRefreshControls();
 	const flowDensity = useSyncExternalStore(
 		subscribeFlowDensity,
 		readStoredFlowDensity,
 		() => 'summary' as const
+	);
+	const stickyRefreshIntervalMs = useSyncExternalStore(
+		subscribeStickyRefreshInterval,
+		readStickyRefreshInterval,
+		() => 'off' as const
 	);
 
 	const handleFlowDensityChange = useCallback((density: RouteFlowDensity) => {
@@ -57,6 +68,12 @@ function RoutesContent() {
 		}
 		window.dispatchEvent(new Event(FLOW_DENSITY_EVENT));
 	}, []);
+
+	const handleSaveProviderSticky = useCallback(async () => {
+		const poolId = state.stickyDialog?.poolId;
+		await state.handleSaveProviderSticky();
+		if (poolId) void invalidate(poolId);
+	}, [invalidate, state.handleSaveProviderSticky, state.stickyDialog?.poolId]);
 
 	if (state.isLoading) {
 		return (
@@ -107,7 +124,7 @@ function RoutesContent() {
 							activeFilterSummary={state.activeFilterSummary}
 							density={flowDensity}
 							onDensityChange={handleFlowDensityChange}
-							onCreate={() => state.handleCreate()}
+							stickyRefreshIntervalMs={stickyRefreshIntervalMs}
 						/>
 
 						<div className="bg-slate-100/70 p-4 sm:p-6">
@@ -240,10 +257,24 @@ function RoutesContent() {
 					saving={state.stickySaving}
 					onClose={state.closeStickyDialog}
 					onFormChange={state.setStickyForm}
-					onSave={() => void state.handleSaveProviderSticky()}
+					onSave={() => void handleSaveProviderSticky()}
 				/>
 			)}
 		</div>
+	);
+}
+
+function RoutesPageWithStickyStore() {
+	const stickyRefreshIntervalMs = useSyncExternalStore(
+		subscribeStickyRefreshInterval,
+		readStickyRefreshInterval,
+		() => 'off' as const
+	);
+
+	return (
+		<StickySummaryProvider intervalMs={stickyRefreshIntervalMs}>
+			<RoutesContent />
+		</StickySummaryProvider>
 	);
 }
 
@@ -258,7 +289,7 @@ export default function GatewayRoutesPage() {
 				</div>
 			}
 		>
-			<RoutesContent />
+			<RoutesPageWithStickyStore />
 		</Suspense>
 	);
 }

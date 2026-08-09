@@ -13,6 +13,7 @@ import {
 	lookupStickyBinding,
 	resetStickyBindings,
 } from '../route-api';
+import { useStickyRefreshControls } from '../sticky-summary-store';
 import type {
 	ProviderStickyDialogState,
 	ProviderStickyFormState,
@@ -39,6 +40,7 @@ export function ProviderStickyDialog(props: Props) {
 	const { dialog, form, error, saving, onClose, onFormChange, onSave, onBindingsChanged } = props;
 	const t = useTranslations('routes.providerSticky');
 	const tCommon = useTranslations('common');
+	const { invalidate } = useStickyRefreshControls();
 	const canSave = Boolean(dialog.poolId);
 	const ttlOutOfRange =
 		!Number.isFinite(form.idleTtlSeconds) ||
@@ -151,6 +153,7 @@ export function ProviderStickyDialog(props: Props) {
 			setActionMessage(result.cleared ? t('clearDone') : t('clearMiss'));
 			setLookup((prev) => (prev ? { ...prev, binding: null } : prev));
 			await refreshSummary();
+			await invalidate(dialog.poolId);
 			onBindingsChanged?.();
 		} finally {
 			setActionBusy(false);
@@ -171,6 +174,7 @@ export function ProviderStickyDialog(props: Props) {
 			setActionMessage(t('resetDone', { epoch: result.sticky_epoch }));
 			setLookup((prev) => (prev ? { ...prev, binding: null } : prev));
 			await refreshSummary();
+			await invalidate(dialog.poolId);
 			onBindingsChanged?.();
 		} finally {
 			setActionBusy(false);

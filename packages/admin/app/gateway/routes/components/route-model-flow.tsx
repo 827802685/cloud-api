@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 import {
 	ArrowDownIcon,
 	ArrowLongRightIcon,
@@ -25,7 +25,7 @@ import {
 } from '@/lib/pricing-ui';
 import type { GatewayModel, GatewayProvider } from '@/lib/types';
 import { tagBadgeClass } from '../../models/model-utils';
-import { fetchStickyBindingsSummary } from '../route-api';
+import { useStickySummary } from '../sticky-summary-store';
 import type { RouteModelGroup } from '../route-utils';
 import {
 	compareRoutesWithinPriorityLayer,
@@ -791,10 +791,6 @@ function FlowBranch({
 }) {
 	const t = useTranslations('routes.flow');
 	const [failoverOpen, setFailoverOpen] = useState(false);
-	const [stickySummary, setStickySummary] = useState<{
-		poolId: string;
-		counts: Map<string, number>;
-	} | null>(null);
 	const priorityLayers = [...section.routes.reduce((map, route) => {
 		const layer = map.get(route.priority) ?? [];
 		layer.push(route);
@@ -809,32 +805,13 @@ function FlowBranch({
 	/** Explicit user overrides; missing keys mean "default" (highest priority expanded). */
 	const [tierExpandOverrides, setTierExpandOverrides] = useState<Record<number, boolean>>({});
 	const stickyPoolId = section.poolStickyEnabled ? section.poolId : null;
-
-	useEffect(() => {
-		if (!stickyPoolId) return;
-		let cancelled = false;
-		void fetchStickyBindingsSummary(stickyPoolId).then((result) => {
-			if (cancelled) return;
-			if (!result.success) {
-				setStickySummary({ poolId: stickyPoolId, counts: new Map() });
-				return;
-			}
-			setStickySummary({
-				poolId: stickyPoolId,
-				counts: new Map(
-					result.data.targets.map((row) => [row.route_target_id, row.active_count])
-				),
-			});
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [stickyPoolId]);
-
-	const stickyCountsByTarget =
-		stickyPoolId && stickySummary?.poolId === stickyPoolId
-			? stickySummary.counts
-			: EMPTY_STICKY_COUNTS;
+	const stickySummary = useStickySummary(stickyPoolId);
+	const stickyCountsByTarget = useMemo(() => {
+		if (!stickyPoolId || !stickySummary) return EMPTY_STICKY_COUNTS;
+		return new Map(
+			stickySummary.targets.map((row) => [row.route_target_id, row.active_count])
+		);
+	}, [stickyPoolId, stickySummary]);
 
 	const isTierExpanded = (priority: number) => {
 		if (density !== 'summary') return true;

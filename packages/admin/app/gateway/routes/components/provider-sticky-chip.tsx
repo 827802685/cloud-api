@@ -2,8 +2,7 @@
 
 import { formatStickyIdleTtlShort } from '@octafuse/core/db/route-pool-sticky-types';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
-import { fetchStickyBindingsSummary } from '../route-api';
+import { useStickySummary } from '../sticky-summary-store';
 
 type Props = {
 	enabled: boolean;
@@ -17,23 +16,8 @@ export function ProviderStickyChip(props: Props) {
 	const { enabled, idleTtlSeconds, poolId, disabled, onClick } = props;
 	const t = useTranslations('routes.providerSticky');
 	const ttl = formatStickyIdleTtlShort(idleTtlSeconds);
-	const [activeCount, setActiveCount] = useState<number | null>(null);
-
-	useEffect(() => {
-		if (!enabled || !poolId) {
-			setActiveCount(null);
-			return;
-		}
-		let cancelled = false;
-		void fetchStickyBindingsSummary(poolId).then((result) => {
-			if (cancelled) return;
-			if (result.success) setActiveCount(result.data.total_active);
-			else setActiveCount(null);
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [enabled, poolId]);
+	const summary = useStickySummary(enabled ? poolId : null);
+	const activeCount = summary?.total_active ?? null;
 
 	const label =
 		enabled && activeCount != null

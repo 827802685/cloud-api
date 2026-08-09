@@ -1,34 +1,39 @@
 'use client';
 
-import { PlusIcon, Squares2X2Icon, QueueListIcon } from '@heroicons/react/24/outline';
+import { Squares2X2Icon, QueueListIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import type { StickyRefreshIntervalMs } from '../sticky-refresh-preference';
 import type { RouteFlowDensity } from '../types';
+import { StickyRefreshControl } from './sticky-refresh-control';
 
 type Props = {
 	activeFilterSummary: string[];
 	density: RouteFlowDensity;
 	onDensityChange: (density: RouteFlowDensity) => void;
-	onCreate: () => void;
+	stickyRefreshIntervalMs: StickyRefreshIntervalMs;
 };
 
 export function RouteWorkspaceHeader(props: Props) {
-	const { activeFilterSummary, density, onDensityChange, onCreate } = props;
+	const { activeFilterSummary, density, onDensityChange, stickyRefreshIntervalMs } = props;
 	const t = useTranslations('routes.workspace');
 
 	return (
 		<div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
-			<div className="min-w-0">
-				<h2 className="text-base font-semibold text-gray-900">{t('title')}</h2>
-				{activeFilterSummary.length > 0 ? (
-					<p
-						className="mt-0.5 truncate text-xs text-gray-500"
-						title={activeFilterSummary.join(' · ')}
-					>
-						{t('filteredBy', { summary: activeFilterSummary.join(' · ') })}
-					</p>
-				) : (
-					<p className="mt-0.5 text-xs text-gray-500">{t('allModelsRoutes')}</p>
-				)}
+			<div className="flex min-w-0 flex-wrap items-center gap-3">
+				<div className="min-w-0">
+					<h2 className="text-base font-semibold text-gray-900">{t('title')}</h2>
+					{activeFilterSummary.length > 0 ? (
+						<p
+							className="mt-0.5 truncate text-xs text-gray-500"
+							title={activeFilterSummary.join(' · ')}
+						>
+							{t('filteredBy', { summary: activeFilterSummary.join(' · ') })}
+						</p>
+					) : (
+						<p className="mt-0.5 text-xs text-gray-500">{t('allModelsRoutes')}</p>
+					)}
+				</div>
+				<StickyRefreshControl intervalMs={stickyRefreshIntervalMs} />
 			</div>
 			<div className="flex shrink-0 flex-wrap items-center gap-2">
 				<div
@@ -65,14 +70,6 @@ export function RouteWorkspaceHeader(props: Props) {
 						{t('densityTopology')}
 					</button>
 				</div>
-				<button
-					type="button"
-					onClick={onCreate}
-					className="flex shrink-0 items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-				>
-					<PlusIcon className="h-5 w-5" />
-					{t('newRoute')}
-				</button>
 			</div>
 		</div>
 	);
