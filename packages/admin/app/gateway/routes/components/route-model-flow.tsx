@@ -10,6 +10,7 @@ import {
 	PencilSquareIcon,
 	PlusIcon,
 	PowerIcon,
+	UsersIcon,
 } from '@heroicons/react/24/outline';
 import {
 	isAudioTranscriptionModel,
@@ -182,46 +183,50 @@ function RouteTarget({
 			}`}
 		>
 			<div className="flex items-start gap-2 p-2.5">
-				<div className="flex w-5 shrink-0 flex-col items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => onToggleStatus(route)}
-						disabled={togglingId === route.id}
-						className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
-							enabled
-								? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700'
-								: 'bg-red-500 text-white ring-red-500 hover:bg-red-600'
-						}`}
-						title={enabled ? tList('routeEnabled') : tList('routeDisabled')}
-						aria-label={enabled ? tList('routeEnabled') : tList('routeDisabled')}
-					>
-						<PowerIcon className="h-2.5 w-2.5" />
-					</button>
-					{stickyBindingCount > 0 ? (
-						<span
-							className="text-[9px] font-semibold tabular-nums leading-none text-emerald-700"
-							title={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
-							aria-label={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
-						>
-							{stickyBindingCount}
-						</span>
-					) : null}
-				</div>
 				<button
 					type="button"
-					onClick={() => onEdit(route)}
-					className="min-w-0 flex-1 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-					title={t('editRoute')}
+					onClick={() => onToggleStatus(route)}
+					disabled={togglingId === route.id}
+					className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-50 ${
+						enabled
+							? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700'
+							: 'bg-red-500 text-white ring-red-500 hover:bg-red-600'
+					}`}
+					title={enabled ? tList('routeEnabled') : tList('routeDisabled')}
+					aria-label={enabled ? tList('routeEnabled') : tList('routeDisabled')}
 				>
-					<div className="flex min-w-0 items-center gap-2">
-						<span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-gray-900">
-							{route.provider_name || provider?.name || route.provider_id}
-						</span>
-					</div>
-					<p className="mt-0.5 truncate font-mono text-[10px] text-gray-500" title={route.provider_model_name}>
-						{route.provider_model_name}
-					</p>
+					<PowerIcon className="h-2.5 w-2.5" />
 				</button>
+				<div className="min-w-0 flex-1">
+					<div className="flex min-w-0 items-center gap-1.5">
+						<button
+							type="button"
+							onClick={() => onEdit(route)}
+							className="min-w-0 flex-1 truncate rounded text-left text-[11px] font-semibold text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							title={t('editRoute')}
+						>
+							{route.provider_name || provider?.name || route.provider_id}
+						</button>
+						{stickyBindingCount > 0 ? (
+							<span
+								className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700 ring-1 ring-inset ring-indigo-200"
+								title={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
+								aria-label={t('stickyBoundUsersTooltip', { count: stickyBindingCount })}
+							>
+								<UsersIcon className="h-3 w-3 shrink-0" aria-hidden />
+								<span>{stickyBindingCount}</span>
+							</span>
+						) : null}
+					</div>
+					<button
+						type="button"
+						onClick={() => onEdit(route)}
+						className="mt-0.5 block w-full min-w-0 truncate rounded text-left font-mono text-[10px] text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+						title={t('editRoute')}
+					>
+						<span title={route.provider_model_name}>{route.provider_model_name}</span>
+					</button>
+				</div>
 			</div>
 			<div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t bg-white/55 px-2.5 py-1.5 ${
 				enabled ? 'border-emerald-200' : 'border-red-200'
@@ -332,14 +337,6 @@ function UpstreamToolbar({
 				<span className="max-w-full truncate rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
 					{t('routeGroup')} · {routeGroup}
 				</span>
-				<button
-					type="button"
-					onClick={onAdd}
-					className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-				>
-					<PlusIcon className="h-3 w-3" />
-					{t('addProvider')}
-				</button>
 			</div>
 			<div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
 				<ProviderStickyChip
@@ -348,6 +345,14 @@ function UpstreamToolbar({
 					poolId={poolId}
 					onClick={onOpenSticky}
 				/>
+				<button
+					type="button"
+					onClick={onAdd}
+					className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-semibold text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+				>
+					<PlusIcon className="h-3 w-3" />
+					{t('addProvider')}
+				</button>
 			</div>
 		</div>
 	);
