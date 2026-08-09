@@ -651,7 +651,7 @@
 			"modelTagTitle": "모델 태그: {tag}",
 			"copied": "복사됨",
 			"newRouteFor": "{title}의 새 Route",
-			"activeTotalRoutes": "활성 {active}개 / 전체 Route {total}개",
+			"activeTotalRoutes": "활성 {active}개 / 전체 {total}개",
 			"noRoutesYet": "아직 Route가 없습니다",
 			"clickToAdd": "+를 클릭하여 첫 Route를 추가하세요"
 		},
@@ -860,6 +860,8 @@
 		},
 		"providerSticky": {
 			"title": "Provider 스티키",
+			"chipLabel": "스티키",
+			"chipOffState": "끔",
 			"chipOff": "스티키 · 끔",
 			"chipOn": "스티키 · {ttl}",
 			"chipOnWithCount": "스티키 · {ttl} · {count}",

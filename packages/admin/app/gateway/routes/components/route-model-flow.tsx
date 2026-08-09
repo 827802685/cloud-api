@@ -351,8 +351,10 @@ function UpstreamToolbar({
 							? 'text-sky-800 ring-sky-200'
 							: 'text-violet-800 ring-violet-200'
 					}`}
+					title={t('routeGroup')}
+					aria-label={`${t('routeGroup')}: ${routeGroup}`}
 				>
-					{t('routeGroup')} · {routeGroup}
+					{routeGroup}
 				</span>
 			</div>
 			<div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
@@ -1091,7 +1093,7 @@ export function RouteModelFlow(props: Props) {
 
 	return (
 		<article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-			<header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-2.5 sm:px-5">
+			<header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 bg-white px-4 py-2.5 sm:px-5">
 				<div className="min-w-0 flex-1">
 					<div className="flex min-w-0 flex-wrap items-center gap-2">
 						<button
@@ -1131,10 +1133,7 @@ export function RouteModelFlow(props: Props) {
 						)) : <span className="text-[10px] text-gray-400">{tModelsCard('noTags')}</span>}
 					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${card.activeCount > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-700 ring-red-200'}`}>
-						{t('activeTotalRoutes', { active: card.activeCount, total: card.groupRoutes.length })}
-					</span>
+				<div className="flex shrink-0 flex-col items-end gap-1">
 					<button
 						type="button"
 						onClick={() => onCreate(card.model_id)}
@@ -1143,6 +1142,9 @@ export function RouteModelFlow(props: Props) {
 						<PlusIcon className="h-3.5 w-3.5" />
 						{tFlow('addRoute')}
 					</button>
+					<span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${card.activeCount > 0 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-700 ring-red-200'}`}>
+						{t('activeTotalRoutes', { active: card.activeCount, total: card.groupRoutes.length })}
+					</span>
 				</div>
 			</header>
 

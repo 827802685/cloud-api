@@ -651,7 +651,7 @@
 			"modelTagTitle": "模型标签：{tag}",
 			"copied": "已复制",
 			"newRouteFor": "为 {title} 新建路由",
-			"activeTotalRoutes": "{active} 条活跃 / 共 {total} 条路由",
+			"activeTotalRoutes": "{active} 条活跃 / 共 {total} 条",
 			"noRoutesYet": "暂无路由",
 			"clickToAdd": "点击 + 添加第一条路由"
 		},
@@ -860,6 +860,8 @@
 		},
 		"providerSticky": {
 			"title": "Provider 粘性",
+			"chipLabel": "粘性",
+			"chipOffState": "关闭",
 			"chipOff": "粘性 · 关闭",
 			"chipOn": "粘性 · {ttl}",
 			"chipOnWithCount": "粘性 · {ttl} · {count}",

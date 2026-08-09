@@ -651,7 +651,7 @@
 			"modelTagTitle": "Model tag: {tag}",
 			"copied": "Copied",
 			"newRouteFor": "New route for {title}",
-			"activeTotalRoutes": "{active} active / {total} total routes",
+			"activeTotalRoutes": "{active} active / {total} total",
 			"noRoutesYet": "No routes yet",
 			"clickToAdd": "Click + to add the first route"
 		},
@@ -860,6 +860,8 @@
 		},
 		"providerSticky": {
 			"title": "Provider sticky",
+			"chipLabel": "Sticky",
+			"chipOffState": "Off",
 			"chipOff": "Sticky · Off",
 			"chipOn": "Sticky · {ttl}",
 			"chipOnWithCount": "Sticky · {ttl} · {count}",

@@ -651,7 +651,7 @@
 			"modelTagTitle": "モデルタグ：{tag}",
 			"copied": "コピーしました",
 			"newRouteFor": "{title} の新しい Route",
-			"activeTotalRoutes": "有効 {active} 件 / 全 {total} Routes",
+			"activeTotalRoutes": "有効 {active} 件 / 全 {total} 件",
 			"noRoutesYet": "Route はまだありません",
 			"clickToAdd": "+ をクリックして最初の Route を追加"
 		},
@@ -860,6 +860,8 @@
 		},
 		"providerSticky": {
 			"title": "Provider スティッキー",
+			"chipLabel": "スティッキー",
+			"chipOffState": "オフ",
 			"chipOff": "スティッキー · オフ",
 			"chipOn": "スティッキー · {ttl}",
 			"chipOnWithCount": "スティッキー · {ttl} · {count}",
