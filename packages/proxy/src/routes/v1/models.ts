@@ -104,6 +104,32 @@ modelsRoutes.get('/', async (c) => {
 	const kind = parseModelsKindQuery(c.req.query('kind'));
 
 	const list: ModelResponse[] = [];
+
+	// 添加虚拟 "auto" 模型到列表头部（仅 LLM 模式）
+	if (kind === 'llm' || kind === 'all') {
+		list.push({
+			id: 'auto',
+			object: 'model',
+			owned_by: 'octafuse',
+			model_info: {
+				display_name: 'Auto (智能路由)',
+				vendor: 'octafuse',
+				tags: ['auto', 'smart-routing'],
+				route_groups: ['default'],
+				context_window: null,
+				max_tokens: null,
+				pricing_profile: null,
+				input_price: null,
+				output_price: null,
+				description: '自动选择最佳可用模型，支持 auto:vendor 语法指定偏好厂商',
+				input_modalities: ['text', 'image'],
+				output_modalities: ['text'],
+				released_at: null,
+				metadata: { is_virtual: true },
+			},
+		});
+	}
+
 	for (const m of models) {
 		const kindFields = {
 			output_modalities: m.output_modalities,

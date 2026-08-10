@@ -116,7 +116,7 @@ chatRoutes.post('/', async (c) => {
       message: 'Model not found',
     });
   }
-  const { model, baseModelId, explicitGroup } = resolved;
+  const { model, baseModelId, explicitGroup, isAutoSelected } = resolved;
   const effectiveRouteGroup = explicitGroup?.trim() || 'default';
 
   if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
@@ -162,7 +162,7 @@ chatRoutes.post('/', async (c) => {
   }
 
   console.log(
-    `[Gateway Chat] forwarding baseModelId=${baseModelId} clientModel=${rawModelId} providerIds=${routes.map((r) => r.providerId).join(',')} keyId=${apiKey.keyId}`
+    `[Gateway Chat] forwarding baseModelId=${baseModelId} clientModel=${rawModelId}${isAutoSelected ? ' (auto-selected)' : ''} providerIds=${routes.map((r) => r.providerId).join(',')} keyId=${apiKey.keyId}`
   );
 
   const modelNameForLog =
@@ -332,5 +332,19 @@ chatRoutes.post('/', async (c) => {
       })
   );
 
-  return response;
+  // 添加聚合路由响应头
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.set('X-Routed-Via', `${chosenRoute.providerName}/${chosenRoute.providerModelName}`);
+  if (proxyResult.attemptCount > 1) {
+    responseHeaders.set('X-Fallback-Attempts', String(proxyResult.attemptCount - 1));
+  }
+  if (isAutoSelected) {
+    responseHeaders.set('X-Auto-Model', baseModelId);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  });
 });

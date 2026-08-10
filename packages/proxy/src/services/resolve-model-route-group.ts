@@ -1,7 +1,9 @@
 /**
  * 解析请求体里的 `model` 字符串：`baseId` 与可选后缀 `baseId:route_group`（显式指定计费通道）。
+ * 支持 `auto` 和 `auto:vendor` 语法，自动选择最佳可用模型。
  */
 import type { GatewayRepositories, ModelRow } from '@octafuse/core';
+import { selectAutoModel } from './auto-model-selector';
 
 export interface ResolvedModelRouting {
   model: ModelRow;
@@ -9,11 +11,14 @@ export interface ResolvedModelRouting {
   baseModelId: string;
   /** 仅来自 `baseId:group` 后缀；为 null 时选路使用 **`default`** 路由组 */
   explicitGroup: string | null;
+  /** 是否为 auto 选择（用于日志和响应头） */
+  isAutoSelected?: boolean;
 }
 
 /**
  * 将 OpenAI 风格 `model`（及 Gemini 路径中的模型段）解析为库中行 + 可选 route_group。
  * 整串命中 id → explicitGroup 为 null；否则按最后一个 `:` 切分，前缀为模型 id、后缀为显式路由组。
+ * 支持 `auto` 和 `auto:vendor` 语法自动选择最佳模型。
  * @param repos 网关仓储
  * @param rawModelId 客户端传入的 model 字符串（可含前后空格，内部 trim）
  * @returns 无法匹配任一模型 id 时 `null`
@@ -25,6 +30,22 @@ export async function resolveModelRouting(
   const t = rawModelId.trim();
   if (!t) {
     return null;
+  }
+
+  // 处理 auto 模型选择
+  if (t === 'auto' || t.startsWith('auto:')) {
+    const preferredVendor = t.includes(':') ? t.slice(5).trim() : undefined;
+    const selected = await selectAutoModel(repos, preferredVendor || undefined);
+    if (!selected) {
+      console.warn('[AutoModel] no available models found');
+      return null;
+    }
+    return {
+      model: selected.model,
+      baseModelId: selected.modelId,
+      explicitGroup: null,
+      isAutoSelected: true,
+    };
   }
 
   const direct = await repos.modelRouting.getModelById(t);

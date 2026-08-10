@@ -65,10 +65,15 @@ export interface ProxyResult {
 	suppressErrorAlert: boolean;
 	/** Images 等协议透传已解析字段，避免 route 侧重复 parse */
 	meta?: ProxyDispatchMeta;
-	/** Sticky routing observation for `route_trace` */
-	stickyTrace?: StickyTraceSnapshot;
+	/**
+	 * Lazy sticky observation for `route_trace`.
+	 * Await inside request-log background work so CAS outcomes are visible.
+	 */
+	stickyTrace?: (() => Promise<StickyTraceSnapshot>) | undefined;
 	/** Background bind/touch mutations (schedule via waitUntil) */
 	stickyMutationPromise?: Promise<unknown> | null;
+	/** 本次请求总共尝试了多少个 provider（含成功的那个） */
+	attemptCount: number;
 }
 
 /** 无用量或解析失败时的零值占位（避免 undefined 传播）。 */

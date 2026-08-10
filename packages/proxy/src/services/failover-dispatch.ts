@@ -39,6 +39,7 @@ import {
 	type StickySession,
 	type StickyTraceSnapshot,
 } from './provider-sticky-routing';
+import { recordProviderRequest, recordRateLimitEvent, recordProviderSuccess } from './provider-rate-tracker';
 
 /** Opportunistic hygiene: ~1/500 sticky-enabled requests purge expired rows. */
 const STICKY_STALE_GC_PROBABILITY = 1 / 500;
@@ -108,6 +109,8 @@ export type ProxyFailoverResult = {
 	stickyTrace?: (() => Promise<StickyTraceSnapshot>) | undefined;
 	/** Background bind/touch mutations (schedule via waitUntil) */
 	stickyMutationPromise?: Promise<unknown> | null;
+	/** 本次请求总共尝试了多少个 provider（含成功的那个） */
+	attemptCount: number;
 };
 
 export type FailoverDispatchOptions = {
@@ -218,6 +221,7 @@ export async function failoverDispatch(
 			chosenRoute: emptyRoute(expectedProtocol),
 			circuitEvents: [],
 			suppressErrorAlert: false,
+			attemptCount: 0,
 		};
 	}
 
@@ -260,6 +264,7 @@ export async function failoverDispatch(
 			chosenRoute: protocolRoutes[0]!,
 			circuitEvents: [],
 			suppressErrorAlert: allProvidersBusyDueToCircuitOnly(plan),
+			attemptCount: 0,
 			stickyTrace: () => resolveStickyTrace(stickySession),
 			stickyMutationPromise: stickyMutationPromise(stickySession),
 		};
@@ -269,9 +274,14 @@ export async function failoverDispatch(
 	let lastRoute: RouteResult = protocolRoutes[0]!;
 	let lastTimingAttempt: RequestTimingAttempt | undefined;
 	let stickyAttemptCleared = false;
+	let attemptCount = 0;
 
-	const finish = (result: ProxyFailoverResult): ProxyFailoverResult => ({
+	/** finish() 的输入类型：不含 attemptCount/stickyTrace/stickyMutationPromise（由 finish 补充） */
+	type FinishInput = Omit<ProxyFailoverResult, 'attemptCount' | 'stickyTrace' | 'stickyMutationPromise'>;
+
+	const finish = (result: FinishInput): ProxyFailoverResult => ({
 		...result,
+		attemptCount,
 		stickyTrace: () => resolveStickyTrace(stickySession),
 		stickyMutationPromise: stickyMutationPromise(stickySession),
 	});
@@ -288,11 +298,12 @@ export async function failoverDispatch(
 			continue;
 		}
 
+		attemptCount += 1;
 		const timingAttempt = timing?.startAttempt(route);
 		lastTimingAttempt = timingAttempt;
 		const hasNextAttempt = attemptIndex < attempts.length - 1;
 		console.log(
-			`[Gateway Proxy] calling provider providerId=${route.providerId} model=${route.providerModelName}${isStickyAttempt ? ' sticky=1' : ''}`
+			`[Gateway Proxy] calling provider providerId=${route.providerId} model=${route.providerModelName}${isStickyAttempt ? ' sticky=1' : ''} attempt=${attemptCount}`
 		);
 
 		let response: Response;
@@ -339,6 +350,8 @@ export async function failoverDispatch(
 		if (response.ok) {
 			timing?.markFinalAttempt(timingAttempt);
 			markProviderSuccess(route.providerId);
+			recordProviderSuccess(route.providerId);
+			recordProviderRequest(route.providerId);
 			if (stickySession) {
 				if (isStickyAttempt && stickySession.bindingToken) {
 					scheduleStickyTouchIfNeeded(repos, stickySession);
@@ -401,6 +414,10 @@ export async function failoverDispatch(
 					? parseRetryAfterMs(response.headers.get('retry-after'))
 					: null
 			);
+			// 记录速率限制事件到 rate tracker
+			if (classification.failureKind === 'rate_limit') {
+				recordRateLimitEvent(route.providerId);
+			}
 			if (circuitResult.openedOrExtended) {
 				circuitEvents.push({
 					kind: 'provider',
