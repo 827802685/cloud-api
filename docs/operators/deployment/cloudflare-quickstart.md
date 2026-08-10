@@ -514,7 +514,19 @@ GATEWAY_MASTER_URL=https://admin.example.com
 
 ## 12. 后续升级
 
-升级前先备份重要配置并阅读 Changelog：
+### 方式一：GitHub Actions 自动部署（推荐）
+
+本仓库已配置 GitHub Actions 自动部署，**直接 push 到 `main` 即可**：
+
+- **后端（Proxy Worker）**：push 后自动触发 `.github/workflows/deploy-proxy.yml`
+- **D1 迁移**：push 后如果 `packages/core/migrations-d1/` 有变更，自动触发 `deploy-migrations.yml`
+- **前端（Admin Worker）**：通过 Cloudflare Connect to Git 自动构建
+
+查看部署状态：GitHub 仓库 → Actions 页面。
+
+### 方式二：本地 CLI 手动部署
+
+仅在 GitHub Actions 不可用或紧急情况下使用：
 
 ```bash
 git pull --ff-only
@@ -540,7 +552,7 @@ npm run deploy:cloudflare -- production --proxy-only
 npm run deploy:cloudflare -- production --admin-only
 ```
 
-推荐顺序是**先迁移，后部署依赖新 schema 的 Worker**。D1 migration 不会因为 Worker 重新部署而自动执行。
+推荐顺序是**先迁移，后部署依赖新 schema 的 Worker**。
 
 ---
 

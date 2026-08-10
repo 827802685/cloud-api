@@ -10,6 +10,51 @@
 
 ---
 
+## ⚠️ 本项目实际部署流程（必读）
+
+本仓库采用 **GitHub Actions + Cloudflare Connect to Git** 混合部署模式：
+
+| 组件 | 部署方式 | 触发机制 |
+|------|----------|----------|
+| **后端 Proxy Worker** | **GitHub Actions**（`.github/workflows/deploy-proxy.yml`） | `git push` 到 `main`，且 `packages/proxy/**` 或 `packages/core/**` 有变更 |
+| **D1 数据库迁移** | **GitHub Actions**（`.github/workflows/deploy-migrations.yml`） | `git push` 到 `main`，且 `packages/core/migrations-d1/**` 有变更 |
+| **前端 Admin Worker** | **Cloudflare Workers Builds**（Connect to Git） | Cloudflare Dashboard 绑定 Git 仓库后自动构建 |
+
+### GitHub Actions 配置要求
+
+**Secrets**（Settings → Secrets and variables → Actions）：
+
+| Secret | 说明 |
+|--------|------|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token（用于部署 Worker 和执行 D1 迁移） |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID |
+
+**Variables**（Settings → Secrets and variables → Actions → Variables）：
+
+| Variable | 示例值 | 说明 |
+|----------|--------|------|
+| `PROXY_WORKER_NAME` | `cloud-api-proxy` | 代理服务 Worker 名称 |
+| `ADMIN_WORKER_NAME` | `cloud-api-admin` | 管理后台 Worker 名称 |
+| `D1_DATABASE_NAME` | `cloud-api` | D1 数据库逻辑名 |
+| `D1_DATABASE_ID` | `3de00849-xxxx` | D1 数据库 UUID |
+| `D1_MIGRATIONS_WORKER_NAME` | `cloud-api-d1-migrations` | 迁移配置名（不创建实际 Worker） |
+
+### 日常操作流程
+
+1. **修改代码后**：直接 `git push` 到 `main`，GitHub Actions 自动部署后端和迁移
+2. **前端更新**：通过 Cloudflare Dashboard Connect to Git 自动构建部署
+3. **新增数据库迁移**：将 SQL 文件放入 `packages/core/migrations-d1/`，push 后自动执行
+4. **查看部署状态**：GitHub 仓库 → Actions 页面查看工作流执行情况
+
+### 注意事项
+
+- **不要**手动在本地执行 `npm run deploy:proxy` 来部署后端，应通过 GitHub Actions 自动部署
+- **不要**将 `D1_DATABASE_ID` 提交到 Git，它只应存在于 GitHub Variables 和 Cloudflare Build variables 中
+- 迁移文件必须是幂等的（使用 `IF NOT EXISTS` 等），因为 D1 不支持 `ALTER TABLE ADD COLUMN IF NOT EXISTS`
+- Admin Worker 的 `ADMIN_PASSWORD` 通过 Cloudflare Worker Secrets 管理：`npx wrangler secret put ADMIN_PASSWORD --name <admin-worker-name>`
+
+---
+
 ## 0. 配置模型（必读）
 
 | 文件 | 角色 |
@@ -179,10 +224,15 @@ npx wrangler d1 list
 
 ## 6. 迁移与发布顺序
 
-1. 有待执行迁移：`npx dotenv -e ./cloudflare-worker/<x>.env -- npm run db:migrate:remote`
-2. `git push`（Workers Builds）或本地 `deploy:proxy` / `deploy:admin`
+**本项目已通过 GitHub Actions 自动执行迁移**：push 到 `main` 时，如果 `packages/core/migrations-d1/` 有变更，`deploy-migrations.yml` 会自动应用新迁移。
 
-先迁移、再发依赖新 schema 的 Worker。
+手动迁移（仅在 GitHub Actions 不可用或紧急情况下使用）：
+
+```bash
+npx dotenv -e ./cloudflare-worker/<x>.env -- npm run db:migrate:remote
+```
+
+先迁移、再发依赖新 schema 的 Worker。迁移文件必须幂等（见注意事项）。
 
 ---
 
