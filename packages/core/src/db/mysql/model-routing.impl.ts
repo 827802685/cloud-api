@@ -124,5 +124,41 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 				.orderBy(desc(myModelRoutesTable.priority));
 			return rows.map(mapMyModelRouteToRow);
 		},
+
+		async recoverExpiredDisabledRoutes(): Promise<number> {
+			const [result] = await pool.query(
+				`UPDATE model_routes SET status = 'active', disabled_at = NULL, consecutive_failures = 0 WHERE status = 'disabled' AND disabled_at IS NOT NULL AND disabled_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+			);
+			return (result as any)?.affectedRows ?? 0;
+		},
+
+		async recordRouteFailure(routeId: string): Promise<number> {
+			await pool.query(`UPDATE model_routes SET consecutive_failures = consecutive_failures + 1 WHERE id = ?`, [routeId]);
+			const [rows] = await pool.query(`SELECT consecutive_failures FROM model_routes WHERE id = ?`, [routeId]);
+			return Number((rows as any[])?.[0]?.consecutive_failures ?? 0);
+		},
+
+		async recordRouteSuccess(routeId: string): Promise<void> {
+			await pool.query(`UPDATE model_routes SET consecutive_failures = 0, disabled_at = NULL, status = 'active' WHERE id = ?`, [routeId]);
+		},
+
+		async autoDisableRoute(routeId: string): Promise<void> {
+			await pool.query(`UPDATE model_routes SET status = 'disabled', disabled_at = NOW() WHERE id = ?`, [routeId]);
+		},
+
+		async findProviderByVendor(vendor: string): Promise<string | null> {
+			const kw = vendor.toLowerCase().trim();
+			const [rows] = await pool.query(`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ? LIMIT 1`, [`%${kw}%`]);
+			return (rows as any[])?.[0]?.id ?? null;
+		},
+
+		async autoCreateRoute(modelId: string, providerId: string, providerModelName: string, upstreamProtocol: string): Promise<string> {
+			const routeId = crypto.randomUUID();
+			await pool.query(
+				`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, upstream_protocol, created_at, consecutive_failures) VALUES (?, ?, ?, ?, 0, 'active', 'default', 5, ?, NOW(), 0)`,
+				[routeId, modelId, providerId, providerModelName, upstreamProtocol]
+			);
+			return routeId;
+		},
 	};
 }

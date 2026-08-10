@@ -588,6 +588,12 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 	let userModelCircuitEvent = null;
 	if (response.ok) {
 		markUserModelSuccess(apiKey.userId, baseModelId);
+		// Track route success: reset consecutive failures
+		if (chosenRoute.targetId) {
+			scheduleBackgroundWork(c, repos.modelRouting.recordRouteSuccess(chosenRoute.targetId).catch((err) => {
+				console.warn('[RouteTrack] recordRouteSuccess failed:', err instanceof Error ? err.message : String(err));
+			}));
+		}
 	} else if (errorBodyText != null) {
 		userModelCircuitEvent = maybeTriggerUserModelCircuitFromUpstream(
 			apiKey.userId,
@@ -602,6 +608,20 @@ async function finalizeImageResponse(params: FinalizeImageParams): Promise<Respo
 			),
 			{ clientErrorCircuitEnabled: false }
 		);
+		// Track route failure: increment consecutive failures, auto-disable after 3
+		if (chosenRoute.targetId) {
+			scheduleBackgroundWork(c, (async () => {
+				try {
+					const failureCount = await repos.modelRouting.recordRouteFailure(chosenRoute.targetId);
+					if (failureCount >= 3) {
+						await repos.modelRouting.autoDisableRoute(chosenRoute.targetId);
+						console.warn(`[RouteTrack] route ${chosenRoute.targetId} disabled after ${failureCount} consecutive failures`);
+					}
+				} catch (err) {
+					console.warn('[RouteTrack] failure tracking failed:', err instanceof Error ? err.message : String(err));
+				}
+			})());
+		}
 	}
 	const alertCircuitEvents = userModelCircuitEvent
 		? [...circuitEvents, userModelCircuitEvent]

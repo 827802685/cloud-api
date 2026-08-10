@@ -137,6 +137,13 @@ export async function resolveRoutesForSurface(
 		requestOperation: string;
 	}
 ): Promise<SurfaceRouteResolution> {
+	// Auto-recovery: re-enable routes disabled > 24h ago (best-effort, non-blocking)
+	try {
+		await repos.modelRouting.recoverExpiredDisabledRoutes();
+	} catch (err) {
+		console.warn('[AutoRecovery] failed:', err instanceof Error ? err.message : String(err));
+	}
+
 	let surface: ResolvedModelSurfaceRow | null = null;
 	try {
 		surface = await repos.modelRouting.resolveModelSurface(params);
@@ -155,7 +162,7 @@ export async function resolveRoutesForSurface(
 				await repos.modelRouting.getModelRoutesByModelId(params.modelId),
 				params.routeGroup
 			);
-	const routes = (await resolveRouteResultsFromRows(repos, rows))
+	let routes = (await resolveRouteResultsFromRows(repos, rows))
 		.filter(
 			(route) =>
 				route.upstreamProtocol === params.requestProtocol &&
@@ -169,6 +176,48 @@ export async function resolveRoutesForSurface(
 				params.requestOperation
 			),
 		}));
+
+	// Auto-route creation: if no routes found, try to create one automatically
+	if (routes.length === 0) {
+		try {
+			const model = await repos.modelRouting.getModelById(params.modelId);
+			if (model) {
+				const vendor = model.vendor?.toLowerCase().trim() ?? '';
+				const providerId = await repos.modelRouting.findProviderByVendor(vendor);
+				if (providerId) {
+					const protocol = params.requestProtocol || 'openai';
+					await repos.modelRouting.autoCreateRoute(params.modelId, providerId, params.modelId, protocol);
+					console.log(`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol}`);
+					// Re-query routes after creation
+					const newRows = surface
+						? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)
+						: selectActiveRouteRows(
+								await repos.modelRouting.getModelRoutesByModelId(params.modelId),
+								params.routeGroup
+							);
+					routes = (await resolveRouteResultsFromRows(repos, newRows))
+						.filter(
+							(route) =>
+								route.upstreamProtocol === params.requestProtocol &&
+								route.adapter === 'passthrough'
+						)
+						.map((route) => ({
+							...route,
+							modelSurfaceId: surface?.id ?? null,
+							upstreamOperation: effectiveUpstreamOperation(
+								route.upstreamOperation,
+								params.requestOperation
+							),
+						}));
+				} else {
+					console.warn(`[AutoRoute] no active provider found for vendor=${vendor} model=${params.modelId}`);
+				}
+			}
+		} catch (err) {
+			console.warn('[AutoRoute] failed:', err instanceof Error ? err.message : String(err));
+		}
+	}
+
 	return { surface, routes };
 }
 

@@ -95,5 +95,116 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 				.all<ModelRouteRow>();
 			return rows.results ?? [];
 		},
+
+		async recoverExpiredDisabledRoutes(): Promise<number> {
+			const result = await raw
+				.prepare(
+					`UPDATE model_routes
+					 SET status = 'active',
+					     disabled_at = NULL,
+					     consecutive_failures = 0
+					 WHERE status = 'disabled'
+					   AND disabled_at IS NOT NULL
+					   AND disabled_at < datetime('now', '-24 hours')`
+				)
+				.run();
+			const recovered = result.meta.changes ?? 0;
+			if (recovered > 0) {
+				console.log(`[AutoRecovery] re-enabled ${recovered} route(s) disabled > 24h ago`);
+			}
+			return recovered;
+		},
+
+		async recordRouteFailure(routeId: string): Promise<number> {
+			const result = await raw
+				.prepare(
+					`UPDATE model_routes
+					 SET consecutive_failures = consecutive_failures + 1
+					 WHERE id = ?`
+				)
+				.bind(routeId)
+				.run();
+			if ((result.meta.changes ?? 0) === 0) return 0;
+			const row = await raw
+				.prepare('SELECT consecutive_failures FROM model_routes WHERE id = ?')
+				.bind(routeId)
+				.first<{ consecutive_failures: number }>();
+			return Number(row?.consecutive_failures ?? 0);
+		},
+
+		async recordRouteSuccess(routeId: string): Promise<void> {
+			await raw
+				.prepare(
+					`UPDATE model_routes
+					 SET consecutive_failures = 0,
+					     disabled_at = NULL,
+					     status = 'active'
+					 WHERE id = ?`
+				)
+				.bind(routeId)
+				.run();
+		},
+
+		async autoDisableRoute(routeId: string): Promise<void> {
+			await raw
+				.prepare(
+					`UPDATE model_routes
+					 SET status = 'disabled',
+					     disabled_at = datetime('now')
+					 WHERE id = ?`
+				)
+				.bind(routeId)
+				.run();
+			console.warn(`[AutoDisable] route ${routeId} disabled after 3+ consecutive failures`);
+		},
+
+		async findProviderByVendor(vendor: string): Promise<string | null> {
+			const v = vendor.toLowerCase().trim();
+			// Map common vendor names to provider name patterns
+			const patterns: Record<string, string[]> = {
+				nvidia: ['nvidia'],
+				google: ['google', 'gemini'],
+				cloudflare: ['cloudflare'],
+				openai: ['openai'],
+				anthropic: ['anthropic'],
+				mistral: ['mistral'],
+				cohere: ['cohere'],
+				deepseek: ['deepseek'],
+			};
+			const keywords = patterns[v] || [v];
+			for (const kw of keywords) {
+				const row = await raw
+					.prepare(
+						`SELECT id FROM providers
+						 WHERE status = 'active'
+						   AND api_key != ''
+						   AND lower(name) LIKE ?
+						 LIMIT 1`
+					)
+					.bind(`%${kw}%`)
+					.first<{ id: string }>();
+				if (row) return row.id;
+			}
+			return null;
+		},
+
+		async autoCreateRoute(
+			modelId: string,
+			providerId: string,
+			providerModelName: string,
+			upstreamProtocol: string
+		): Promise<string> {
+			const routeId = crypto.randomUUID();
+			await raw
+				.prepare(
+					`INSERT INTO model_routes
+					 (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, upstream_protocol, created_at, consecutive_failures)
+					 VALUES (?, ?, ?, ?, 0, 'active', 'default', 5, ?, datetime('now'), 0)`
+				)
+				.bind(routeId, modelId, providerId, providerModelName, upstreamProtocol)
+				.run();
+			console.log(`[AutoRoute] created route ${routeId} for model ${modelId} → provider ${providerId}`);
+			return routeId;
+		},
 	};
 }

@@ -175,6 +175,18 @@ export interface ModelRoutingRepository {
 		requestOperation: string;
 	}): Promise<ResolvedModelSurfaceRow | null>;
 	getModelRoutesByPoolId(poolId: string): Promise<ModelRouteRow[]>;
+	/** Auto-recovery: re-enable routes disabled > 24h ago, reset their failure count */
+	recoverExpiredDisabledRoutes(): Promise<number>;
+	/** Track a failure for a route; returns new consecutive_failures count */
+	recordRouteFailure(routeId: string): Promise<number>;
+	/** Track a success for a route; resets consecutive_failures to 0 */
+	recordRouteSuccess(routeId: string): Promise<void>;
+	/** Auto-disable a route (set status='disabled', disabled_at=now) */
+	autoDisableRoute(routeId: string): Promise<void>;
+	/** Find provider ID by vendor name (for auto-route creation) */
+	findProviderByVendor(vendor: string): Promise<string | null>;
+	/** Auto-create a route for a model that has none */
+	autoCreateRoute(modelId: string, providerId: string, providerModelName: string, upstreamProtocol: string): Promise<string>;
 }
 
 export interface ModelRoutesRepository {
