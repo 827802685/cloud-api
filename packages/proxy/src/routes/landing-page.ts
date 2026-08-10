@@ -115,44 +115,9 @@ export const LANDING_PAGE_HTML = `<!DOCTYPE html>
       font-size: 0.7rem;
       font-weight: 600;
     }
-    .api-key-display {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      gap: 0.75rem;
-    }
-    .api-key-value {
-      font-family: monospace;
-      font-size: 0.9rem;
-      color: #e2e8f0;
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .api-key-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    .btn-small {
-      background: #334155;
-      color: #e2e8f0;
-      border: none;
-      padding: 0.4rem 0.75rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-small:hover { background: #475569; }
     @media (max-width: 600px) {
       .models-grid { grid-template-columns: 1fr; }
       .header h1 { font-size: 1.6rem; }
-      .api-key-display { flex-direction: column; align-items: stretch; }
-      .api-key-actions { justify-content: flex-end; }
     }
   </style>
 </head>
@@ -216,42 +181,6 @@ export const LANDING_PAGE_HTML = `<!DOCTYPE html>
       <div class="info-row">
         <span class="info-label">智能路由</span>
         <span class="info-value">model: "auto"</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>您的统一 API 密钥</h2>
-      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem;">
-        将其用作您的 OpenAI api_key，它用于对发往本代理的请求进行身份验证。
-      </p>
-      <div class="api-key-display">
-        <code class="api-key-value">octafuse-01-••••••••••••••••••••</code>
-        <div class="api-key-actions">
-          <button class="btn-small" onclick="toggleKeyVisibility(this)">显示</button>
-          <button class="btn-small" onclick="copyApiKey()">复制</button>
-        </div>
-      </div>
-      <div class="endpoint-info" style="margin-top: 1rem;">
-        <div class="info-row">
-          <span class="info-label">Base URL</span>
-          <span class="info-value">https://api.zjkl.dpdns.org/v1</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">对话</span>
-          <span class="info-value">/v1/chat/completions</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">响应</span>
-          <span class="info-value">/v1/responses</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Messages</span>
-          <span class="info-value">/v1/messages (兼容 Anthropic)</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">嵌入</span>
-          <span class="info-value">/v1/embeddings (model: "auto" 或「嵌入模型」标签中的系列)</span>
-        </div>
       </div>
     </div>
 
@@ -349,28 +278,5 @@ export const LANDING_PAGE_HTML = `<!DOCTYPE html>
     <a href="https://admin.api.zjkl.dpdns.org" class="btn">前往管理面板 →</a>
   </div>
 
-  <script>
-    let keyVisible = false;
-    const actualKey = 'octafuse-01-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-    const maskedKey = 'octafuse-01-••••••••••••••••••••';
-
-    function toggleKeyVisibility(btn) {
-      keyVisible = !keyVisible;
-      const keyElement = document.querySelector('.api-key-value');
-      keyElement.textContent = keyVisible ? actualKey : maskedKey;
-      btn.textContent = keyVisible ? '隐藏' : '显示';
-    }
-
-    function copyApiKey() {
-      navigator.clipboard.writeText(actualKey).then(() => {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '已复制!';
-        setTimeout(() => { btn.textContent = originalText; }, 2000);
-      }).catch(() => {
-        alert('复制失败，请手动复制');
-      });
-    }
-  </script>
 </body>
 </html>`;

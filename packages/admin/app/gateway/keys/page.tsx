@@ -131,8 +131,13 @@ export default function GatewayKeysPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [statusTogglingId, setStatusTogglingId] = useState<string | null>(null);
+  const [unifiedKeyVisible, setUnifiedKeyVisible] = useState(false);
+  const [unifiedKeyCopied, setUnifiedKeyCopied] = useState(false);
   const { currency: billingCurrency } = useBillingCurrency();
   const { businessTimezone } = useGatewayDateTime();
+
+  const UNIFIED_API_KEY = 'octafuse-01-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+  const MASKED_KEY = 'octafuse-01-••••••••••••••••••••';
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -441,6 +446,65 @@ export default function GatewayKeysPage() {
             <PlusIcon className="h-5 w-5" />
             {t('newKey')}
           </button>
+        </div>
+      </div>
+
+      {/* 统一 API 密钥信息卡片 */}
+      <div className="mb-6 bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">您的统一 API 密钥</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          将其用作您的 OpenAI api_key，它用于对发往本代理的请求进行身份验证。
+        </p>
+        <div className="flex items-center gap-3 bg-gray-50 rounded-md p-3 border border-gray-200">
+          <code className="flex-1 font-mono text-sm text-gray-900 break-all">
+            {unifiedKeyVisible ? UNIFIED_API_KEY : MASKED_KEY}
+          </code>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+              onClick={() => setUnifiedKeyVisible((v) => !v)}
+            >
+              {unifiedKeyVisible ? '隐藏' : '显示'}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(UNIFIED_API_KEY);
+                  setUnifiedKeyCopied(true);
+                  setTimeout(() => setUnifiedKeyCopied(false), 2000);
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              {unifiedKeyCopied ? '已复制' : '复制'}
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">Base URL</span>
+            <code className="font-mono text-gray-900">https://api.zjkl.dpdns.org/v1</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">对话</span>
+            <code className="font-mono text-gray-900">/v1/chat/completions</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">响应</span>
+            <code className="font-mono text-gray-900">/v1/responses</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">Messages</span>
+            <code className="font-mono text-gray-900">/v1/messages (兼容 Anthropic (Claude))</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">嵌入</span>
+            <code className="font-mono text-gray-900 text-xs">/v1/embeddings (model: &quot;auto&quot; 或「嵌入模型」标签中的系列)</code>
+          </div>
         </div>
       </div>
 
