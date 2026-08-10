@@ -143,6 +143,8 @@
 			"reliability": "可靠性",
 			"config": "配置"
 		},
+		"collapse": "折叠侧栏",
+		"expand": "展开侧栏",
 		"version": "v{version}"
 	},
 	"timeRange": {

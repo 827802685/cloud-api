@@ -143,6 +143,8 @@
 			"reliability": "안정성",
 			"config": "설정"
 		},
+		"collapse": "사이드바 접기",
+		"expand": "사이드바 펼치기",
 		"version": "v{version}"
 	},
 	"timeRange": {

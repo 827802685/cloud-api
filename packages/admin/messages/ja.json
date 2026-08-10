@@ -143,6 +143,8 @@
 			"reliability": "信頼性",
 			"config": "設定"
 		},
+		"collapse": "サイドバーを折りたたむ",
+		"expand": "サイドバーを展開",
 		"version": "v{version}"
 	},
 	"timeRange": {

@@ -143,6 +143,8 @@
 			"reliability": "Reliability",
 			"config": "Config"
 		},
+		"collapse": "Collapse sidebar",
+		"expand": "Expand sidebar",
 		"version": "v{version}"
 	},
 	"timeRange": {
