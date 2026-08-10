@@ -333,18 +333,24 @@ chatRoutes.post('/', async (c) => {
   );
 
   // 添加聚合路由响应头
-  const responseHeaders = new Headers(response.headers);
-  responseHeaders.set('X-Routed-Via', `${chosenRoute.providerName}/${chosenRoute.providerModelName}`);
-  if (proxyResult.attemptCount > 1) {
-    responseHeaders.set('X-Fallback-Attempts', String(proxyResult.attemptCount - 1));
-  }
-  if (isAutoSelected) {
-    responseHeaders.set('X-Auto-Model', baseModelId);
-  }
+  try {
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set('X-Routed-Via', `${chosenRoute.providerName}/${chosenRoute.providerModelName}`);
+    if (proxyResult.attemptCount > 1) {
+      responseHeaders.set('X-Fallback-Attempts', String(proxyResult.attemptCount - 1));
+    }
+    if (isAutoSelected) {
+      responseHeaders.set('X-Auto-Model', baseModelId);
+    }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  });
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  } catch (headerErr) {
+    // 如果添加响应头失败，直接返回原始响应
+    console.warn('[Gateway Chat] failed to add routing headers', headerErr);
+    return response;
+  }
 });

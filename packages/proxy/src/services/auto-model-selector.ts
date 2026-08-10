@@ -1,31 +1,29 @@
 /**
  * Auto 模型选择器：当客户端发送 `model: "auto"` 时，从所有可用模型中选择最佳模型。
  *
- * 选择策略：
- * 1. 获取所有有活跃路由的模型
- * 2. 过滤掉所有 provider 处于熔断冷却中的模型
- * 3. 按 context_window 从大到小排序，优先选择能力最强的模型
- * 4. 同等 context_window 时，按路由数量排序（多路由 = 更高可用）
+ * 选择策略（简化版）：
+ * 1. 获取所有有活跃路由的模型（已由 listModelsWithActiveRoutes 过滤）
+ * 2. 按 context_window 从大到小排序，优先选择能力最强的模型
+ * 3. 同等 context_window 时，按厂商偏好和模型 ID 稳定排序
+ * 4. 实际的 provider 健康检查由 failover dispatch 负责
  */
 import type { GatewayRepositories, ModelRow } from '@octafuse/core';
-import { getProviderCircuitRemainingMs } from './provider-circuit-breaker';
 
 /** Auto 模型选择结果 */
 export interface AutoModelSelection {
   model: ModelRow;
   modelId: string;
-  healthyRouteCount: number;
 }
 
 /** 缓存：避免每次请求都查询数据库 */
 let cachedModels: ModelRow[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL_MS = 30_000; // 30 秒缓存
+const CACHE_TTL_MS = 60_000; // 60 秒缓存
 
 /**
  * 从所有可用模型中选择最佳模型。
  * @param repos 网关仓储
- * @param preferredVendor 可选的厂商标识（如 "openai"），用于偏好选择
+ * @param preferredVendor 可选的厂商标识（如 "nvidia"），用于偏好选择
  * @returns 选中的模型，无可用模型时返回 null
  */
 export async function selectAutoModel(
@@ -39,6 +37,7 @@ export async function selectAutoModel(
     try {
       cachedModels = await repos.modelRouting.listModelsWithActiveRoutes();
       cacheTimestamp = now;
+      console.log(`[AutoModel] refreshed cache, ${cachedModels.length} models available`);
     } catch (err) {
       console.error('[AutoModel] failed to list models', err);
       return null;
@@ -50,73 +49,37 @@ export async function selectAutoModel(
     return null;
   }
 
-  // 为每个模型计算健康路由数量
-  const modelScores: Array<{
-    model: ModelRow;
-    healthyRoutes: number;
-    totalRoutes: number;
-  }> = [];
+  // 复制一份避免修改缓存
+  const sorted = [...models];
 
-  for (const model of models) {
-    const routes = await repos.modelRouting.getModelRoutesByModelId(model.id);
-    const activeRoutes = routes.filter((r) => r.status === 'active');
-
-    let healthyRoutes = 0;
-    for (const route of activeRoutes) {
-      // 检查 provider 是否在熔断中
-      const remaining = getProviderCircuitRemainingMs(route.provider_id, now);
-      if (remaining <= 0) {
-        healthyRoutes++;
-      }
-    }
-
-    if (healthyRoutes > 0) {
-      modelScores.push({
-        model,
-        healthyRoutes,
-        totalRoutes: activeRoutes.length,
-      });
-    }
-  }
-
-  if (modelScores.length === 0) {
-    return null;
-  }
-
-  // 排序：优先选择健康路由多、context_window 大的模型
-  modelScores.sort((a, b) => {
+  // 排序：优先选择 context_window 大、有活跃路由的模型
+  sorted.sort((a, b) => {
     // 如果指定了偏好厂商，优先选择该厂商的模型
     if (preferredVendor) {
-      const aMatch = a.model.vendor === preferredVendor ? 1 : 0;
-      const bMatch = b.model.vendor === preferredVendor ? 1 : 0;
+      const aMatch = a.vendor === preferredVendor ? 1 : 0;
+      const bMatch = b.vendor === preferredVendor ? 1 : 0;
       if (aMatch !== bMatch) return bMatch - aMatch;
     }
 
-    // 按健康路由数量降序
-    if (a.healthyRoutes !== b.healthyRoutes) {
-      return b.healthyRoutes - a.healthyRoutes;
-    }
-
     // 按 context_window 降序
-    const aCtx = a.model.context_window ?? 0;
-    const bCtx = b.model.context_window ?? 0;
+    const aCtx = a.context_window ?? 0;
+    const bCtx = b.context_window ?? 0;
     if (aCtx !== bCtx) {
       return bCtx - aCtx;
     }
 
     // 按模型 ID 字母序稳定排序
-    return a.model.id.localeCompare(b.model.id);
+    return a.id.localeCompare(b.id);
   });
 
-  const best = modelScores[0]!;
+  const best = sorted[0]!;
   console.log(
-    `[AutoModel] selected model=${best.model.id} healthyRoutes=${best.healthyRoutes} contextWindow=${best.model.context_window ?? 'unknown'}`
+    `[AutoModel] selected model=${best.id} contextWindow=${best.context_window ?? 'unknown'} vendor=${best.vendor}`
   );
 
   return {
-    model: best.model,
-    modelId: best.model.id,
-    healthyRouteCount: best.healthyRoutes,
+    model: best,
+    modelId: best.id,
   };
 }
 
