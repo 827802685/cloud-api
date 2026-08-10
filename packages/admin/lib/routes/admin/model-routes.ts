@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
+	autoAddModelRoutesService,
 	createModelRouteService,
 	deleteModelRouteService,
 	forceClearStickyBindingService,
@@ -16,7 +17,7 @@ import {
 	updateModelRouteService,
 	updateRoutePoolPolicyService,
 } from '@/lib/services/admin/model-routes-service';
-import type { AdminModelRouteMutationInput } from '@/lib/services/admin/types';
+import type { AdminAutoAddRoutesBody, AdminModelRouteMutationInput } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
 import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
 export const adminModelRoutes = new Hono<AdminEnv>();
@@ -131,6 +132,32 @@ adminModelRoutes.post('/pools/:poolId/sticky/reset', async (c) => {
 		});
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to reset sticky bindings');
+	}
+});
+
+/** 自动为模型批量添加路由（按 vendor 匹配 Provider）。 */
+adminModelRoutes.post('/auto-add', async (c) => {
+	let body: AdminAutoAddRoutesBody;
+	try {
+		const raw = await c.req.json();
+		body = raw as AdminAutoAddRoutesBody;
+	} catch {
+		body = {};
+	}
+	try {
+		const repos = c.get('repositories');
+		const data = await autoAddModelRoutesService(repos, {
+			model_ids: Array.isArray(body.model_ids) ? body.model_ids : undefined,
+		});
+		return c.json(
+			normalizeApiTimeFields({
+				success: true,
+				message: `Auto-add finished (created ${data.created}, skipped ${data.skipped}, failed ${data.failed})`,
+				data,
+			})
+		);
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to auto-add routes');
 	}
 });
 

@@ -85,6 +85,8 @@ function ModelsContent() {
 							onClearBatchSelection={state.clearBatchSelection}
 							onBatchDelete={() => void state.handleBatchDelete()}
 							isBatchDeleting={state.isBatchDeleting}
+							onAutoAddRoutes={() => void state.handleAutoAddRoutes()}
+							isAutoAddingRoutes={state.isAutoAddingRoutes}
 						/>
 
 						<div className="bg-slate-100/70 p-4 sm:p-6">

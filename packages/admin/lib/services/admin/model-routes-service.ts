@@ -636,3 +636,123 @@ export async function resetStickyBindingsService(
 	if (sticky_epoch == null) throw notFound('Route pool not found');
 	return { sticky_epoch };
 }
+
+/**
+ * 自动为模型批量添加路由：按 vendor 匹配 Provider，为每个匹配对创建路由。
+ * 已存在相同 model_id + provider_id + provider_model_name 的路由则跳过。
+ */
+export async function autoAddModelRoutesService(
+	repos: GatewayRepositories,
+	filters: { model_ids?: string[] }
+): Promise<import('./types').AdminAutoAddRoutesOutput> {
+	const { inferStaticProviderVendorKey } = await import('@/lib/provider-import-preset');
+
+	// 1. 获取模型列表
+	const allModels = await repos.models.listModelsWithRouteCounts();
+	const targetModels = filters.model_ids?.length
+		? allModels.filter((m) => filters.model_ids!.includes(m.id))
+		: allModels;
+
+	if (targetModels.length === 0) {
+		return { created: 0, skipped: 0, failed: 0, details: [] };
+	}
+
+	// 2. 获取所有 Provider 并按 vendor_key 分组
+	const allProviders = await repos.providers.listProviders();
+	const providersByVendor = new Map<string, Array<{ id: string; name: string; endpoints: string | null }>>();
+	for (const p of allProviders) {
+		const vendorKey = inferStaticProviderVendorKey(p);
+		if (vendorKey === 'other') continue;
+		const list = providersByVendor.get(vendorKey) ?? [];
+		list.push({ id: p.id, name: p.name, endpoints: p.endpoints });
+		providersByVendor.set(vendorKey, list);
+	}
+
+	// 3. 获取已有路由，避免重复创建
+	const existingRoutes = await repos.routes.listModelRoutesWithJoins({});
+	const existingRouteKeys = new Set(
+		existingRoutes.map(
+			(r) => `${r.model_id}::${r.provider_id}::${r.provider_model_name}`
+		)
+	);
+
+	const details: import('./types').AdminAutoAddRouteItem[] = [];
+	let created = 0;
+	let skipped = 0;
+	let failed = 0;
+
+	// 4. 为每个模型匹配 Provider 并创建路由
+	for (const model of targetModels) {
+		const vendorKey = model.vendor;
+		const providers = providersByVendor.get(vendorKey);
+		if (!providers || providers.length === 0) {
+			// 没有匹配的 Provider，跳过
+			continue;
+		}
+
+		for (const provider of providers) {
+			const routeKey = `${model.id}::${provider.id}::${model.id}`;
+			if (existingRouteKeys.has(routeKey)) {
+				details.push({
+					model_id: model.id,
+					provider_id: provider.id,
+					provider_name: provider.name,
+					route_id: null,
+					status: 'skipped_no_protocol',
+					message: 'Route already exists',
+				});
+				skipped++;
+				continue;
+			}
+
+			// 确定 upstream_protocol：默认 openai
+			const upstreamProtocol: 'openai' | 'anthropic' | 'gemini' = 'openai';
+
+			// 检查 Provider 是否支持该协议
+			const providerBases = await repos.providers.getProviderProtocolBases(provider.id);
+			if (!providerBases || !providerSupportsUpstreamProtocol(upstreamProtocol, providerBases)) {
+				details.push({
+					model_id: model.id,
+					provider_id: provider.id,
+					provider_name: provider.name,
+					route_id: null,
+					status: 'skipped_no_protocol',
+					message: `Provider does not support protocol "${upstreamProtocol}"`,
+				});
+				skipped++;
+				continue;
+			}
+
+			try {
+				const result = await createModelRouteService(repos, {
+					model_id: model.id,
+					provider_id: provider.id,
+					provider_model_name: model.id,
+					upstream_protocol: upstreamProtocol,
+					status: 'active',
+				});
+				details.push({
+					model_id: model.id,
+					provider_id: provider.id,
+					provider_name: provider.name,
+					route_id: result.id,
+					status: 'created',
+				});
+				existingRouteKeys.add(routeKey);
+				created++;
+			} catch (err) {
+				details.push({
+					model_id: model.id,
+					provider_id: provider.id,
+					provider_name: provider.name,
+					route_id: null,
+					status: 'failed',
+					message: err instanceof Error ? err.message : 'Unknown error',
+				});
+				failed++;
+			}
+		}
+	}
+
+	return { created, skipped, failed, details };
+}

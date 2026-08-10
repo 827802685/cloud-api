@@ -29,6 +29,7 @@ import { getModelVendorLabel, normalizeModelVendorInput } from '@/lib/model-vend
 import { useBillingCurrency } from '@/lib/use-billing-currency';
 import { useReplaceListPageQuery } from '@/lib/use-replace-list-query';
 import {
+	autoAddRoutes,
 	batchDeleteModels,
 	deleteModel,
 	fetchImportCatalog,
@@ -96,6 +97,7 @@ export function useModelsPageState() {
 	const [batchMode, setBatchMode] = useState(false);
 	const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
 	const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+	const [isAutoAddingRoutes, setIsAutoAddingRoutes] = useState(false);
 	const { currency: billingCurrency } = useBillingCurrency();
 
 	const openMetadataPreview = useCallback((model: ModelListItem) => {
@@ -754,6 +756,39 @@ export function useModelsPageState() {
 		}
 	}, [batchSelectedIds, refreshModels]);
 
+	const handleAutoAddRoutes = useCallback(async () => {
+		if (
+			!confirm(
+				'Automatically add routes for all models? This will match models to providers by vendor and create routes using the OpenAI protocol. Existing routes will be skipped.'
+			)
+		) {
+			return;
+		}
+		setIsAutoAddingRoutes(true);
+		try {
+			const result = await autoAddRoutes();
+			if (result.success) {
+				const { created, skipped, failed, details } = result.data;
+				const parts = [`Created: ${created}`, `Skipped: ${skipped}`];
+				if (failed > 0) parts.push(`Failed: ${failed}`);
+				const failedDetails = details
+					.filter((d) => d.status === 'failed')
+					.map((d) => `  ${d.model_id} → ${d.provider_name}: ${d.message}`)
+					.join('\n');
+				const message = parts.join('\n') + (failedDetails ? `\n\nFailed details:\n${failedDetails}` : '');
+				alert(message);
+				await refreshModels();
+			} else {
+				alert(result.message || 'Auto-add routes failed');
+			}
+		} catch (error) {
+			console.error('Auto-add routes error:', error);
+			alert('Auto-add routes failed');
+		} finally {
+			setIsAutoAddingRoutes(false);
+		}
+	}, [refreshModels]);
+
 	const isAllVendors = selectedVendor === ALL_VENDORS_KEY;
 	const activeVendorKey = isAllVendors ? (vendorKeys[0] ?? 'other') : selectedVendor || vendorKeys[0] || 'other';
 	const activeVendorTitle = isAllVendors ? tCatalog('allVendors') : getModelVendorLabel(activeVendorKey);
@@ -837,5 +872,7 @@ export function useModelsPageState() {
 		clearBatchSelection,
 		isBatchDeleting,
 		handleBatchDelete,
+		isAutoAddingRoutes,
+		handleAutoAddRoutes,
 	};
 }

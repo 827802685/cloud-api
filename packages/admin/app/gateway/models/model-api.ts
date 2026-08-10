@@ -145,3 +145,30 @@ export async function importModelPresets(
 	if (data.success && data.data) return { success: true, data: data.data };
 	return { success: false, message: data.message || 'Import failed' };
 }
+
+export type AutoAddRouteResult = {
+	created: number;
+	skipped: number;
+	failed: number;
+	details: Array<{
+		model_id: string;
+		provider_id: string;
+		provider_name: string;
+		route_id: string | null;
+		status: 'created' | 'skipped_no_protocol' | 'failed';
+		message?: string;
+	}>;
+};
+
+export async function autoAddRoutes(
+	modelIds?: string[]
+): Promise<{ success: true; data: AutoAddRouteResult } | { success: false; message: string }> {
+	const response = await fetch('/api/admin/routes/auto-add', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ model_ids: modelIds ?? [] }),
+	});
+	const data = await readApiJson<AutoAddRouteResult>(response);
+	if (data.success && data.data) return { success: true, data: data.data };
+	return { success: false, message: data.message || 'Auto-add routes failed' };
+}

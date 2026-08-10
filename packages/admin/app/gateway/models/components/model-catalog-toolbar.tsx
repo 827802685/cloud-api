@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 
 type Props = {
@@ -18,6 +18,8 @@ type Props = {
 	onClearBatchSelection: () => void;
 	onBatchDelete: () => void;
 	isBatchDeleting: boolean;
+	onAutoAddRoutes: () => void;
+	isAutoAddingRoutes: boolean;
 };
 
 export function ModelCatalogToolbar(props: Props) {
@@ -36,6 +38,8 @@ export function ModelCatalogToolbar(props: Props) {
 		onClearBatchSelection,
 		onBatchDelete,
 		isBatchDeleting,
+		onAutoAddRoutes,
+		isAutoAddingRoutes,
 	} = props;
 
 	const t = useTranslations('models.catalog');
@@ -104,6 +108,16 @@ export function ModelCatalogToolbar(props: Props) {
 						>
 							<TrashIcon className="h-4 w-4" />
 							{tCommon('batchDelete')}
+						</button>
+						<button
+							type="button"
+							onClick={onAutoAddRoutes}
+							disabled={!hasModels || isAutoAddingRoutes}
+							className="flex items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
+							title="Auto-add routes for all models"
+						>
+							<BoltIcon className="h-4 w-4" />
+							{isAutoAddingRoutes ? 'Adding...' : 'Auto Routes'}
 						</button>
 						<button
 							type="button"

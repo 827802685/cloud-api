@@ -592,3 +592,28 @@ export type AdminReliabilityAnalyticsOutput = {
 	modelProviders: AdminReliabilityModelProviderRow[];
 	recentErrors: RequestLogRow[];
 };
+
+/** ---------- `/admin/routes/auto-add` ---------- */
+
+/** `POST /admin/routes/auto-add` 请求体：可选指定模型 id 子集；空 = 全量。 */
+export type AdminAutoAddRoutesBody = {
+	model_ids?: string[];
+};
+
+/** 单条自动路由结果 */
+export type AdminAutoAddRouteItem = {
+	model_id: string;
+	provider_id: string;
+	provider_name: string;
+	route_id: string | null;
+	status: 'created' | 'skipped_no_protocol' | 'failed';
+	message?: string;
+};
+
+/** `POST /admin/routes/auto-add` 响应 */
+export type AdminAutoAddRoutesOutput = {
+	created: number;
+	skipped: number;
+	failed: number;
+	details: AdminAutoAddRouteItem[];
+};
