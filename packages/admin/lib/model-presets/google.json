@@ -308,6 +308,55 @@
 		"released": "2026-03-03"
 	},
 	{
+		"id": "gemini-3.1-flash-lite",
+		"display_name": "Gemini 3.1 Flash Lite",
+		"description": "A low-latency, cost-effective multimodal model optimized for high-volume, lightweight tasks such as translation, transcription, and data extraction. Supports text, image, video, audio, and PDF inputs.",
+		"i18n": {
+			"en": "A low-latency, cost-effective multimodal model optimized for high-volume, lightweight tasks such as translation, transcription, and data extraction. Supports text, image, video, audio, and PDF inputs.",
+			"zh": "面向高流量轻量任务（翻译、转录、数据提取）优化的低延迟、低成本多模态模型。支持文本、图片、视频、音频和 PDF 输入。"
+		},
+		"vendor": "google",
+		"context_window": 1000000,
+		"max_tokens": 65536,
+		"pricing": {
+			"usd": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 0.25,
+						"output_price": 1.5,
+						"cache_read_price": 0.025,
+						"cache_write_price": 0.08333
+					}
+				]
+			},
+			"cny": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 1.75,
+						"output_price": 10.5,
+						"cache_read_price": 0.175,
+						"cache_write_price": 0.58331
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text",
+				"image",
+				"audio",
+				"video",
+				"file"
+			],
+			"output": [
+				"text"
+			]
+		},
+		"released": "2026-05-01"
+	},
+	{
 		"id": "gemini-2.5-pro",
 		"display_name": "Gemini 2.5 Pro",
 		"description": "A capable Gemini reasoning model for coding, mathematics, science, and multimodal analysis. Built-in thinking supports more deliberate answers across advanced coding, mathematics, science, and multimodal analysis.",

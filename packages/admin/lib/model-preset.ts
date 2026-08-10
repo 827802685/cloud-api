@@ -31,6 +31,8 @@ import deepseekPresets from './model-presets/deepseek.json';
 import githubPresets from './model-presets/github.json';
 import googlePresets from './model-presets/google.json';
 import googleImagePresets from './model-presets/google-image.json';
+import googleTtsPresets from './model-presets/google-tts.json';
+import googleVideoPresets from './model-presets/google-video.json';
 import huggingfacePresets from './model-presets/huggingface.json';
 import meituanPresets from './model-presets/meituan.json';
 import metaPresets from './model-presets/meta.json';
@@ -100,6 +102,8 @@ const STATIC_MODEL_PRESETS_BY_VENDOR = [
 	githubPresets,
 	googlePresets,
 	googleImagePresets,
+	googleTtsPresets,
+	googleVideoPresets,
 	huggingfacePresets,
 	meituanPresets,
 	metaPresets,

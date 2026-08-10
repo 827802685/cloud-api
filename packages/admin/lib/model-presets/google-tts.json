@@ -1,0 +1,140 @@
+[
+	{
+		"id": "gemini-3.1-flash-tts-preview",
+		"display_name": "Gemini 3.1 Flash TTS",
+		"description": "Powerful, low-latency speech generation with natural outputs, steerable prompts, and expressive audio tags for precise narration control.",
+		"i18n": {
+			"en": "Powerful, low-latency speech generation with natural outputs, steerable prompts, and expressive audio tags for precise narration control.",
+			"zh": "强大的低延迟语音生成模型，支持自然输出、可控提示词和表达力音频标签，实现精确的叙述控制。"
+		},
+		"vendor": "google",
+		"context_window": null,
+		"max_tokens": null,
+		"tags": [
+			"New"
+		],
+		"pricing": {
+			"usd": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 3.5,
+						"output_price": 21,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			},
+			"cny": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 24.5,
+						"output_price": 147,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text"
+			],
+			"output": [
+				"audio"
+			]
+		},
+		"released": "2026-07-01"
+	},
+	{
+		"id": "gemini-2.5-flash-tts",
+		"display_name": "Gemini 2.5 Flash TTS",
+		"description": "Fast and controllable text-to-speech for low-latency, cost-efficient applications and real-time assistants. Supports single and multi-speaker output.",
+		"i18n": {
+			"en": "Fast and controllable text-to-speech for low-latency, cost-efficient applications and real-time assistants. Supports single and multi-speaker output.",
+			"zh": "快速可控的文本转语音模型，适用于低延迟、低成本应用和实时助手。支持单说话人和多说话人输出。"
+		},
+		"vendor": "google",
+		"context_window": null,
+		"max_tokens": null,
+		"pricing": {
+			"usd": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 1,
+						"output_price": 10,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			},
+			"cny": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 7,
+						"output_price": 70,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text"
+			],
+			"output": [
+				"audio"
+			]
+		},
+		"released": "2025-12-01"
+	},
+	{
+		"id": "gemini-2.5-pro-tts",
+		"display_name": "Gemini 2.5 Pro TTS",
+		"description": "High-fidelity speech synthesis optimized for quality in structured workflows like podcasts and audiobooks. Offers fine control over style and pacing.",
+		"i18n": {
+			"en": "High-fidelity speech synthesis optimized for quality in structured workflows like podcasts and audiobooks. Offers fine control over style and pacing.",
+			"zh": "高保真语音合成模型，针对播客和有声书等结构化工作流优化。提供对风格和节奏的精细控制。"
+		},
+		"vendor": "google",
+		"context_window": null,
+		"max_tokens": null,
+		"pricing": {
+			"usd": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 2,
+						"output_price": 20,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			},
+			"cny": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 14,
+						"output_price": 140,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text"
+			],
+			"output": [
+				"audio"
+			]
+		},
+		"released": "2025-12-01"
+	}
+]

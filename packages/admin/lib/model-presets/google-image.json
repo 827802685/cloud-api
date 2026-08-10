@@ -57,6 +57,119 @@
 		"released": "2026-02-01"
 	},
 	{
+		"id": "gemini-3.1-flash-lite-image",
+		"display_name": "Gemini 3.1 Flash Lite Image",
+		"description": "Ultra-low latency and cost-effective image generation and editing model, designed for high-volume interactive use cases. Also known as Nano Banana 2 Lite, optimized for 1K resolution with sub-2 second latency.",
+		"i18n": {
+			"en": "Ultra-low latency and cost-effective image generation and editing model, designed for high-volume interactive use cases. Also known as Nano Banana 2 Lite, optimized for 1K resolution with sub-2 second latency.",
+			"zh": "超低延迟、低成本的图片生成与编辑模型，专为高流量交互场景设计。亦称 Nano Banana 2 Lite，针对 1K 分辨率优化，延迟低于 2 秒。"
+		},
+		"vendor": "google",
+		"context_window": 65536,
+		"max_tokens": 4096,
+		"tags": [
+			"New"
+		],
+		"pricing": {
+			"usd": {
+				"image_billing_mode": "token",
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 0.25,
+						"output_price": 30,
+						"cache_read_price": null,
+						"cache_write_price": null,
+						"image_input_price": 0.25,
+						"image_input_cache_price": null,
+						"image_output_price": 30
+					}
+				]
+			},
+			"cny": {
+				"image_billing_mode": "token",
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 1.75,
+						"output_price": 210,
+						"cache_read_price": null,
+						"cache_write_price": null,
+						"image_input_price": 1.75,
+						"image_input_cache_price": null,
+						"image_output_price": 210
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image",
+				"text"
+			]
+		},
+		"released": "2026-06-01"
+	},
+	{
+		"id": "gemini-2.5-flash-image",
+		"display_name": "Gemini 2.5 Flash Image",
+		"description": "State-of-the-art native image generation and editing designed for fast, creative workflows. Also known as Nano Banana, it combines multimodal understanding with fast generation for high-volume use cases.",
+		"i18n": {
+			"en": "State-of-the-art native image generation and editing designed for fast, creative workflows. Also known as Nano Banana, it combines multimodal understanding with fast generation for high-volume use cases.",
+			"zh": "面向快速创意工作流的原生图片生成与编辑模型。亦称 Nano Banana，将多模态理解与高速生成结合，适合高流量场景。"
+		},
+		"vendor": "google",
+		"context_window": 65536,
+		"max_tokens": 32768,
+		"pricing": {
+			"usd": {
+				"image_billing_mode": "token",
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 0.5,
+						"output_price": 50,
+						"cache_read_price": null,
+						"cache_write_price": null,
+						"image_input_price": 0.5,
+						"image_input_cache_price": null,
+						"image_output_price": 50
+					}
+				]
+			},
+			"cny": {
+				"image_billing_mode": "token",
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 3.5,
+						"output_price": 350,
+						"cache_read_price": null,
+						"cache_write_price": null,
+						"image_input_price": 3.5,
+						"image_input_cache_price": null,
+						"image_output_price": 350
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text",
+				"image"
+			],
+			"output": [
+				"image",
+				"text"
+			]
+		},
+		"released": "2025-10-01"
+	},
+	{
 		"id": "gemini-3-pro-image-preview",
 		"display_name": "Gemini 3 Pro Image Preview",
 		"description": "Google's advanced image generation preview for grounded creation and detailed visual editing. Built on Gemini 3 Pro, it emphasizes grounded creation, stronger multimodal reasoning, and detailed image editing.",

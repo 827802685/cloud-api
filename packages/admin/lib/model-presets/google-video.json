@@ -1,0 +1,52 @@
+[
+	{
+		"id": "gemini-omni-flash-preview",
+		"display_name": "Gemini Omni Flash",
+		"description": "Fast, conversational video generation and editing. Turn text and images into video, and refine results through natural language. Outputs 720p video with natively synchronized audio.",
+		"i18n": {
+			"en": "Fast, conversational video generation and editing. Turn text and images into video, and refine results through natural language. Outputs 720p video with natively synchronized audio.",
+			"zh": "快速、对话式的视频生成与编辑模型。将文本和图片转化为视频，并通过自然语言优化结果。输出带原生同步音频的 720p 视频。"
+		},
+		"vendor": "google",
+		"context_window": null,
+		"max_tokens": null,
+		"tags": [
+			"New"
+		],
+		"pricing": {
+			"usd": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 1.5,
+						"output_price": 17.5,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			},
+			"cny": {
+				"tiers": [
+					{
+						"upto": null,
+						"input_price": 10.5,
+						"output_price": 122.5,
+						"cache_read_price": null,
+						"cache_write_price": null
+					}
+				]
+			}
+		},
+		"modalities": {
+			"input": [
+				"text",
+				"image",
+				"video"
+			],
+			"output": [
+				"video"
+			]
+		},
+		"released": "2026-06-30"
+	}
+]
