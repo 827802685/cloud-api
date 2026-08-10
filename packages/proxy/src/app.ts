@@ -116,5 +116,23 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 		return c.html(LANDING_PAGE_HTML);
 	});
 
+	// Global error handler for debugging
+	app.onError((err, c) => {
+		console.error('[Gateway] Unhandled error:', {
+			message: err.message,
+			stack: err.stack,
+			path: c.req.path,
+			method: c.req.method,
+		});
+		return c.json(
+			{
+				error: 'Internal server error',
+				message: err.message,
+				path: c.req.path,
+			},
+			500
+		);
+	});
+
 	return app;
 }
