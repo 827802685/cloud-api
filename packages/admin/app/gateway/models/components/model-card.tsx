@@ -305,23 +305,58 @@ export function ModelCard(props: {
 	billingCurrency: string;
 	onEdit: (model: ModelListItem) => void;
 	onViewMetadata: (model: ModelListItem) => void;
+	batchMode?: boolean;
+	batchSelected?: boolean;
+	onToggleBatchSelection?: (id: string) => void;
 }) {
-	const { model, billingCurrency, onEdit, onViewMetadata } = props;
+	const { model, billingCurrency, onEdit, onViewMetadata, batchMode, batchSelected, onToggleBatchSelection } = props;
 	const pricingColumns = buildPricingMetricColumns(model.pricing_profile);
 
 	return (
 		<article
 			role="button"
 			tabIndex={0}
-			className="cursor-pointer rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-lg hover:shadow-blue-100/70 hover:ring-1 hover:ring-blue-200 focus:outline-none focus-visible:border-blue-400 focus-visible:bg-blue-50/30 focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-blue-500 active:translate-y-0"
-			onClick={() => void onEdit(model)}
+			className={`relative cursor-pointer rounded-xl border bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg focus:outline-none focus-visible:ring-2 active:translate-y-0 ${
+				batchMode && batchSelected
+					? 'border-red-400 bg-red-50/40 ring-2 ring-red-300 hover:border-red-400 hover:ring-red-400'
+					: 'border-gray-200/80 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-blue-100/70 hover:ring-1 hover:ring-blue-200 focus-visible:border-blue-400 focus-visible:bg-blue-50/30 focus-visible:shadow-lg focus-visible:ring-blue-500'
+			}`}
+			onClick={(e) => {
+				if (batchMode) {
+					e.stopPropagation();
+					onToggleBatchSelection?.(model.id);
+					return;
+				}
+				void onEdit(model);
+			}}
 			onKeyDown={(e) => {
 				if (e.key === 'Enter' || e.key === ' ') {
 					e.preventDefault();
-					void onEdit(model);
+					if (batchMode) {
+						onToggleBatchSelection?.(model.id);
+					} else {
+						void onEdit(model);
+					}
 				}
 			}}
 		>
+			{batchMode && (
+				<div className="absolute right-3 top-3 z-10">
+					<div
+						className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+							batchSelected
+								? 'border-red-500 bg-red-500'
+								: 'border-gray-300 bg-white'
+						}`}
+					>
+						{batchSelected && (
+							<svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+							</svg>
+						)}
+					</div>
+				</div>
+			)}
 			<ModelIdentityHeader model={model} />
 			<div className="mt-2.5 space-y-2.5">
 				<ModelCapabilityPanel model={model} />

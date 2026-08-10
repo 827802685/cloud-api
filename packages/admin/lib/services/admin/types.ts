@@ -233,6 +233,18 @@ export type AdminModelsImportOutput = {
 	failed: Array<{ id: string; message: string }>;
 };
 
+/** `POST /admin/models/batch-delete` 请求体 */
+export type AdminModelsBatchDeleteBody = {
+	ids: string[];
+};
+
+/** `POST /admin/models/batch-delete` 响应 */
+export type AdminModelsBatchDeleteOutput = {
+	deleted: number;
+	not_found: string[];
+	failed: Array<{ id: string; message: string }>;
+};
+
 /** ---------- 列表/详情行（与 D1 + JOIN 列对齐） ---------- */
 export type AdminProviderRow = {
 	id: string;

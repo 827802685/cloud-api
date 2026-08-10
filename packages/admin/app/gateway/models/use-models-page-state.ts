@@ -29,6 +29,7 @@ import { getModelVendorLabel, normalizeModelVendorInput } from '@/lib/model-vend
 import { useBillingCurrency } from '@/lib/use-billing-currency';
 import { useReplaceListPageQuery } from '@/lib/use-replace-list-query';
 import {
+	batchDeleteModels,
 	deleteModel,
 	fetchImportCatalog,
 	fetchModelDetail,
@@ -92,6 +93,9 @@ export function useModelsPageState() {
 	const [importCatalogKind, setImportCatalogKind] = useState<ModelKindFilter>(DEFAULT_KIND_FILTER);
 	const [importSubmitting, setImportSubmitting] = useState(false);
 	const [metadataPreview, setMetadataPreview] = useState<MetadataPreviewState | null>(null);
+	const [batchMode, setBatchMode] = useState(false);
+	const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
+	const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 	const { currency: billingCurrency } = useBillingCurrency();
 
 	const openMetadataPreview = useCallback((model: ModelListItem) => {
@@ -693,6 +697,63 @@ export function useModelsPageState() {
 		setSelectedVendor(ALL_VENDORS_KEY);
 	}, []);
 
+	const toggleBatchMode = useCallback(() => {
+		setBatchMode((prev) => {
+			if (prev) setBatchSelectedIds(new Set());
+			return !prev;
+		});
+	}, []);
+
+	const toggleBatchSelection = useCallback((id: string) => {
+		setBatchSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}, []);
+
+	const selectAllVisibleModels = useCallback((ids: string[]) => {
+		setBatchSelectedIds(new Set(ids));
+	}, []);
+
+	const clearBatchSelection = useCallback(() => {
+		setBatchSelectedIds(new Set());
+	}, []);
+
+	const handleBatchDelete = useCallback(async () => {
+		if (batchSelectedIds.size === 0) return;
+		const t = (await import('next-intl')).useTranslations;
+		if (
+			!confirm(
+				`Are you sure you want to delete ${batchSelectedIds.size} model(s)? This will also delete all associated routes, tags, and route pools. This action cannot be undone.`
+			)
+		) {
+			return;
+		}
+		setIsBatchDeleting(true);
+		try {
+			const result = await batchDeleteModels([...batchSelectedIds]);
+			if (result.success) {
+				const { deleted, not_found, failed } = result.data;
+				const parts = [`Deleted: ${deleted}`];
+				if (not_found.length) parts.push(`Not found: ${not_found.length}`);
+				if (failed.length) parts.push(`Failed: ${failed.length}`);
+				alert(parts.join('\n'));
+				setBatchSelectedIds(new Set());
+				setBatchMode(false);
+				await refreshModels();
+			} else {
+				alert(result.message || 'Batch delete failed');
+			}
+		} catch (error) {
+			console.error('Batch delete error:', error);
+			alert('Batch delete failed');
+		} finally {
+			setIsBatchDeleting(false);
+		}
+	}, [batchSelectedIds, refreshModels]);
+
 	const isAllVendors = selectedVendor === ALL_VENDORS_KEY;
 	const activeVendorKey = isAllVendors ? (vendorKeys[0] ?? 'other') : selectedVendor || vendorKeys[0] || 'other';
 	const activeVendorTitle = isAllVendors ? tCatalog('allVendors') : getModelVendorLabel(activeVendorKey);
@@ -768,5 +829,13 @@ export function useModelsPageState() {
 		toggleFormModality,
 		handleSave,
 		closeModal,
+		batchMode,
+		toggleBatchMode,
+		batchSelectedIds,
+		toggleBatchSelection,
+		selectAllVisibleModels,
+		clearBatchSelection,
+		isBatchDeleting,
+		handleBatchDelete,
 	};
 }

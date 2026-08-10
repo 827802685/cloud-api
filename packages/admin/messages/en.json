@@ -37,6 +37,9 @@
 		"new": "New",
 		"import": "Import",
 		"delete": "Delete",
+		"batchDelete": "Batch Delete",
+		"selectAll": "Select All",
+		"clear": "Clear",
 		"copy": "Copy",
 		"copied": "Copied",
 		"dismiss": "Dismiss",
@@ -122,6 +125,7 @@
 		},
 		"nav": {
 			"dashboard": "Dashboard",
+			"testConsole": "Test Console",
 			"providers": "Providers",
 			"models": "Models",
 			"routes": "Routes",
@@ -994,6 +998,24 @@
 		"toolsBodyMustBeObject": "Request body must be a JSON object.",
 		"toolsNeedProvider": "Select an engine provider.",
 		"applyTemplate": "Apply template"
+	},
+	"testConsole": {
+		"title": "Test Console",
+		"subtitle": "Select one or more models, send the same prompt, and compare responses side by side.",
+		"selectModels": "Models",
+		"filterModels": "Filter models...",
+		"noModelsAvailable": "No models with active routes available.",
+		"promptPlaceholder": "Enter your test prompt here...",
+		"sendToAll": "Send to {count} model(s)",
+		"stop": "Stop",
+		"copyAll": "Copy All",
+		"emptyHint": "Select models and send a prompt to see results here.",
+		"pending": "Pending",
+		"streaming": "Streaming",
+		"waitingForResponse": "Waiting for response...",
+		"noResponse": "No response",
+		"thinking": "Thinking",
+		"usage": "Usage"
 	},
 	"simulator": {
 		"title": "Simulator",

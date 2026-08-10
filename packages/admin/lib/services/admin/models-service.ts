@@ -24,6 +24,7 @@ import type {
 	AdminCreatedIdOutput,
 	AdminModelMutationInput,
 	AdminModelRow,
+	AdminModelsBatchDeleteOutput,
 	AdminModelsImportOutput,
 	AdminStaticModelPresetCatalogItem,
 } from './types';
@@ -433,4 +434,39 @@ export async function importModelsFromStaticPresetsService(
 		skipped_existing,
 		failed,
 	};
+}
+
+/**
+ * 批量级联删除模型及其路由、标签、路由池、Surface。
+ * 逐条调用 `deleteModelCascade`，保证每个模型的关联资源完整清理（兼容多 agent 路由拓扑 v2）。
+ * 不存在的 id 记入 `not_found`，异常记入 `failed`，不回滚已成功删除的条目。
+ */
+export async function batchDeleteModelsService(
+	repos: GatewayRepositories,
+	ids: string[]
+): Promise<AdminModelsBatchDeleteOutput> {
+	const uniqueIds = [...new Set(ids.map((x) => String(x).trim()).filter((x) => x.length > 0))];
+	if (uniqueIds.length === 0) {
+		throw badRequest('ids must be a non-empty array of model ids');
+	}
+
+	let deleted = 0;
+	const not_found: string[] = [];
+	const failed: Array<{ id: string; message: string }> = [];
+
+	for (const id of uniqueIds) {
+		try {
+			const changes = await repos.models.deleteModelCascade(id);
+			if (changes) {
+				deleted++;
+			} else {
+				not_found.push(id);
+			}
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			failed.push({ id, message });
+		}
+	}
+
+	return { deleted, not_found, failed };
 }

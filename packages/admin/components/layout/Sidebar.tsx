@@ -26,6 +26,7 @@ import {
   Cog6ToothIcon,
   WrenchScrewdriverIcon,
   QueueListIcon,
+  CommandLineIcon,
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import { adminAppVersion } from '@/lib/app-version';
@@ -46,6 +47,7 @@ const menuGroups: MenuGroup[] = [
     groupKey: 'overview',
     items: [
       { nameKey: 'dashboard', href: '/dashboard', icon: HomeIcon },
+      { nameKey: 'testConsole', href: '/gateway/test-console', icon: CommandLineIcon },
     ],
   },
   {

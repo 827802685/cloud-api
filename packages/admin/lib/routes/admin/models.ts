@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
+	batchDeleteModelsService,
 	createModelService,
 	deleteModelService,
 	getModelService,
@@ -15,6 +16,8 @@ import {
 } from '@/lib/services/admin/models-service';
 import type {
 	AdminModelMutationInput,
+	AdminModelsBatchDeleteBody,
+	AdminModelsBatchDeleteOutput,
 	AdminModelsImportBody,
 	AdminModelsImportOutput,
 } from '@/lib/services/admin/types';
@@ -100,6 +103,39 @@ adminModelsRoutes.post('/import', async (c) => {
 		);
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to import models');
+	}
+});
+
+/** 批量级联删除模型（含路由、标签、路由池、Surface）。 */
+adminModelsRoutes.post('/batch-delete', async (c) => {
+	let body: AdminModelsBatchDeleteBody;
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
+	}
+	try {
+		const repos = c.get('repositories');
+		const data: AdminModelsBatchDeleteOutput = await batchDeleteModelsService(
+			repos,
+			Array.isArray(body.ids) ? body.ids : []
+		);
+		const parts = [`deleted ${data.deleted}`];
+		if (data.not_found.length) {
+			parts.push(`${data.not_found.length} not found`);
+		}
+		if (data.failed.length) {
+			parts.push(`${data.failed.length} failed`);
+		}
+		return c.json(
+			normalizeApiTimeFields({
+				success: true,
+				message: `Batch delete finished (${parts.join(', ')})`,
+				data,
+			})
+		);
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to batch delete models');
 	}
 });
 

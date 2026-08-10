@@ -76,6 +76,15 @@ function ModelsContent() {
 								);
 							}}
 							createTitle={createTitle}
+							batchMode={state.batchMode}
+							onToggleBatchMode={state.toggleBatchMode}
+							batchSelectedCount={state.batchSelectedIds.size}
+							onSelectAllVisible={() =>
+								state.selectAllVisibleModels(state.selectedVendorItems.map((m) => m.id))
+							}
+							onClearBatchSelection={state.clearBatchSelection}
+							onBatchDelete={() => void state.handleBatchDelete()}
+							isBatchDeleting={state.isBatchDeleting}
 						/>
 
 						<div className="bg-slate-100/70 p-4 sm:p-6">
@@ -93,6 +102,9 @@ function ModelsContent() {
 											billingCurrency={state.billingCurrency}
 											onEdit={state.handleEdit}
 											onViewMetadata={state.openMetadataPreview}
+											batchMode={state.batchMode}
+											batchSelected={state.batchSelectedIds.has(model.id)}
+											onToggleBatchSelection={state.toggleBatchSelection}
 										/>
 									))}
 								</div>

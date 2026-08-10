@@ -37,6 +37,9 @@
 		"new": "新建",
 		"import": "导入",
 		"delete": "删除",
+		"batchDelete": "批量删除",
+		"selectAll": "全选",
+		"clear": "清除",
 		"copy": "复制",
 		"copied": "已复制",
 		"dismiss": "关闭",
@@ -122,6 +125,7 @@
 		},
 		"nav": {
 			"dashboard": "仪表盘",
+			"testConsole": "测试台",
 			"providers": "供应商",
 			"models": "模型",
 			"routes": "路由",
@@ -994,6 +998,24 @@
 		"toolsBodyMustBeObject": "请求体必须是 JSON 对象。",
 		"toolsNeedProvider": "请选择引擎 Provider。",
 		"applyTemplate": "套用模板"
+	},
+	"testConsole": {
+		"title": "测试台",
+		"subtitle": "选择一个或多个模型，发送相同的提示词，并排对比响应结果。",
+		"selectModels": "模型",
+		"filterModels": "筛选模型...",
+		"noModelsAvailable": "没有可用路由的模型。",
+		"promptPlaceholder": "在此输入测试提示词...",
+		"sendToAll": "发送到 {count} 个模型",
+		"stop": "停止",
+		"copyAll": "复制全部",
+		"emptyHint": "选择模型并发送提示词后，结果将显示在此处。",
+		"pending": "等待中",
+		"streaming": "接收中",
+		"waitingForResponse": "等待响应...",
+		"noResponse": "无响应",
+		"thinking": "推理",
+		"usage": "用量"
 	},
 	"simulator": {
 		"title": "模拟器",

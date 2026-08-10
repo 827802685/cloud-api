@@ -37,6 +37,9 @@
 		"new": "新規",
 		"import": "インポート",
 		"delete": "削除",
+		"batchDelete": "一括削除",
+		"selectAll": "全選択",
+		"clear": "クリア",
 		"copy": "コピー",
 		"copied": "コピーしました",
 		"dismiss": "閉じる",
@@ -122,6 +125,7 @@
 		},
 		"nav": {
 			"dashboard": "ダッシュボード",
+			"testConsole": "Test Console",
 			"providers": "Provider",
 			"models": "モデル",
 			"routes": "Route",
@@ -994,6 +998,24 @@
 		"toolsBodyMustBeObject": "リクエストボディは JSON オブジェクトである必要があります。",
 		"toolsNeedProvider": "エンジン Provider を選択してください。",
 		"applyTemplate": "テンプレートを適用"
+	},
+	"testConsole": {
+		"title": "Test Console",
+		"subtitle": "1 つ以上のモデルを選択し、同じプロンプトを送信してレスポンスを並べて比較します。",
+		"selectModels": "モデル",
+		"filterModels": "モデルを絞り込み...",
+		"noModelsAvailable": "Active な Route を持つモデルがありません。",
+		"promptPlaceholder": "テストプロンプトを入力...",
+		"sendToAll": "{count} モデルに送信",
+		"stop": "停止",
+		"copyAll": "すべてコピー",
+		"emptyHint": "モデルを選択してプロンプトを送信すると、ここに結果が表示されます。",
+		"pending": "待機中",
+		"streaming": "受信中",
+		"waitingForResponse": "レスポンスを待っています...",
+		"noResponse": "レスポンスなし",
+		"thinking": "Thinking",
+		"usage": "使用量"
 	},
 	"simulator": {
 		"title": "Simulator",
