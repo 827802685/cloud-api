@@ -18,6 +18,7 @@ type IconVisual = {
 
 /** 与 Website `CatalogExplorer.astro` 的 vendorVisuals 保持一致。 */
 const VENDOR_VISUALS: Record<string, IconVisual> = {
+	agnes: { url: vendorIconAssets.agnes, accent: '#6366f1' },
 	aliyun: { url: vendorIconAssets.aliyun, accent: '#ff6a00' },
 	amazon: { url: vendorIconAssets.amazon, accent: '#ff9900' },
 	anthropic: { url: vendorIconAssets.anthropic, accent: '#d4a27f' },
@@ -25,12 +26,16 @@ const VENDOR_VISUALS: Record<string, IconVisual> = {
 	baichuan: { url: vendorIconAssets.baichuan, accent: '#625bff' },
 	baidu: { url: vendorIconAssets.baidu, accent: '#2932e1' },
 	bytedance: { url: vendorIconAssets.bytedance, accent: '#00c8d7' },
+	cerebras: { url: vendorIconAssets.cerebras, accent: '#f04e23' },
+	cloudflare: { url: vendorIconAssets.cloudflare, accent: '#f38020' },
 	cohere: { url: vendorIconAssets.cohere, accent: '#39594d' },
 	deepseek: { url: vendorIconAssets.deepseek, accent: '#4d6bfe' },
 	fireworks: { url: vendorIconAssets.fireworks, accent: '#ff5f56' },
 	google: { url: vendorIconAssets.google, accent: '#4285f4' },
+	github: { url: vendorIconAssets.github, accent: '#181717' },
 	groq: { url: vendorIconAssets.groq, accent: '#f55036' },
 	huawei: { url: vendorIconAssets.huawei, accent: '#cf0a2c' },
+	huggingface: { url: vendorIconAssets.huggingface, accent: '#ff9d00' },
 	ibm: { url: vendorIconAssets.ibm, accent: '#0f62fe' },
 	meituan: { url: vendorIconAssets.meituan, accent: '#ffd100' },
 	meta: { url: vendorIconAssets.meta, accent: '#0866ff' },
@@ -44,6 +49,7 @@ const VENDOR_VISUALS: Record<string, IconVisual> = {
 	openrouter: { url: vendorIconAssets.openrouter, accent: '#6366f1' },
 	other: { accent: '#64748b' },
 	perplexity: { url: vendorIconAssets.perplexity, accent: '#20b8cd' },
+	pollinations: { url: vendorIconAssets.pollinations, accent: '#000000' },
 	qiniu: { url: vendorIconAssets.qiniu, accent: '#00a0e9' },
 	siliconflow: { url: vendorIconAssets.siliconflow, accent: '#6d5dfc' },
 	stability: { url: vendorIconAssets.stability, accent: '#7c3aed' },

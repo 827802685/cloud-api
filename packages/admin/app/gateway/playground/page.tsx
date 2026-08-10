@@ -1145,6 +1145,7 @@ function PlaygroundPageInner() {
 										<div>
 											<div className="text-xs font-medium text-gray-600 mb-1">{t('mergedContent')}</div>
 											<div className="rounded-md border border-slate-200 overflow-hidden divide-y divide-slate-200">
+												{mergedAssistantParts.reasoning ? (
 												<div>
 													<div className="text-[11px] font-semibold text-amber-900/85 uppercase tracking-wide px-3 py-1.5 bg-amber-50 border-b border-amber-100">
 														{t('thinking')}
@@ -1153,6 +1154,7 @@ function PlaygroundPageInner() {
 														{mergedReasoningDisplay}
 													</pre>
 												</div>
+												) : null}
 												<div>
 													<div className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide px-3 py-1.5 bg-slate-50 border-b border-slate-100">
 														{t('body')}

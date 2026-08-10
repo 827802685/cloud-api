@@ -149,7 +149,7 @@ function endpointIdentity(url: URL): ProviderCatalogIdentity | null {
 		['fireworks.ai', identity('fireworks')],
 		['perplexity.ai', identity('perplexity')],
 		['cohere.ai', identity('cohere')],
-		['api.nvidia.com', identity('nvidia')],
+		['nvidia.com', identity('nvidia')],
 		['openai.azure.com', identity('azure')],
 		['services.ai.azure.com', identity('azure')],
 		['models.inference.ai.azure.com', identity('azure')],
