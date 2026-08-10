@@ -1,9 +1,8 @@
 -- Auto-route recovery: track failures and auto-re-enable after 24 hours
 -- consecutive_failures: incremented on each upstream failure, reset to 0 on success
 -- disabled_at: set when route is auto-disabled (consecutive_failures >= 3), NULL when active
+-- NOTE: columns added idempotently via migration 0023 if not already present
 
-ALTER TABLE model_routes ADD COLUMN consecutive_failures INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE model_routes ADD COLUMN disabled_at TEXT DEFAULT NULL;
-
--- Index for efficient auto-recovery queries
-CREATE INDEX idx_model_routes_disabled_at ON model_routes(disabled_at) WHERE disabled_at IS NOT NULL;
+-- This migration is a no-op placeholder. The columns were added directly to the database.
+-- See migration 0023 for the idempotent version.
+SELECT 1;
