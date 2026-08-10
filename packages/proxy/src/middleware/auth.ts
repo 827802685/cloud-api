@@ -83,7 +83,22 @@ export const requireApiKey = createMiddleware<Env>(async (c, next) => {
   }
 
   const repos = c.get('repositories');
-  const authResult = await authenticateApiKey(repos, key);
+  let authResult;
+  try {
+    authResult = await authenticateApiKey(repos, key);
+  } catch (err) {
+    console.error('[Gateway Auth] Authentication error:', {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return c.json(
+      {
+        error: 'Authentication failed',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500
+    );
+  }
   if (!authResult) {
     console.warn(`[Gateway Auth] 401 API key not found keyPrefix=${maskKey(key)}`);
     return gatewayErrorJson(c, {

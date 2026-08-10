@@ -92,8 +92,22 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 	});
 
 	app.use('*', async (c, next) => {
-		const storage = await resolveStorage(c);
-		c.set('repositories', storage.repositories);
+		try {
+			const storage = await resolveStorage(c);
+			c.set('repositories', storage.repositories);
+		} catch (err) {
+			console.error('[Gateway] Storage resolution failed:', {
+				message: err instanceof Error ? err.message : String(err),
+				stack: err instanceof Error ? err.stack : undefined,
+			});
+			return c.json(
+				{
+					error: 'Storage initialization failed',
+					message: err instanceof Error ? err.message : String(err),
+				},
+				500
+			);
+		}
 		await next();
 	});
 
