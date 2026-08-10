@@ -1,0 +1,53 @@
+name: Deploy Admin Worker to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/admin/**'
+      - 'packages/core/**'
+      - 'packages/tool-engines/**'
+      - 'scripts/deploy/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+jobs:
+  deploy-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build core package
+        run: npm run build -w @octafuse/core
+
+      - name: Generate wrangler config
+        env:
+          PROXY_WORKER_NAME: ${{ vars.PROXY_WORKER_NAME }}
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          D1_MIGRATIONS_WORKER_NAME: ${{ vars.D1_MIGRATIONS_WORKER_NAME }}
+        run: npm run gen:wrangler -- --remote
+
+      - name: Build Admin Worker for Cloudflare
+        run: npm run build:cf -w @octafuse/admin
+
+      - name: Deploy Admin Worker to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'packages/admin'
+          command: 'deploy'
