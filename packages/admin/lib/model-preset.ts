@@ -38,6 +38,7 @@ import minimaxPresets from './model-presets/minimax.json';
 import mistralPresets from './model-presets/mistral.json';
 import modelscopePresets from './model-presets/modelscope.json';
 import moonshotPresets from './model-presets/moonshot.json';
+import nvidiaPresets from './model-presets/nvidia.json';
 import openaiPresets from './model-presets/openai.json';
 import openaiImagePresets from './model-presets/openai-image.json';
 import openaiAudioPresets from './model-presets/openai-audio.json';
@@ -106,6 +107,7 @@ const STATIC_MODEL_PRESETS_BY_VENDOR = [
 	mistralPresets,
 	modelscopePresets,
 	moonshotPresets,
+	nvidiaPresets,
 	openaiPresets,
 	openaiImagePresets,
 	openaiAudioPresets,
