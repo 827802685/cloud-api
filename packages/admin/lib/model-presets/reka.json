@@ -1,0 +1,38 @@
+[
+	{
+		"id": "reka-flash-3",
+		"display_name": "Reka Flash 3",
+		"description": "Reka Flash 3 — a fast, cost-efficient multimodal model. Supports text and image input with strong tool-use capabilities.",
+		"i18n": {
+			"en": "Reka Flash 3 — fast, cost-efficient multimodal model with tool-use.",
+			"zh": "Reka Flash 3 — 快速高效的多模态模型，支持工具调用。"
+		},
+		"vendor": "reka",
+		"context_window": 128000,
+		"max_tokens": 8192,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2025-01-01"
+	},
+	{
+		"id": "reka-edge-2603",
+		"display_name": "Reka Edge 2603",
+		"description": "Reka Edge — a compact model optimized for low-latency edge deployment. Suitable for fast, lightweight tasks.",
+		"i18n": {
+			"en": "Reka Edge — compact model for low-latency edge deployment.",
+			"zh": "Reka Edge — 面向低延迟边缘部署的紧凑型模型。"
+		},
+		"vendor": "reka",
+		"context_window": 16000,
+		"max_tokens": 2048,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-03-01"
+	}
+]

@@ -1,0 +1,56 @@
+[
+	{
+		"id": "openai/gpt-4o",
+		"display_name": "GPT-4o (GitHub Models)",
+		"description": "OpenAI GPT-4o accessible via GitHub Models. Free tier with rate limits. Requires a GitHub personal access token.",
+		"i18n": {
+			"en": "OpenAI GPT-4o accessible via GitHub Models. Free tier with rate limits.",
+			"zh": "通过 GitHub Models 访问的 OpenAI GPT-4o，免费层有速率限制。"
+		},
+		"vendor": "github",
+		"context_window": 128000,
+		"max_tokens": 16384,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2024-05-01"
+	},
+	{
+		"id": "openai/gpt-4o-mini",
+		"display_name": "GPT-4o mini (GitHub Models)",
+		"description": "OpenAI GPT-4o mini via GitHub Models. Cost-efficient small model for fast, lightweight tasks.",
+		"i18n": {
+			"en": "OpenAI GPT-4o mini via GitHub Models. Cost-efficient for fast, lightweight tasks.",
+			"zh": "通过 GitHub Models 访问的 GPT-4o mini，适合快速轻量级任务。"
+		},
+		"vendor": "github",
+		"context_window": 128000,
+		"max_tokens": 16384,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2024-07-01"
+	},
+	{
+		"id": "openai/text-embedding-3-large",
+		"display_name": "Text Embedding 3 Large (GitHub Models)",
+		"description": "OpenAI text-embedding-3-large via GitHub Models. 3072 dimensions, high-quality embeddings.",
+		"i18n": {
+			"en": "OpenAI text-embedding-3-large via GitHub Models. 3072 dimensions.",
+			"zh": "通过 GitHub Models 访问的 OpenAI text-embedding-3-large，3072 维。"
+		},
+		"vendor": "github",
+		"context_window": 8191,
+		"max_tokens": 8191,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01"
+	}
+]

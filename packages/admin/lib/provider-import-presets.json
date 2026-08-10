@@ -1180,5 +1180,526 @@
 				"platform": "https://ollama.com/download"
 			}
 		}
+	},
+	{
+		"name": "Cerebras",
+		"vendor_key": "cerebras",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.cerebras.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Cerebras",
+					"description": "Cerebras 高速推理平台的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "Cerebras",
+					"description": "Cerebras high-speed inference platform's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://cloud.cerebras.ai/",
+				"api_keys": "https://cloud.cerebras.ai/keys"
+			}
+		}
+	},
+	{
+		"name": "GitHub Models",
+		"vendor_key": "github",
+		"endpoints": {
+			"openai": {
+				"base": "https://models.github.ai/inference"
+			}
+		},
+		"description": "New GitHub-hosted API endpoint (models.github.ai/inference). The legacy Azure endpoint (models.inference.ai.azure.com) was deprecated on 2025-07-17 and removed on 2025-10-17. Auth uses GitHub fine-grained personal access tokens. See GitHub Models docs.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "GitHub Models",
+					"description": "GitHub Models 市场的 OpenAI 兼容推理端点（新版 GitHub 托管 API）。"
+				},
+				"en": {
+					"name": "GitHub Models",
+					"description": "GitHub Models marketplace's OpenAI-compatible inference endpoint (new GitHub-hosted API)."
+				}
+			},
+			"links": {
+				"platform": "https://github.com/marketplace/models",
+				"api_keys": "https://github.com/settings/tokens"
+			}
+		}
+	},
+	{
+		"name": "HuggingFace Inference",
+		"vendor_key": "huggingface",
+		"endpoints": {
+			"openai": {
+				"base": "https://router.huggingface.co/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "HuggingFace Inference",
+					"description": "HuggingFace Inference Router 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "HuggingFace Inference",
+					"description": "HuggingFace Inference Router's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://huggingface.co/",
+				"api_keys": "https://huggingface.co/settings/tokens"
+			}
+		}
+	},
+	{
+		"name": "Cloudflare Workers AI",
+		"vendor_key": "cloudflare",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1/chat/completions"
+				}
+			}
+		},
+		"description": "Cloudflare Workers AI endpoint; replace {ACCOUNT_ID} with your Cloudflare account ID.",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Cloudflare Workers AI",
+					"description": "Cloudflare Workers AI 端点，需替换 {ACCOUNT_ID} 为你的 Cloudflare 账户 ID。"
+				},
+				"en": {
+					"name": "Cloudflare Workers AI",
+					"description": "Cloudflare Workers AI endpoint; replace {ACCOUNT_ID} with your Cloudflare account ID."
+				}
+			},
+			"links": {
+				"platform": "https://dash.cloudflare.com/",
+				"api_keys": "https://dash.cloudflare.com/profile/api-tokens"
+			}
+		}
+	},
+	{
+		"name": "Kilo Gateway",
+		"vendor_key": "kilo",
+		"endpoints": {
+			"openai": {
+				"base": "https://gateway.kilo.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Kilo Gateway",
+					"description": "Kilo Gateway 免费 OpenAI 兼容网关，无需 API Key。"
+				},
+				"en": {
+					"name": "Kilo Gateway",
+					"description": "Kilo Gateway free OpenAI-compatible gateway, no API key required."
+				}
+			},
+			"links": {
+				"platform": "https://kilo.ai/"
+			}
+		}
+	},
+	{
+		"name": "OVH AI Endpoints",
+		"vendor_key": "ovh",
+		"endpoints": {
+			"openai": {
+				"base": "https://ai.endpoints.ovhcloud.net/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "OVH AI Endpoints",
+					"description": "OVHcloud AI Endpoints 免费 OpenAI 兼容推理，无需 API Key。"
+				},
+				"en": {
+					"name": "OVH AI Endpoints",
+					"description": "OVHcloud AI Endpoints free OpenAI-compatible inference, no API key required."
+				}
+			},
+			"links": {
+				"platform": "https://endpoints.ai.ovhcloud.com/"
+			}
+		}
+	},
+	{
+		"name": "AI Horde",
+		"vendor_key": "aihorde",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://aihorde.net/api/v1/chat/completions"
+				}
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "AI Horde",
+					"description": "AI Horde 社区志愿算力 OpenAI 兼容端点。"
+				},
+				"en": {
+					"name": "AI Horde",
+					"description": "AI Horde community-powered OpenAI-compatible endpoint."
+				}
+			},
+			"links": {
+				"platform": "https://aihorde.net/",
+				"api_keys": "https://aihorde.net/register"
+			}
+		}
+	},
+	{
+		"name": "ModelScope",
+		"vendor_key": "modelscope",
+		"endpoints": {
+			"openai": {
+				"base": "https://api-inference.modelscope.cn/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "ModelScope 魔搭",
+					"description": "魔搭社区推理 API 的 OpenAI 兼容端点。"
+				},
+				"en": {
+					"name": "ModelScope",
+					"description": "ModelScope community inference API's OpenAI-compatible endpoint."
+				}
+			},
+			"links": {
+				"platform": "https://modelscope.cn/",
+				"api_keys": "https://modelscope.cn/my/myaccesstoken"
+			}
+		}
+	},
+	{
+		"name": "Pollinations",
+		"vendor_key": "pollinations",
+		"endpoints": {
+			"openai": {
+				"endpoints": {
+					"chat": "https://text.pollinations.ai/openai/v1/chat/completions"
+				}
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Pollinations",
+					"description": "Pollinations 免费 AI 文本生成 OpenAI 兼容端点。"
+				},
+				"en": {
+					"name": "Pollinations",
+					"description": "Pollinations free AI text generation OpenAI-compatible endpoint."
+				}
+			},
+			"links": {
+				"platform": "https://pollinations.ai/"
+			}
+		}
+	},
+	{
+		"name": "Routeway",
+		"vendor_key": "routeway",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.routeway.xyz/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Routeway",
+					"description": "Routeway 聚合网关的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "Routeway",
+					"description": "Routeway aggregation gateway's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://routeway.xyz/"
+			}
+		}
+	},
+	{
+		"name": "LLM7",
+		"vendor_key": "llm7",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.llm7.io/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "LLM7",
+					"description": "LLM7 平台的 OpenAI 兼容推理 API。"
+				},
+				"en": {
+					"name": "LLM7",
+					"description": "LLM7 platform's OpenAI-compatible inference API."
+				}
+			},
+			"links": {
+				"platform": "https://llm7.io/"
+			}
+		}
+	},
+	{
+		"name": "Reka",
+		"vendor_key": "reka",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.reka.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Reka",
+					"description": "Reka AI 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "Reka",
+					"description": "Reka AI's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://reka.ai/",
+				"api_keys": "https://platform.reka.ai/apikeys"
+			}
+		}
+	},
+	{
+		"name": "AINative Studio",
+		"vendor_key": "ainative",
+		"endpoints": {
+			"openai": {
+				"base": "https://ainative.studio/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "AINative Studio",
+					"description": "AINative Studio 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "AINative Studio",
+					"description": "AINative Studio's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://ainative.studio/"
+			}
+		}
+	},
+	{
+		"name": "Requesty",
+		"vendor_key": "requesty",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.requesty.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Requesty",
+					"description": "Requesty 的 OpenAI 兼容推理 API。"
+				},
+				"en": {
+					"name": "Requesty",
+					"description": "Requesty's OpenAI-compatible inference API."
+				}
+			},
+			"links": {
+				"platform": "https://requesty.ai/"
+			}
+		}
+	},
+	{
+		"name": "NavyAI",
+		"vendor_key": "navyai",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.navyai.com/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "NavyAI",
+					"description": "NavyAI 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "NavyAI",
+					"description": "NavyAI's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://navyai.ai/"
+			}
+		}
+	},
+	{
+		"name": "NaraRouter",
+		"vendor_key": "nararouter",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.nararouter.com/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "NaraRouter",
+					"description": "NaraRouter 的 OpenAI 兼容路由网关。"
+				},
+				"en": {
+					"name": "NaraRouter",
+					"description": "NaraRouter's OpenAI-compatible routing gateway."
+				}
+			},
+			"links": {
+				"platform": "https://nararouter.com/"
+			}
+		}
+	},
+	{
+		"name": "SEA-LION",
+		"vendor_key": "sealion",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.sea-lion.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "SEA-LION",
+					"description": "SEA-LION 东南亚模型的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "SEA-LION",
+					"description": "SEA-LION Southeast Asian models' OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://sea-lion.ai/"
+			}
+		}
+	},
+	{
+		"name": "Agnes AI",
+		"vendor_key": "agnes",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.agnes.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Agnes AI",
+					"description": "Agnes AI 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "Agnes AI",
+					"description": "Agnes AI's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://agnes.ai/"
+			}
+		}
+	},
+	{
+		"name": "BazaarLink",
+		"vendor_key": "bazaarlink",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.bazaarlink.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "BazaarLink",
+					"description": "BazaarLink 的 OpenAI 兼容 API。"
+				},
+				"en": {
+					"name": "BazaarLink",
+					"description": "BazaarLink's OpenAI-compatible API."
+				}
+			},
+			"links": {
+				"platform": "https://bazaarlink.ai/"
+			}
+		}
+	},
+	{
+		"name": "Ollama Cloud",
+		"vendor_key": "ollama",
+		"endpoints": {
+			"openai": {
+				"base": "https://ollama.com/v1"
+			}
+		},
+		"description": "Ollama Cloud hosted API (ollama.com/v1). OpenAI-compatible endpoint for cloud-hosted Ollama models. Distinct from the local Ollama template (127.0.0.1:11434).",
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Ollama Cloud",
+					"description": "Ollama 云端托管 API，OpenAI 兼容端点。"
+				},
+				"en": {
+					"name": "Ollama Cloud",
+					"description": "Ollama Cloud hosted API with OpenAI-compatible endpoint."
+				}
+			},
+			"links": {
+				"platform": "https://ollama.com/",
+				"api_keys": "https://ollama.com/settings/keys"
+			}
+		}
+	},
+	{
+		"name": "Aion Labs",
+		"vendor_key": "aion",
+		"endpoints": {
+			"openai": {
+				"base": "https://api.aionlabs.ai/v1"
+			}
+		},
+		"catalog": {
+			"i18n": {
+				"zh": {
+					"name": "Aion Labs",
+					"description": "Aion Labs 的 OpenAI 兼容推理 API。"
+				},
+				"en": {
+					"name": "Aion Labs",
+					"description": "Aion Labs' OpenAI-compatible inference API."
+				}
+			},
+			"links": {
+				"platform": "https://aionlabs.ai/"
+			}
+		}
 	}
 ]

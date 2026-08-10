@@ -1,0 +1,38 @@
+[
+	{
+		"id": "meta-llama/Llama-3.3-70B-Instruct",
+		"display_name": "Llama 3.3 70B (OVH)",
+		"description": "Meta Llama 3.3 70B Instruct on OVHcloud AI Endpoints. Free anonymous access with rate limits (2 req/min).",
+		"i18n": {
+			"en": "Meta Llama 3.3 70B Instruct on OVHcloud AI Endpoints. Free anonymous access.",
+			"zh": "OVHcloud AI Endpoints 上的 Llama 3.3 70B Instruct，免费匿名访问。"
+		},
+		"vendor": "ovh",
+		"context_window": 128000,
+		"max_tokens": 4096,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-12-01"
+	},
+	{
+		"id": "gpt-oss-120b",
+		"display_name": "GPT-OSS 120B (OVH)",
+		"description": "GPT-OSS 120B open-source model on OVHcloud AI Endpoints. Free anonymous access.",
+		"i18n": {
+			"en": "GPT-OSS 120B on OVHcloud AI Endpoints. Free anonymous access.",
+			"zh": "OVHcloud AI Endpoints 上的 GPT-OSS 120B 开源模型，免费匿名访问。"
+		},
+		"vendor": "ovh",
+		"context_window": 128000,
+		"max_tokens": 4096,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01"
+	}
+]

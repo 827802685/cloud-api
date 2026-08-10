@@ -1,0 +1,56 @@
+[
+	{
+		"id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+		"display_name": "Llama 3.3 70B (CF Workers AI)",
+		"description": "Meta Llama 3.3 70B Instruct on Cloudflare Workers AI. FP8 fast inference. Requires Cloudflare account ID in the endpoint URL.",
+		"i18n": {
+			"en": "Meta Llama 3.3 70B Instruct on Cloudflare Workers AI. FP8 fast inference.",
+			"zh": "在 Cloudflare Workers AI 上运行的 Llama 3.3 70B Instruct，FP8 快速推理。"
+		},
+		"vendor": "cloudflare",
+		"context_window": 128000,
+		"max_tokens": 4096,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-12-01"
+	},
+	{
+		"id": "@cf/baai/bge-m3",
+		"display_name": "BGE-M3 (CF Workers AI)",
+		"description": "BAAI BGE-M3 multilingual embedding on Cloudflare Workers AI. 1024 dimensions.",
+		"i18n": {
+			"en": "BAAI BGE-M3 multilingual embedding on Cloudflare Workers AI.",
+			"zh": "Cloudflare Workers AI 上的 BAAI BGE-M3 多语言嵌入模型。"
+		},
+		"vendor": "cloudflare",
+		"context_window": 8192,
+		"max_tokens": 8192,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01"
+	},
+	{
+		"id": "@cf/qwen/qwen3-embedding-0.6b",
+		"display_name": "Qwen3 Embedding 0.6B (CF Workers AI)",
+		"description": "Qwen3 0.6B embedding model on Cloudflare Workers AI. Compact multilingual embedding.",
+		"i18n": {
+			"en": "Qwen3 0.6B embedding model on Cloudflare Workers AI.",
+			"zh": "Cloudflare Workers AI 上的 Qwen3 0.6B 嵌入模型。"
+		},
+		"vendor": "cloudflare",
+		"context_window": 8192,
+		"max_tokens": 8192,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-05-01"
+	}
+]

@@ -1,0 +1,56 @@
+[
+	{
+		"id": "meta-llama/Llama-3.3-70B-Instruct",
+		"display_name": "Llama 3.3 70B Instruct (HF Router)",
+		"description": "Meta Llama 3.3 70B Instruct via HuggingFace Inference Router. Free tier with rate limits.",
+		"i18n": {
+			"en": "Meta Llama 3.3 70B Instruct via HuggingFace Inference Router.",
+			"zh": "通过 HuggingFace 推理路由访问的 Llama 3.3 70B Instruct。"
+		},
+		"vendor": "huggingface",
+		"context_window": 128000,
+		"max_tokens": 4096,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-12-01"
+	},
+	{
+		"id": "Qwen/Qwen3-235B-A22B",
+		"display_name": "Qwen3 235B A22B (HF Router)",
+		"description": "Alibaba Qwen3 235B MoE model via HuggingFace Router. Strong multilingual reasoning.",
+		"i18n": {
+			"en": "Alibaba Qwen3 235B MoE model via HuggingFace Router.",
+			"zh": "通过 HuggingFace 路由访问的阿里 Qwen3 235B 混合专家模型。"
+		},
+		"vendor": "huggingface",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-05-01"
+	},
+	{
+		"id": "BAAI/bge-m3",
+		"display_name": "BGE-M3 Embedding (HF Router)",
+		"description": "BAAI BGE-M3 multilingual embedding model via HuggingFace Router. 1024 dimensions, supports 8192 token input.",
+		"i18n": {
+			"en": "BAAI BGE-M3 multilingual embedding model. 1024 dimensions.",
+			"zh": "BAAI BGE-M3 多语言嵌入模型，1024 维。"
+		},
+		"vendor": "huggingface",
+		"context_window": 8192,
+		"max_tokens": 8192,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01"
+	}
+]

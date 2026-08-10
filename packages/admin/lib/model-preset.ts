@@ -24,19 +24,27 @@ import baichuanPresets from './model-presets/baichuan.json';
 import baiduPresets from './model-presets/baidu.json';
 import bytedancePresets from './model-presets/bytedance.json';
 import bytedanceImagePresets from './model-presets/bytedance-image.json';
+import cerebrasPresets from './model-presets/cerebras.json';
+import cloudflarePresets from './model-presets/cloudflare.json';
 import coherePresets from './model-presets/cohere.json';
 import deepseekPresets from './model-presets/deepseek.json';
+import githubPresets from './model-presets/github.json';
 import googlePresets from './model-presets/google.json';
 import googleImagePresets from './model-presets/google-image.json';
+import huggingfacePresets from './model-presets/huggingface.json';
 import meituanPresets from './model-presets/meituan.json';
 import metaPresets from './model-presets/meta.json';
 import minimaxPresets from './model-presets/minimax.json';
 import mistralPresets from './model-presets/mistral.json';
+import modelscopePresets from './model-presets/modelscope.json';
 import moonshotPresets from './model-presets/moonshot.json';
 import openaiPresets from './model-presets/openai.json';
 import openaiImagePresets from './model-presets/openai-image.json';
 import openaiAudioPresets from './model-presets/openai-audio.json';
+import ovhPresets from './model-presets/ovh.json';
 import perplexityPresets from './model-presets/perplexity.json';
+import rekaPresets from './model-presets/reka.json';
+import sealionPresets from './model-presets/sealion.json';
 import stabilityPresets from './model-presets/stability.json';
 import stepfunPresets from './model-presets/stepfun.json';
 import tencentPresets from './model-presets/tencent.json';
@@ -84,19 +92,27 @@ const STATIC_MODEL_PRESETS_BY_VENDOR = [
 	baiduPresets,
 	bytedancePresets,
 	bytedanceImagePresets,
+	cerebrasPresets,
+	cloudflarePresets,
 	coherePresets,
 	deepseekPresets,
+	githubPresets,
 	googlePresets,
 	googleImagePresets,
+	huggingfacePresets,
 	meituanPresets,
 	metaPresets,
 	minimaxPresets,
 	mistralPresets,
+	modelscopePresets,
 	moonshotPresets,
 	openaiPresets,
 	openaiImagePresets,
 	openaiAudioPresets,
+	ovhPresets,
 	perplexityPresets,
+	rekaPresets,
+	sealionPresets,
 	stabilityPresets,
 	stepfunPresets,
 	tencentPresets,

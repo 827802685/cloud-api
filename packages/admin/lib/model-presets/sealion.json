@@ -1,0 +1,20 @@
+[
+	{
+		"id": "sea-lion-7b-instruct",
+		"display_name": "SEA-LION 7B Instruct",
+		"description": "SEA-LION 7B — a multilingual model optimized for Southeast Asian languages (Indonesian, Thai, Vietnamese, etc.).",
+		"i18n": {
+			"en": "SEA-LION 7B — multilingual model for Southeast Asian languages.",
+			"zh": "SEA-LION 7B — 面向东南亚语言的多语言模型。"
+		},
+		"vendor": "sealion",
+		"context_window": 8192,
+		"max_tokens": 2048,
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		},
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-06-01"
+	}
+]
