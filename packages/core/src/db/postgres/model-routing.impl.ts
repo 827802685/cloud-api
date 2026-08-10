@@ -117,38 +117,40 @@ export function createPostgresModelRoutingRepository(db: PostgresDatabaseClient)
 		},
 
 		async recoverExpiredDisabledRoutes(): Promise<number> {
-			const result = await pool.query(
-				`UPDATE model_routes SET status = 'active', disabled_at = NULL, consecutive_failures = 0 WHERE status = 'disabled' AND disabled_at IS NOT NULL AND disabled_at < NOW() - INTERVAL '24 hours'`
-			);
-			return result.rowCount ?? 0;
+			const result = await pg`
+				UPDATE model_routes SET status = 'active', disabled_at = NULL, consecutive_failures = 0
+				WHERE status = 'disabled' AND disabled_at IS NOT NULL
+				  AND disabled_at < NOW() - INTERVAL '24 hours'
+			`;
+			return Number((result as any)?.count ?? 0);
 		},
 
 		async recordRouteFailure(routeId: string): Promise<number> {
-			await pool.query(`UPDATE model_routes SET consecutive_failures = consecutive_failures + 1 WHERE id = $1`, [routeId]);
-			const result = await pool.query(`SELECT consecutive_failures FROM model_routes WHERE id = $1`, [routeId]);
-			return Number(result.rows?.[0]?.consecutive_failures ?? 0);
+			await pg`UPDATE model_routes SET consecutive_failures = consecutive_failures + 1 WHERE id = ${routeId}`;
+			const rows = await pg<{ consecutive_failures: number }[]>`SELECT consecutive_failures FROM model_routes WHERE id = ${routeId}`;
+			return Number(rows?.[0]?.consecutive_failures ?? 0);
 		},
 
 		async recordRouteSuccess(routeId: string): Promise<void> {
-			await pool.query(`UPDATE model_routes SET consecutive_failures = 0, disabled_at = NULL, status = 'active' WHERE id = $1`, [routeId]);
+			await pg`UPDATE model_routes SET consecutive_failures = 0, disabled_at = NULL, status = 'active' WHERE id = ${routeId}`;
 		},
 
 		async autoDisableRoute(routeId: string): Promise<void> {
-			await pool.query(`UPDATE model_routes SET status = 'disabled', disabled_at = NOW() WHERE id = $1`, [routeId]);
+			await pg`UPDATE model_routes SET status = 'disabled', disabled_at = NOW() WHERE id = ${routeId}`;
 		},
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
 			const kw = vendor.toLowerCase().trim();
-			const result = await pool.query(`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE $1 LIMIT 1`, [`%${kw}%`]);
-			return result.rows?.[0]?.id ?? null;
+			const rows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ${'%' + kw + '%'} LIMIT 1`;
+			return rows?.[0]?.id ?? null;
 		},
 
 		async autoCreateRoute(modelId: string, providerId: string, providerModelName: string, upstreamProtocol: string): Promise<string> {
 			const routeId = crypto.randomUUID();
-			await pool.query(
-				`INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, upstream_protocol, created_at, consecutive_failures) VALUES ($1, $2, $3, $4, 0, 'active', 'default', 5, $5, NOW(), 0)`,
-				[routeId, modelId, providerId, providerModelName, upstreamProtocol]
-			);
+			await pg`
+				INSERT INTO model_routes (id, model_id, provider_id, provider_model_name, priority, status, route_group, weight, upstream_protocol, created_at, consecutive_failures)
+				VALUES (${routeId}, ${modelId}, ${providerId}, ${providerModelName}, 0, 'active', 'default', 5, ${upstreamProtocol}, NOW(), 0)
+			`;
 			return routeId;
 		},
 	};
