@@ -20,6 +20,7 @@ import { toolsPricingRoutes } from './routes/v1/tools/pricing';
 import { imageRoutes } from './routes/v1/images';
 import { audioRoutes } from './routes/v1/audio';
 import { proxyAppVersion } from './app-version';
+import { LANDING_PAGE_HTML } from './routes/landing-page';
 
 /** Cloudflare Worker bindings：D1 `DB`。Postgres 见 `src/runtime/node.ts`。 */
 export type GatewayBindings = {
@@ -111,7 +112,9 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 	app.route('/v1/tools/pricing', toolsPricingRoutes);
 	app.route('/catalog', catalogRoutes);
 
-	app.get('/', (c) => c.json({ name: 'octafuse-proxy', version: proxyAppVersion }));
+	app.get('/', (c) => {
+		return c.html(LANDING_PAGE_HTML);
+	});
 
 	return app;
 }
