@@ -39,8 +39,8 @@ function resolveNames() {
 			"octafuse-d1-migrations",
 		d1DatabaseName,
 		d1DatabaseId: trimEnv("D1_DATABASE_ID"),
-		proxyCustomDomain: trimEnv("PROXY_CUSTOM_DOMAIN"),
-		adminCustomDomain: trimEnv("ADMIN_CUSTOM_DOMAIN"),
+		proxyCustomDomain: trimEnv("PROXY_CUSTOM_DOMAIN") || "api.zjkl.dpdns.org",
+		adminCustomDomain: trimEnv("ADMIN_CUSTOM_DOMAIN") || "admin.api.zjkl.dpdns.org",
 	};
 }
 
