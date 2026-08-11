@@ -1,5 +1,5 @@
 ---
-"octafuse": patch
+"cloud-api": patch
 ---
 
 ### 修复:route recovery 迁移补齐 Postgres / MySQL,并恢复 D1 0022 真实建列
