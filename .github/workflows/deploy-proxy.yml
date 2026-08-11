@@ -40,6 +40,9 @@ jobs:
           ADMIN_CUSTOM_DOMAIN: ${{ vars.ADMIN_CUSTOM_DOMAIN }}
         run: npm run gen:wrangler -- --remote
 
+      - name: Build core package
+        run: npm run build -w @cloud-api/core
+
       - name: Build Proxy Worker bundle
         run: npm run build -w @cloud-api/proxy
 
