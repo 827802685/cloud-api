@@ -16,6 +16,9 @@
 	],
 	"scripts": {
 		"postinstall": "npm run gen:wrangler",
+		"build": "npm run build -w @cloud-api/core && npm run build -w @cloud-api/proxy && npm run build:cf -w @cloud-api/admin",
+		"build:proxy": "npm run build -w @cloud-api/core && npm run build -w @cloud-api/proxy",
+		"build:admin": "npm run build -w @cloud-api/core && npm run build:cf -w @cloud-api/admin",
 		"gen:wrangler": "node scripts/deploy/gen-wrangler.mjs",
 		"verify:package-versions": "node scripts/ci/verify-package-versions.mjs",
 		"ci:changeset-tag-push": "changeset tag && node scripts/ci/push-root-release-tag.mjs",
