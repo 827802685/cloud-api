@@ -1,5 +1,5 @@
 /**
- * @octafuse/core — 共享类型、D1/Postgres 仓储、关键写入路径、用户/密钥预算逻辑。
+ * @cloud-api/core — 共享类型、D1/Postgres 仓储、关键写入路径、用户/密钥预算逻辑。
  */
 
 export * from './types';

@@ -3,8 +3,8 @@
  * Models / Routes 目录 Kind 为 llm|image|audio；Simulator / Playground 另含 tool。
  */
 import type { ImageOperation } from '@/lib/image-generations';
-import type { ProviderEndpointCapability } from '@octafuse/core/provider-endpoints';
-import type { UpstreamProtocol } from '@octafuse/core/upstream-protocol';
+import type { ProviderEndpointCapability } from '@cloud-api/core/provider-endpoints';
+import type { UpstreamProtocol } from '@cloud-api/core/upstream-protocol';
 import { GATEWAY_TOOLS, findGatewayToolById, type GatewayToolDefinition } from '@/lib/gateway-tools';
 
 /** 全量 invoke kind（含 Agent Tools） */

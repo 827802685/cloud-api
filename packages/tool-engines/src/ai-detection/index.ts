@@ -5,7 +5,7 @@
 import type {
 	AiDetectionImplementedProvider,
 	AiDetectionProvider,
-} from '@octafuse/core/lib/ai-detection-system-config';
+} from '@cloud-api/core/lib/ai-detection-system-config';
 import { tencentTmsDriver } from './drivers/tencent-tms';
 import type { AiDetectionDriver } from './types';
 

@@ -1,4 +1,4 @@
-import { resolveUpstreamEndpoint } from '@octafuse/core';
+import { resolveUpstreamEndpoint } from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';

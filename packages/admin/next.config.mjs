@@ -14,7 +14,7 @@ const coreSrcIndex = path.join(__dirname, '../core/src/index.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	output: 'standalone',
-	transpilePackages: ['@octafuse/core', '@octafuse/tool-engines'],
+	transpilePackages: ['@cloud-api/core', '@cloud-api/tool-engines'],
 	images: {
 		unoptimized: true,
 	},
@@ -24,15 +24,15 @@ const nextConfig = {
 		root: workspaceRoot,
 		resolveAlias: {
 			// Turbopack alias 从 Admin 目录解析；使用相对路径避免绝对路径被误判为 server-relative import。
-			'@octafuse/core': '../core/src/index.ts',
+			'@cloud-api/core': '../core/src/index.ts',
 		},
 	},
 	webpack: (config) => {
 		config.resolve.alias = {
 			...config.resolve.alias,
-			// Exact match (`$`) so `@octafuse/core/lib/...` still uses package exports → src.
+			// Exact match (`$`) so `@cloud-api/core/lib/...` still uses package exports → src.
 			// Avoids OpenNext/webpack `node` condition resolving a stale `core/dist`.
-			'@octafuse/core$': coreSrcIndex,
+			'@cloud-api/core$': coreSrcIndex,
 		};
 		return config;
 	},

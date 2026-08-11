@@ -15,8 +15,8 @@ import {
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
-import { parseRoutePricingSchedule } from '@octafuse/core/db/pricing-schedule';
+} from '@cloud-api/core/db/model-modalities';
+import { parseRoutePricingSchedule } from '@cloud-api/core/db/pricing-schedule';
 import { useTranslations } from 'next-intl';
 import { UpstreamProtocolBrandIcon } from '@/components/upstream-brand-logo';
 import { formatCompactTokens } from '@/lib/format-compact-tokens';

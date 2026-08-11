@@ -1,6 +1,6 @@
 'use client';
 
-import { ROUTE_STRATEGY_NAMES } from '@octafuse/core/db/model-route-policy';
+import { ROUTE_STRATEGY_NAMES } from '@cloud-api/core/db/model-route-policy';
 import { useTranslations } from 'next-intl';
 import {
 	CAPABILITIES_BY_PROTOCOL,

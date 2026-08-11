@@ -1,5 +1,5 @@
 /**
- * 管理 UI：`pricing_profile` 的 `{ tiers }` 表单行与 JSON 序列化（与 `@octafuse/core` 解析一致）。
+ * 管理 UI：`pricing_profile` 的 `{ tiers }` 表单行与 JSON 序列化（与 `@cloud-api/core` 解析一致）。
  * Image 双模式：`image_billing_mode` token / per_image + 可选 `image` 块。
  * Audio 双模式：`audio_billing_mode` per_second（`audio` 块）/ token（`tiers`）。
  */
@@ -10,7 +10,7 @@ import {
 	profileHasImagePerImagePricing,
 	profileHasImageTokenPricing,
 	type PricingTierPrices,
-} from '@octafuse/core/db/pricing-profile';
+} from '@cloud-api/core/db/pricing-profile';
 
 /** 末档开放上界在表单中的占位（序列化时恒为 JSON `null`，不读此字段）。 */
 export const DRAFT_UPTO_OPEN_SENTINEL = '';

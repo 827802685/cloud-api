@@ -11,7 +11,7 @@ import {
 	getUserAnalyticsService,
 } from '@/lib/services/admin/dashboard-service';
 import { handleAdminRouteError } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 export const adminAnalyticsRoutes = new Hono<AdminEnv>();
 
 adminAnalyticsRoutes.use('*', requireMasterKey);

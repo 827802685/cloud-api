@@ -65,17 +65,17 @@ import {
 	parseWebFetchCatalogLenient,
 	serializeWebFetchCatalog,
 	type WebFetchCatalog,
-} from '@octafuse/core/lib/web-fetch-system-config';
+} from '@cloud-api/core/lib/web-fetch-system-config';
 import {
 	parseWebSearchCatalogLenient,
 	serializeWebSearchCatalog,
 	type WebSearchCatalog,
-} from '@octafuse/core/lib/web-search-system-config';
+} from '@cloud-api/core/lib/web-search-system-config';
 import {
 	parseWebDeepSearchCatalogLenient,
 	serializeWebDeepSearchCatalog,
 	type WebDeepSearchCatalog,
-} from '@octafuse/core/lib/web-deep-search-system-config';
+} from '@cloud-api/core/lib/web-deep-search-system-config';
 import {
 	entryHasRequiredCredentials as aiEntryHasRequiredCredentials,
 	parseAiDetectionCatalogLenient,
@@ -83,8 +83,8 @@ import {
 	AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS,
 	type AiDetectionCatalog,
 	type AiDetectionCatalogEntry,
-} from '@octafuse/core/lib/ai-detection-system-config';
-import { toToolPricingFields } from '@octafuse/core/lib/tool-pricing';
+} from '@cloud-api/core/lib/ai-detection-system-config';
+import { toToolPricingFields } from '@cloud-api/core/lib/tool-pricing';
 import { WebSearchProviderGuideModal } from './components/web-search-provider-guide-modal';
 import {
 	cloneDrafts,

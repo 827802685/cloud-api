@@ -3,7 +3,7 @@
  * 创建、查询、更新（仅 name/metadata/status）、物理删除及单 key 请求日志。全程 `requireMasterKey`。
  */
 import { Hono } from 'hono';
-import { parseApiKeyListSortQuery } from '@octafuse/core/db/api-keys-list-sort';
+import { parseApiKeyListSortQuery } from '@cloud-api/core/db/api-keys-list-sort';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/lib/services/admin/keys-service';
 import type { AdminKeyCreateInput, AdminKeyUpdateInput } from '@/lib/services/admin/types';
 import { handleAdminRouteError, jsonErr } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 export const adminKeysRoutes = new Hono<AdminEnv>();
 
 adminKeysRoutes.use('*', requireMasterKey);

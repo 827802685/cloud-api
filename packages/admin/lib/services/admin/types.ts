@@ -6,8 +6,8 @@ import type {
 	ApiKeyBudgetAuditLogRow,
 	GlobalApiKeyBudgetAuditLogRow,
 	RequestLogRow,
-} from '@octafuse/core';
-import type { ModelRouteJoinRow } from '@octafuse/core';
+} from '@cloud-api/core';
+import type { ModelRouteJoinRow } from '@cloud-api/core';
 
 export type BudgetPeriod = 'none' | 'daily' | 'weekly' | 'monthly';
 

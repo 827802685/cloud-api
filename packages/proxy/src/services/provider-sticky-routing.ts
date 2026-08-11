@@ -2,19 +2,19 @@
  * Route Pool Provider sticky routing — lookup / plan merge / CAS bind·touch·clear.
  * Orthogonal to layer-in strategies (`hash_affinity` etc.).
  */
-import type { GatewayRepositories } from '@octafuse/core';
-import { hashAffinityKey } from '@octafuse/core/db/route-affinity-key';
+import type { GatewayRepositories } from '@cloud-api/core';
+import { hashAffinityKey } from '@cloud-api/core/db/route-affinity-key';
 import {
 	coerceStickyEnabled,
 	parseRoutePoolStickyConfig,
 	STICKY_TOUCH_THROTTLE_SECONDS,
 	type RoutePoolStickyRoutingConfig,
-} from '@octafuse/core/db/route-pool-sticky-types';
+} from '@cloud-api/core/db/route-pool-sticky-types';
 import type { RouteResult } from './model-router';
 import { getProviderCircuitRemainingMs } from './provider-circuit-breaker';
 import type { UpstreamFailureClassification } from './upstream-failure-classifier';
 
-export { hashAffinityKey } from '@octafuse/core/db/route-affinity-key';
+export { hashAffinityKey } from '@cloud-api/core/db/route-affinity-key';
 
 export type StickyLookupStatus =
 	| 'disabled'

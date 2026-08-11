@@ -3,7 +3,7 @@
  * 逻辑对齐 soloent-web `lib/ai-detection/detect.ts`。
  */
 
-import type { ResolvedAiDetectionConfig } from '@octafuse/core/lib/ai-detection-system-config';
+import type { ResolvedAiDetectionConfig } from '@cloud-api/core/lib/ai-detection-system-config';
 import { segmentTextForDetection } from './segment';
 import type { AiDetectionDriver } from './types';
 

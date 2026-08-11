@@ -2,7 +2,7 @@
  * 解析请求体里的 `model` 字符串：`baseId` 与可选后缀 `baseId:route_group`（显式指定计费通道）。
  * 支持 `auto` 和 `auto:vendor` 语法，自动选择最佳可用模型。
  */
-import type { GatewayRepositories, ModelRow } from '@octafuse/core';
+import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
 import { selectAutoModel } from './auto-model-selector';
 
 export interface ResolvedModelRouting {

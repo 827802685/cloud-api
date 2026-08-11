@@ -21,7 +21,7 @@ import {
 import { parseLastStreamUsage } from '@/lib/playground/usage-parsing';
 import type { AdminModelRow } from '@/lib/services/admin/types';
 import type { GatewayProvider } from '@/lib/types';
-import { isImageGenerationModel, isAudioTranscriptionModel } from '@octafuse/core/db/model-modalities';
+import { isImageGenerationModel, isAudioTranscriptionModel } from '@cloud-api/core/db/model-modalities';
 import { ModelVendorIcon } from '@/components/model-vendor-icon';
 
 /* ------------------------------------------------------------------ */

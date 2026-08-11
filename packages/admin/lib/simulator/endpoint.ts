@@ -2,7 +2,7 @@
  * Build Proxy-facing requests from the browser: URL, headers, and JSON body per protocol
  * (including OpenAI/Anthropic `model` field) or Agent Tools (`/v1/tools/*`).
  */
-import { applyGeminiStreamQueryParams } from '@octafuse/core/gemini-upstream-url';
+import { applyGeminiStreamQueryParams } from '@cloud-api/core/gemini-upstream-url';
 import type { ImageOperation } from '@/lib/image-generations';
 import {
 	parseGatewayToolId,

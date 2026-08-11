@@ -56,7 +56,7 @@ import xaiImagePresets from './model-presets/xai-image.json';
 import xiaomiPresets from './model-presets/xiaomi.json';
 import zhipuPresets from './model-presets/zhipu.json';
 import zhipuImagePresets from './model-presets/zhipu-image.json';
-import type { GatewaySupportedBillingCurrency } from '@octafuse/core/lib/billing-currency';
+import type { GatewaySupportedBillingCurrency } from '@cloud-api/core/lib/billing-currency';
 
 export type StaticModelPresetModalities = {
 	input: string[];

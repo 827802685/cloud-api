@@ -1,11 +1,11 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { StorageContext } from '@octafuse/core/storage/context';
-import { initD1Drizzle } from '@octafuse/core/storage/drizzle/client-d1';
-import { createD1Repositories } from '@octafuse/core/storage/repositories-d1';
+import type { StorageContext } from '@cloud-api/core/storage/context';
+import { initD1Drizzle } from '@cloud-api/core/storage/drizzle/client-d1';
+import { createD1Repositories } from '@cloud-api/core/storage/repositories-d1';
 import {
 	resolveNodeDatabaseConfig,
 	resolveWorkerDatabaseConfig,
-} from '@octafuse/core/storage/runtime-database-config';
+} from '@cloud-api/core/storage/runtime-database-config';
 import type { AdminBindings } from '@/lib/admin-env';
 
 let nodeStoragePromise: Promise<StorageContext> | null = null;
@@ -58,7 +58,7 @@ export async function resolveAdminStorageContext(
 	const nodeCfg = resolveNodeDatabaseConfig(nodeEnv);
 
 	if (nodeStoragePromise === null) {
-		const nodeContext = await import('@octafuse/core/storage/context');
+		const nodeContext = await import('@cloud-api/core/storage/context');
 		const p =
 			nodeCfg.driver === 'mysql'
 				? nodeContext.createMySqlStorageContext(nodeCfg.connectionString)

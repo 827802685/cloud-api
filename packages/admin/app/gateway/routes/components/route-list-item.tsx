@@ -5,7 +5,7 @@ import {
 	parseChargedFactorFromPriceOverride,
 	parseMeteredFactorFromPriceOverride,
 } from '@/lib/pricing-ui';
-import { parseRoutePricingSchedule } from '@octafuse/core/db/pricing-schedule';
+import { parseRoutePricingSchedule } from '@cloud-api/core/db/pricing-schedule';
 import {
 	factorChipClassForValue,
 	factorLevelForValue,

@@ -1,9 +1,9 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { GatewayRepositories } from '@octafuse/core';
-import { resetRouteStrategyCacheForTests } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
+import { resetRouteStrategyCacheForTests } from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
-import { isRouteStrategyName } from '@octafuse/core';
+import { isRouteStrategyName } from '@cloud-api/core';
 import {
 	buildAffinityKey,
 	buildTierKeyPrefix,

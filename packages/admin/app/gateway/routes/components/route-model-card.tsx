@@ -4,7 +4,7 @@ import { ClipboardDocumentIcon, PencilSquareIcon, PlusIcon } from '@heroicons/re
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import { formatCompactTokens } from '@/lib/format-compact-tokens';
 import { useTranslations } from 'next-intl';
 import type { GatewayModel } from '@/lib/types';

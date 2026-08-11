@@ -21,7 +21,7 @@ import {
 	type ProviderEndpointCapability,
 	type ProviderEndpointsMap,
 	type ProviderEndpointsSource,
-} from '@octafuse/core/provider-endpoints';
+} from '@cloud-api/core/provider-endpoints';
 
 export type StaticProviderImportPresetRow = {
 	name: string;

@@ -1,5 +1,5 @@
 {
-	"name": "@octafuse/tool-engines",
+	"name": "@cloud-api/tool-engines",
 	"version": "2.3.0",
 	"private": true,
 	"type": "module",
@@ -17,7 +17,7 @@
 		"src"
 	],
 	"dependencies": {
-		"@octafuse/core": "*"
+		"@cloud-api/core": "*"
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.0",

@@ -18,14 +18,14 @@ const config = [
 				{
 					patterns: [
 						{
-							group: ['@octafuse/proxy', '@octafuse/proxy/*', '@octafuse/proxy-services', '@octafuse/proxy-services/*'],
+							group: ['@cloud-api/proxy', '@cloud-api/proxy/*', '@cloud-api/proxy-services', '@cloud-api/proxy-services/*'],
 							message:
-								'Admin must not import @octafuse/proxy. Use @octafuse/tool-engines for Tool engine clients.',
+								'Admin must not import @cloud-api/proxy. Use @cloud-api/tool-engines for Tool engine clients.',
 						},
 						{
 							group: ['**/packages/proxy/**', '../proxy/**', '../../proxy/**'],
 							message:
-								'Admin must not reach into packages/proxy. Shared Tool engines live in @octafuse/tool-engines.',
+								'Admin must not reach into packages/proxy. Shared Tool engines live in @cloud-api/tool-engines.',
 						},
 					],
 				},

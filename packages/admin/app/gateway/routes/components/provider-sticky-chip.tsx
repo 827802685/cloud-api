@@ -1,7 +1,7 @@
 'use client';
 
 import { ClockIcon, LinkIcon, UsersIcon } from '@heroicons/react/24/outline';
-import { formatStickyIdleTtlShort } from '@octafuse/core/db/route-pool-sticky-types';
+import { formatStickyIdleTtlShort } from '@cloud-api/core/db/route-pool-sticky-types';
 import { useTranslations } from 'next-intl';
 import { useStickySummary } from '../sticky-summary-store';
 

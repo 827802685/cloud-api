@@ -1,15 +1,15 @@
 /** 管理后台 `providers` CRUD：单键 `api_key` + `status`，`endpoints` JSON 校验与持久化。 */
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
 import {
 	serializeProviderEndpoints,
 	validateAndNormalizeProviderEndpoints,
 	type ProviderEndpointsMap,
-} from '@octafuse/core/provider-endpoints';
+} from '@cloud-api/core/provider-endpoints';
 import {
 	isPendingProviderImportApiKey,
 	maskProviderApiKeyForAdmin,
 	PROVIDER_IMPORT_PENDING_API_KEY,
-} from '@octafuse/core/db/provider-key-utils';
+} from '@cloud-api/core/db/provider-key-utils';
 import {
 	inferStaticProviderIconKey,
 	inferStaticProviderVendorKey,

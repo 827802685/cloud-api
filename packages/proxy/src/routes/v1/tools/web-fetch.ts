@@ -2,7 +2,7 @@
  * 用户路由：`POST /v1/tools/web-fetch` — 网页抓取工具；成功后按固定单价计入 budget_spent。
  * 引擎/密钥/单价读自 `system_config`（见 `resolveWebFetchConfig`）。
  */
-import { resolveWebFetchConfig } from '@octafuse/core';
+import { resolveWebFetchConfig } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
@@ -11,7 +11,7 @@ import {
 	assertFetchUrlSafe,
 	fetchUrlByProvider,
 	WebFetchProviderError,
-} from '@octafuse/tool-engines/web-fetch';
+} from '@cloud-api/tool-engines/web-fetch';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

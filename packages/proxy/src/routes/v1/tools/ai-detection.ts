@@ -2,7 +2,7 @@
  * 用户路由：`POST /v1/tools/ai-detection` — AI 率检测；按计费单元数 × 单价计入 budget_spent。
  * 引擎/凭证/单价读自 `system_config`（见 `resolveAiDetectionConfig`）。
  */
-import { resolveAiDetectionConfig, roundGatewayMoney, scaleToolUnitPrices } from '@octafuse/core';
+import { resolveAiDetectionConfig, roundGatewayMoney, scaleToolUnitPrices } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
@@ -10,7 +10,7 @@ import {
 	AiDetectionProviderError,
 	detectAiRate,
 	getAiDetectionDriver,
-} from '@octafuse/tool-engines/ai-detection';
+} from '@cloud-api/tool-engines/ai-detection';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };

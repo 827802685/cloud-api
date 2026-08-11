@@ -5,7 +5,7 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 	parseModelModalitiesJson,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import {
 	createDefaultAudioPricingDraft,
 	createDefaultAudioTokenPricingDraft,

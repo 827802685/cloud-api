@@ -1,7 +1,7 @@
 /**
  * 用户路由：`POST /v1beta/models/{model}:{generateContent|streamGenerateContent}`（Gemini 风格路径）。
  */
-import { GEMINI_GENERATE_OPERATION } from '@octafuse/core';
+import { GEMINI_GENERATE_OPERATION } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';
@@ -169,7 +169,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
   let routes: RouteResult[];
   let poolStrategy: string | null = null;
   let poolTierStrategies: string | null = null;
-  let stickySurface: import('@octafuse/core').ResolvedModelSurfaceRow | null = null;
+  let stickySurface: import('@cloud-api/core').ResolvedModelSurfaceRow | null = null;
   try {
     const resolvedSurface = await resolveRoutesForSurface(repos, {
       modelId: baseModelId,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BILLING_CURRENCY_KEY, normalizeBillingCurrencyCode } from '@octafuse/core/lib/billing-currency';
+import { BILLING_CURRENCY_KEY, normalizeBillingCurrencyCode } from '@cloud-api/core/lib/billing-currency';
 import { readApiJson } from '@/lib/api-json';
 import type { SystemConfigRow } from '@/lib/types';
 

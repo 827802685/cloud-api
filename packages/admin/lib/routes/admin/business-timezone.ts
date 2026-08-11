@@ -2,7 +2,7 @@
  * 管理路由：`/admin/business-timezone` — 返回当前 `system_config.BUSINESS_TIMEZONE`。
  */
 import { Hono } from 'hono';
-import { getBusinessTimezone } from '@octafuse/core/lib/business-timezone';
+import { getBusinessTimezone } from '@cloud-api/core/lib/business-timezone';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import { handleAdminRouteError } from './error-response';

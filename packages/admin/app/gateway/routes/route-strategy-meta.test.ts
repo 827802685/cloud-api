@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ROUTE_STRATEGY_NAMES } from '@octafuse/core/db/model-route-policy';
+import { ROUTE_STRATEGY_NAMES } from '@cloud-api/core/db/model-route-policy';
 import {
 	getRouteStrategyMeta,
 	ROUTE_STRATEGY_META_LIST,

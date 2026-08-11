@@ -1,6 +1,6 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
 import type { RouteResult } from './model-router';
 import {
 	hashAffinityKey,

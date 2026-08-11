@@ -1,7 +1,7 @@
 'use client';
 
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { parseProviderEndpoints } from '@octafuse/core/provider-endpoints';
+import { parseProviderEndpoints } from '@cloud-api/core/provider-endpoints';
 import { VendorIcon } from '@/components/model-vendor-icon';
 import { summarizeOpenAiImportEndpoints } from '@/lib/provider-import-preset';
 import { useTranslations } from 'next-intl';

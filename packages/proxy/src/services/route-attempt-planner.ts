@@ -2,7 +2,7 @@
  * 将协议已过滤的 routes 编排为本次请求的尝试序列：
  * priority 硬序（DESC）→ 层内按 route strategy 排序 → 过滤熔断中的 provider → 按速率健康评分微调。
  */
-import type { RouteStrategyName } from '@octafuse/core';
+import type { RouteStrategyName } from '@cloud-api/core';
 import type { RouteResult } from './model-router';
 import { getProviderCircuitRemainingMs } from './provider-circuit-breaker';
 import { ROUTE_STRATEGIES } from './route-strategies';

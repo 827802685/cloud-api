@@ -3,7 +3,7 @@ import {
 	createPostgresStorageContext,
 	resolveNodeDatabaseConfig,
 	type StorageContext,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { serve } from '@hono/node-server';
 import { pathToFileURL } from 'node:url';
 import { createProxyApp } from '../app';

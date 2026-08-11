@@ -7,7 +7,7 @@ import {
 	profileHasAudioTokenPricing,
 	profileHasImagePerImagePricing,
 	type PricingTierPrices,
-} from '@octafuse/core/db/pricing-profile';
+} from '@cloud-api/core/db/pricing-profile';
 import type { MetadataSummary, ModelListItem, PresetCatalogRow } from './types';
 import { ALL_VENDORS_KEY } from './types';
 

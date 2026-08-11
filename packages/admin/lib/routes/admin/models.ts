@@ -22,7 +22,7 @@ import type {
 	AdminModelsImportOutput,
 } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 export const adminModelsRoutes = new Hono<AdminEnv>();
 
 adminModelsRoutes.use('*', requireMasterKey);

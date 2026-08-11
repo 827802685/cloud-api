@@ -5,7 +5,7 @@ import {
 	providerSupportsUpstreamProtocol as coreProviderSupportsUpstreamProtocol,
 	resolveEffectiveBaseUrl as coreResolveEffectiveBaseUrl,
 	type ProviderEndpointsSource,
-} from '@octafuse/core/provider-endpoints';
+} from '@cloud-api/core/provider-endpoints';
 import type { GatewayProvider } from './types';
 
 export type UpstreamProtocol = 'openai' | 'anthropic' | 'gemini';
@@ -41,7 +41,7 @@ function asEndpointsSource(provider: GatewayProvider | ProviderEndpointsSource):
 
 /**
  * 解析某协议下的实际上游根 `base`；缺失时抛错。
- * 完整 capability URL 请用 `@octafuse/core` 的 `resolveUpstreamEndpoint`。
+ * 完整 capability URL 请用 `@cloud-api/core` 的 `resolveUpstreamEndpoint`。
  */
 export function resolveEffectiveBaseUrl(
 	protocol: UpstreamProtocol,

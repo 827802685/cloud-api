@@ -8,7 +8,7 @@ import {
 	WEB_DEEP_SEARCH_CATALOG_KEY,
 	WEB_DEEP_SEARCH_PROVIDERS,
 	type WebDeepSearchProvider,
-} from '@octafuse/core/lib/web-deep-search-system-config';
+} from '@cloud-api/core/lib/web-deep-search-system-config';
 
 export {
 	DEFAULT_WEB_DEEP_SEARCH_COST,

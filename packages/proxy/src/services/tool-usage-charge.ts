@@ -13,7 +13,7 @@ import {
 	userRowToSnapshot,
 	type GatewayRepositories,
 	type ToolUnitPrices,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 
 export type ChargeToolUsageParams = {
 	repos: GatewayRepositories;

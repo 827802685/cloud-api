@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { GatewayRepositories, StorageContext } from '@octafuse/core';
+import type { GatewayRepositories, StorageContext } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Context, MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';

@@ -4,7 +4,7 @@ import {
 	DEFAULT_STICKY_IDLE_TTL_SECONDS,
 	MAX_STICKY_IDLE_TTL_SECONDS,
 	MIN_STICKY_IDLE_TTL_SECONDS,
-} from '@octafuse/core/db/route-pool-sticky-types';
+} from '@cloud-api/core/db/route-pool-sticky-types';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {

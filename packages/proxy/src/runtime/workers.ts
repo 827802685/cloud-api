@@ -1,4 +1,4 @@
-import { createD1StorageContext, resolveWorkerDatabaseConfig, type StorageContext } from '@octafuse/core';
+import { createD1StorageContext, resolveWorkerDatabaseConfig, type StorageContext } from '@cloud-api/core';
 import type { Context } from 'hono';
 import { createProxyApp, type Env } from '../app';
 

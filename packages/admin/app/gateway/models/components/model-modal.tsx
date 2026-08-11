@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
 	MODEL_INPUT_MODALITIES,
 	MODEL_OUTPUT_MODALITIES,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import { ModelModalitiesBadgeFromRaw } from '@/components/model-modalities-badge';
 import { PricingTiersEditor } from '@/components/pricing-tiers-editor';
 import { MODEL_VENDOR_OPTIONS } from '@/lib/model-vendor';

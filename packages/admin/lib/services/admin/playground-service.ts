@@ -1,21 +1,21 @@
 /**
  * Playground：按单条 `model_routes` 直连上游，不经过 Proxy、不鉴 API Key、不写 `api_key_request_logs`、不计费、无 failover。
  */
-import type { GatewayRepositories, ProviderEndpointsMap } from '@octafuse/core';
+import type { GatewayRepositories, ProviderEndpointsMap } from '@cloud-api/core';
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import {
 	type GeminiContentAction,
 	prepareGeminiUpstreamFetch,
-} from '@octafuse/core/gemini-upstream-url';
+} from '@cloud-api/core/gemini-upstream-url';
 import {
 	parseProviderEndpoints,
 	resolveUpstreamEndpoint,
-} from '@octafuse/core/provider-endpoints';
-import type { UpstreamProtocol } from '@octafuse/core/upstream-protocol';
-import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
+} from '@cloud-api/core/provider-endpoints';
+import type { UpstreamProtocol } from '@cloud-api/core/upstream-protocol';
+import { normalizeUpstreamProtocol } from '@cloud-api/core/upstream-protocol';
 import { AUDIO_MAX_BYTES_PER_FILE } from '@/lib/audio-transcriptions';
 import {
 	IMAGE_MAX_BYTES_PER_FILE,
@@ -25,7 +25,7 @@ import {
 } from '@/lib/image-generations';
 import { modelKindFromFlags, resolveOpenaiUpstreamCapability } from '@/lib/invoke-kind';
 import { AdminServiceError, badRequest, notFound } from './errors';
-import { isPendingProviderImportApiKey } from '@octafuse/core/db/provider-key-utils';
+import { isPendingProviderImportApiKey } from '@cloud-api/core/db/provider-key-utils';
 
 /** 与 Proxy `RouteResult` 对齐的最小子集，供合并默认参数与拼 URL。 */
 export type PlaygroundResolvedRoute = {

@@ -5,7 +5,7 @@ import {
   GEMINI_GENERATE_OPERATION,
   prepareGeminiUpstreamFetch,
   resolveUpstreamEndpoint,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';

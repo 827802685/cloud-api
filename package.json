@@ -1,10 +1,10 @@
 {
-	"name": "octafuse",
+	"name": "cloud-api",
 	"version": "2.3.0",
 	"private": true,
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/OctaFuse/octafuse-gateway.git"
+		"url": "https://github.com/827802685/cloud-api.git"
 	},
 	"type": "module",
 	"workspaces": [
@@ -20,12 +20,12 @@
 		"verify:package-versions": "node scripts/ci/verify-package-versions.mjs",
 		"ci:changeset-tag-push": "changeset tag && node scripts/ci/push-root-release-tag.mjs",
 		"release:notes": "node scripts/release/render-release-notes.mjs",
-		"dev:proxy": "npm run dev -w @octafuse/proxy",
-		"dev:proxy:node": "dotenv -c -- npm run dev:node -w @octafuse/proxy",
-		"dev:admin": "npm run preview -w @octafuse/admin",
-		"dev:admin:node": "dotenv -c -- npm run dev:node -w @octafuse/admin",
-		"deploy:proxy": "npm run gen:wrangler -- --remote && npm run deploy -w @octafuse/proxy",
-		"deploy:admin": "npm run build -w @octafuse/core && npm run gen:wrangler -- --remote && npm run deploy -w @octafuse/admin",
+		"dev:proxy": "npm run dev -w @cloud-api/proxy",
+		"dev:proxy:node": "dotenv -c -- npm run dev:node -w @cloud-api/proxy",
+		"dev:admin": "npm run preview -w @cloud-api/admin",
+		"dev:admin:node": "dotenv -c -- npm run dev:node -w @cloud-api/admin",
+		"deploy:proxy": "npm run gen:wrangler -- --remote && npm run deploy -w @cloud-api/proxy",
+		"deploy:admin": "npm run build -w @cloud-api/core && npm run gen:wrangler -- --remote && npm run deploy -w @cloud-api/admin",
 		"bootstrap:cloudflare": "node scripts/deploy/bootstrap-cloudflare.mjs",
 		"deploy:cloudflare": "node scripts/deploy/deploy-instance.mjs",
 		"db:migrate": "npm run gen:wrangler && node scripts/deploy/wrangler-d1-cli.mjs migrations apply --local --persist-to .wrangler/state",
@@ -44,7 +44,7 @@
 		"test:gateway:sql-storage-smoke": "dotenv -c -- tsx scripts/smoke/test-storage-concurrent-charge.ts",
 		"test:deploy": "node --test scripts/deploy/*.test.mjs",
 		"verify:proxy-bundle": "node scripts/ci/verify-proxy-bundle-externals.mjs",
-		"test:unit": "npm run test:deploy && npm run test:unit -w @octafuse/core && npm run test:unit -w @octafuse/proxy && npm run test:unit -w @octafuse/admin"
+		"test:unit": "npm run test:deploy && npm run test:unit -w @cloud-api/core && npm run test:unit -w @cloud-api/proxy && npm run test:unit -w @cloud-api/admin"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.5.1",

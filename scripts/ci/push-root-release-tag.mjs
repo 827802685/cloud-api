@@ -35,9 +35,9 @@ function refExists(ref) {
 if (!refExists(`refs/tags/${vTag}`)) {
 	const candidates = [
 		`octafuse@${version}`,
-		`@octafuse/core@${version}`,
-		`@octafuse/proxy@${version}`,
-		`@octafuse/admin@${version}`,
+		`@cloud-api/core@${version}`,
+		`@cloud-api/proxy@${version}`,
+		`@cloud-api/admin@${version}`,
 	];
 	let commit = "";
 	for (const c of candidates) {

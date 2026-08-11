@@ -5,10 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
-import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
-import { parseRoutePoolTierStrategies } from '@octafuse/core/db/route-pool-tier-strategies';
-import { DEFAULT_STICKY_IDLE_TTL_SECONDS } from '@octafuse/core/db/route-pool-sticky-types';
+} from '@cloud-api/core/db/model-modalities';
+import { isRouteStrategyName } from '@cloud-api/core/db/model-route-policy';
+import { parseRoutePoolTierStrategies } from '@cloud-api/core/db/route-pool-tier-strategies';
+import { DEFAULT_STICKY_IDLE_TTL_SECONDS } from '@cloud-api/core/db/route-pool-sticky-types';
 import { useBusinessTimezone } from '@/components/BusinessTimezoneProvider';
 import { getCatalogAudioPricingDisplay, isAudioRouteModel } from '@/lib/audio-transcriptions';
 import { isImageRouteModel } from '@/lib/image-generations';

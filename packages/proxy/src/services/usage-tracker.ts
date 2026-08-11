@@ -7,7 +7,7 @@
  * - nested `price_override.metered` / `charged` tiers 忽略不计价。
  * 写入 `api_key_request_logs`（含 `pricing_audit` JSON，见 `PRICING_AUDIT_JSON_SCHEMA_VERSION`）并在非 error 且 charged>0 时累加 `users.budget_spent`。
  */
-import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@cloud-api/core';
 import {
 	getBusinessTimezone,
 	getUserBudgetSnapshot,
@@ -28,7 +28,7 @@ import {
 	snapshotToJson,
 	snapshotWithOverrides,
 	userRowToSnapshot,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import type { UsageFromStream } from './proxy';
 import { fireGatewayErrorWebhooks } from './alert-webhook';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';

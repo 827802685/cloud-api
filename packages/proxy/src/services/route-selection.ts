@@ -3,7 +3,7 @@
  * 客户端未带 `baseId:group` 后缀时，有效组为 **`default`**；显式后缀则有效组为 trim 后的后缀。
  * 同组匹配为 **字符串相等（忽略大小写）**；行内空 `route_group` 在比较时规范为 `default`。
  */
-import type { ModelRouteRow } from '@octafuse/core';
+import type { ModelRouteRow } from '@cloud-api/core';
 
 function normalizeRowRouteGroup(row: ModelRouteRow): string {
   const g = row.route_group;

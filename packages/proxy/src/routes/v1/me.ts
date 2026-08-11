@@ -7,7 +7,7 @@ import {
 	getSystemConfigValue,
 	normalizeApiTimeFields,
 	normalizeBillingCurrencyCode,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';
 

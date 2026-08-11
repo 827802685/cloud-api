@@ -9,7 +9,7 @@ import {
 	isTextLlmModel,
 	parseModelModalitiesJson,
 	parsePricingProfile,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';

@@ -130,7 +130,7 @@ chatRoutes.post('/', async (c) => {
   let routes: RouteResult[];
   let poolStrategy: string | null = null;
   let poolTierStrategies: string | null = null;
-  let stickySurface: import('@octafuse/core').ResolvedModelSurfaceRow | null = null;
+  let stickySurface: import('@cloud-api/core').ResolvedModelSurfaceRow | null = null;
   try {
     const resolvedSurface = await resolveRoutesForSurface(repos, {
       modelId: baseModelId,

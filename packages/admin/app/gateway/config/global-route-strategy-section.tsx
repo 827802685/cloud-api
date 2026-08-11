@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
-import type { RouteStrategyName } from '@octafuse/core';
-import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
+import type { RouteStrategyName } from '@cloud-api/core';
+import { isRouteStrategyName } from '@cloud-api/core/db/model-route-policy';
 import { useTranslations } from 'next-intl';
 import { getRouteStrategyMeta } from '../routes/route-strategy-meta';
 import { RouteStrategyDiagram } from '../routes/components/route-strategy-diagram';

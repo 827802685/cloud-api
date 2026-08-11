@@ -8,7 +8,7 @@ import {
 	profileHasImageTokenPricing,
 	resolveImageBillingMode,
 	type PricingTierPrices,
-} from '@octafuse/core/db/pricing-profile';
+} from '@cloud-api/core/db/pricing-profile';
 
 import { getGatewayCurrencySymbol } from '@/lib/format-gateway-currency';
 

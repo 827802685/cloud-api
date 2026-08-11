@@ -11,7 +11,7 @@ import {
 	type ModelRouteJoinRow,
 	type ParsedPricingProfile,
 	type UpstreamProtocol,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import {
 	filterRouteGroupsByAllowlist,
 	parseMetadata,

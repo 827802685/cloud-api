@@ -1,5 +1,5 @@
 /**
- * Tools → Configuration：Web Search 引擎下拉（与 `@octafuse/core` 白名单一致）。
+ * Tools → Configuration：Web Search 引擎下拉（与 `@cloud-api/core` 白名单一致）。
  */
 import {
 	DEFAULT_WEB_SEARCH_COST,
@@ -11,7 +11,7 @@ import {
 	WEB_SEARCH_PROVIDER_KEY,
 	WEB_SEARCH_PROVIDERS,
 	type WebSearchProvider,
-} from '@octafuse/core/lib/web-search-system-config';
+} from '@cloud-api/core/lib/web-search-system-config';
 
 export {
 	DEFAULT_WEB_SEARCH_COST,

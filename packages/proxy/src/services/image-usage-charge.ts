@@ -3,7 +3,7 @@
  * 无有效目录价则不计费（legacy 仅 image 块须显式 `image_billing_mode: per_image`）。
  * 日志不落 prompt 原文 / 参考图 / Base64。
  */
-import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@cloud-api/core';
 import {
 	buildImagePrecheckUsage,
 	changedFieldsToJson,
@@ -33,7 +33,7 @@ import {
 	type ImageTokenUsage,
 	type ParsedPricingProfile,
 	type PriceResolutionAuditSide,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { canAffordToolCost } from './tool-usage-charge';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
 import { fireGatewayErrorWebhooks } from './alert-webhook';

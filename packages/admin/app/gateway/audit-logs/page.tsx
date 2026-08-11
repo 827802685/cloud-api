@@ -163,7 +163,7 @@ function auditReasonOneLine(reasonCode: string | null | undefined, reasonText: s
 	return { line: single, isMono: !!rc && !rt, title: single };
 }
 
-/** 从 `change_payload` 解析的扩展字段（与 `@octafuse/core` `mergeUserAuditChangePayload` 写入结构对齐） */
+/** 从 `change_payload` 解析的扩展字段（与 `@cloud-api/core` `mergeUserAuditChangePayload` 写入结构对齐） */
 function auditDisplayExtras(item: GatewayApiKeyBudgetAuditLog) {
   let m: Record<string, unknown> = {};
   try {

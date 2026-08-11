@@ -1,7 +1,7 @@
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import { readApiJson } from '@/lib/api-json';
 import { normalizeModelVendorInput } from '@/lib/model-vendor';
 import {

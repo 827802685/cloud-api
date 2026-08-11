@@ -13,7 +13,7 @@ import {
 	formatPerSecondUnit,
 } from '@/lib/format-gateway-currency';
 import { getCatalogImagePricingDisplay } from '@/lib/pricing-ui';
-import { isAudioTranscriptionModel, isImageGenerationModel } from '@octafuse/core/db/model-modalities';
+import { isAudioTranscriptionModel, isImageGenerationModel } from '@cloud-api/core/db/model-modalities';
 import {
 	buildMetadataSummary,
 	buildPricingMetricColumns,

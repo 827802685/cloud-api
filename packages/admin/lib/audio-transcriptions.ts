@@ -2,15 +2,15 @@
  * Shared helpers for Admin Playground / Simulator / Routes
  * (`/v1/audio/transcriptions` multipart).
  */
-import { isAudioTranscriptionModel, type ModelKindFields } from '@octafuse/core/db/model-modalities';
+import { isAudioTranscriptionModel, type ModelKindFields } from '@cloud-api/core/db/model-modalities';
 import {
 	parsePricingProfile,
 	profileHasAudioPerSecondPricing,
 	profileHasAudioTokenPricing,
-} from '@octafuse/core/db/pricing-profile';
+} from '@cloud-api/core/db/pricing-profile';
 import { formatPerMillionTokenUnit, formatPerSecondUnit } from '@/lib/format-gateway-currency';
 
-/** Align with Proxy audio driver limits (admin must not depend on `@octafuse/proxy`). */
+/** Align with Proxy audio driver limits (admin must not depend on `@cloud-api/proxy`). */
 export const AUDIO_MAX_BYTES_PER_FILE = 25 * 1024 * 1024;
 
 /** Default JSON fields for transcriptions (audio file uploaded separately as multipart). */

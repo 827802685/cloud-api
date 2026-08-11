@@ -1,10 +1,10 @@
 {
-	"name": "@octafuse/core",
+	"name": "@cloud-api/core",
 	"version": "2.3.0",
 	"private": true,
 	"type": "module",
 	"bin": {
-		"octafuse-migrate": "./dist/migrate/cli.js"
+		"cloud-api-migrate": "./dist/migrate/cli.js"
 	},
 	"scripts": {
 		"prebuild": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",

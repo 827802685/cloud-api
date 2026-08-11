@@ -2,7 +2,7 @@
  * 按 `WEB_DEEP_SEARCH_ACTIVE` 分发到 deep search 客户端。
  */
 
-import type { WebDeepSearchProvider } from '@octafuse/core/lib/web-deep-search-system-config';
+import type { WebDeepSearchProvider } from '@cloud-api/core/lib/web-deep-search-system-config';
 import { deepSearchFirecrawl } from './firecrawl';
 import { deepSearchJina } from './jina';
 import { WebDeepSearchProviderError, type WebDeepSearchParams, type WebDeepSearchResult } from './types';

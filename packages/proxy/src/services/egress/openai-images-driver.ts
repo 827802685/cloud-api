@@ -2,7 +2,7 @@
  * OpenAI 兼容 Images API 上游驱动：`/images/generations`（JSON）与 `/images/edits`（multipart）。
  * 首期面向 GPT Image；Gateway 对外保持 OpenAI 形状，日志禁止写入 prompt 原文与 Base64。
  */
-import { parseOpenAiImageUsage, resolveUpstreamEndpoint, type ImageTokenUsage } from '@octafuse/core';
+import { parseOpenAiImageUsage, resolveUpstreamEndpoint, type ImageTokenUsage } from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { EMPTY_USAGE } from '../proxy';

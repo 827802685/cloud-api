@@ -1,7 +1,7 @@
 import { readApiJson } from '@/lib/api-json';
 import type { GatewayModel, GatewayProvider, SystemConfigRow } from '@/lib/types';
-import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
-import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
+import { isRouteStrategyName } from '@cloud-api/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@cloud-api/core/lib/route-strategy-system-config';
 import { buildRouteSavePayload } from './route-utils';
 import type {
 	RouteFormData,

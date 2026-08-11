@@ -1,14 +1,14 @@
 /**
  * 同 priority 层内的路由排序策略。
  */
-import type { GatewayRepositories, RouteStrategyName, UpstreamProtocol } from '@octafuse/core';
+import type { GatewayRepositories, RouteStrategyName, UpstreamProtocol } from '@cloud-api/core';
 import {
 	DEFAULT_ROUTE_STRATEGY,
 	getGlobalRouteStrategy,
 	isRouteStrategyName,
 	parseRoutePoolTierStrategies,
 	resolveModelRoutePolicyStrategy,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import type { RouteOrderStrategy } from './types';
 import { orderByHashAffinity } from './hash-affinity';
 import { orderByWeightedRandom } from './weighted-random';
@@ -75,7 +75,7 @@ export async function resolveRouteStrategyPlan(params: {
 }
 
 /** affinityKey = userId|baseModelId|routeGroup|protocol */
-export { buildAffinityKey } from '@octafuse/core/db/route-affinity-key';
+export { buildAffinityKey } from '@cloud-api/core/db/route-affinity-key';
 
 /** tierKey 前缀 = baseModelId|routeGroup|protocol；完整 tierKey = `${prefix}|${priority}` */
 export function buildTierKeyPrefix(baseModelId: string, routeGroup: string, protocol: string): string {

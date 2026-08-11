@@ -2,12 +2,12 @@
  * Shared helpers for Admin Playground / Simulator image APIs
  * (`/images/generations` JSON and `/images/edits` multipart).
  */
-import { isImageGenerationModel, type ModelKindFields } from '@octafuse/core/db/model-modalities';
+import { isImageGenerationModel, type ModelKindFields } from '@cloud-api/core/db/model-modalities';
 
 /** OpenAI Images operation: text-to-image vs image edit. */
 export type ImageOperation = 'generations' | 'edits';
 
-/** Align with Proxy `openai-images-driver` limits (admin must not depend on `@octafuse/proxy`). */
+/** Align with Proxy `openai-images-driver` limits (admin must not depend on `@cloud-api/proxy`). */
 export const IMAGE_MAX_REFERENCE_COUNT = 5;
 export const IMAGE_MAX_BYTES_PER_FILE = 20 * 1024 * 1024;
 export const IMAGE_MAX_TOTAL_UPLOAD_BYTES = IMAGE_MAX_REFERENCE_COUNT * IMAGE_MAX_BYTES_PER_FILE;

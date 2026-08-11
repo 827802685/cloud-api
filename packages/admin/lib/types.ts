@@ -261,7 +261,7 @@ export interface GatewayRequestLog {
   error_message: string | null;
   /** Raw usage payload from upstream/provider (JSON string) */
   raw_usage?: string | null;
-  /** 计费审计 JSON（单列）；结构见 `@octafuse/core` `pricing-audit.ts` */
+  /** 计费审计 JSON（单列）；结构见 `@cloud-api/core` `pricing-audit.ts` */
   pricing_audit?: string | null;
   /** Image / Audio 计费种类：`image_tokens` | `image_per_image` | `audio_per_second` | `audio_tokens`；旧行为 null */
   billing_kind?: string | null;

@@ -5,7 +5,7 @@ import {
 	inferStaticProviderVendorKey,
 	listStaticProviderImportPresets,
 } from '@/lib/provider-import-preset';
-import type { ProviderEndpointsMap } from '@octafuse/core/provider-endpoints';
+import type { ProviderEndpointsMap } from '@cloud-api/core/provider-endpoints';
 
 function replaceEndpointPaths(endpoints: ProviderEndpointsMap): ProviderEndpointsMap {
 	const copy = structuredClone(endpoints);

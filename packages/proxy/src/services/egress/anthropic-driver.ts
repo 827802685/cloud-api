@@ -1,7 +1,7 @@
 /**
  * Anthropic Messages 协议出站：组装 URL、合并路由默认参数、流式 SSE 解析 usage，并在断连后限时 drain。
  */
-import { resolveUpstreamEndpoint } from '@octafuse/core';
+import { resolveUpstreamEndpoint } from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';

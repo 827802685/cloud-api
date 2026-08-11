@@ -6,7 +6,7 @@ import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import { listAdminGlobalRequestLogsService } from '@/lib/services/admin/dashboard-service';
 import { handleAdminRouteError } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 export const adminRequestLogsRoutes = new Hono<AdminEnv>();
 
 adminRequestLogsRoutes.use('*', requireMasterKey);

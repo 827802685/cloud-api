@@ -1,7 +1,7 @@
 /**
  * 管理后台共用工具：标签 JSON、元数据校验、统计时间范围、供应商 vendor 归一化等。
  */
-export { nullIfEmpty } from '@octafuse/core/lib/string-utils';
+export { nullIfEmpty } from '@cloud-api/core/lib/string-utils';
 
 export { normalizeModelVendorInput } from '../../model-vendor';
 
@@ -189,4 +189,4 @@ export function normalizeJsonObjectField(
 /**
  * 判断 provider 行是否配置了某协议所需的 endpoints（base 或任一 capability；含 legacy 列回退）。
  */
-export { providerSupportsUpstreamProtocol } from '@octafuse/core/provider-endpoints';
+export { providerSupportsUpstreamProtocol } from '@cloud-api/core/provider-endpoints';

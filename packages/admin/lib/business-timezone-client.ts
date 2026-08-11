@@ -1,5 +1,5 @@
 /**
- * Admin 前端：UTC ↔ 业务时区墙钟换算（复用 @octafuse/core 算法）。
+ * Admin 前端：UTC ↔ 业务时区墙钟换算（复用 @cloud-api/core 算法）。
  */
 export {
 	DEFAULT_BUSINESS_TIMEZONE,
@@ -9,7 +9,7 @@ export {
 	instantToZonedDatetimeLocalInput,
 	zonedDatetimeLocalInputToInstant,
 	toSqlUtcDateTime,
-} from '@octafuse/core/lib/business-timezone';
+} from '@cloud-api/core/lib/business-timezone';
 
 /** 供 UI 标注的简短时区标签（如 `Asia/Shanghai (UTC+8)`）。 */
 export function formatBusinessTimezoneLabel(timeZone: string, locale = 'en-US'): string {

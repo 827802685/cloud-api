@@ -8,7 +8,7 @@ import {
 	parseOpenAiAudioTokenUsage,
 	resolveUpstreamEndpoint,
 	type AudioTokenUsage,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { EMPTY_USAGE } from '../proxy';

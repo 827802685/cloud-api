@@ -3,7 +3,7 @@
 import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { UpstreamProtocolBrandIcon } from '@/components/upstream-brand-logo';
-import { routePolicyRuleKey, parseModelRoutePolicy } from '@octafuse/core/db/model-route-policy';
+import { routePolicyRuleKey, parseModelRoutePolicy } from '@cloud-api/core/db/model-route-policy';
 import { protocolBadgeClass, splitRoutesByProtocolAndRouteGroup } from '../route-utils';
 import { ROUTE_GROUP_CARD_BADGE_CLASS } from '../types';
 import type { RouteListRow } from '../types';

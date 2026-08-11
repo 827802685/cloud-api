@@ -2,7 +2,7 @@
  * 按 `WEB_FETCH_PROVIDER` 分发到已实现的抓取客户端。
  */
 
-import type { WebFetchProvider } from '@octafuse/core/lib/web-fetch-system-config';
+import type { WebFetchProvider } from '@cloud-api/core/lib/web-fetch-system-config';
 import { fetchFirecrawlUrl } from './firecrawl';
 import { fetchJinaUrl } from './jina';
 import { fetchTavilyUrl } from './tavily';

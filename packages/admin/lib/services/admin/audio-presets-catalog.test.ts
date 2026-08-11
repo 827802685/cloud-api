@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ParsedPricingProfile } from '@octafuse/core/db/pricing-profile';
+import type { ParsedPricingProfile } from '@cloud-api/core/db/pricing-profile';
 import { listStaticModelPresets } from '@/lib/model-preset';
 import { listStaticModelPresetCatalogForAdmin } from './models-service';
 

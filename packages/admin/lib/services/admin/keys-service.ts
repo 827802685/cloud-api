@@ -2,19 +2,19 @@
  * 管理后台 API 密钥：列表（JOIN users，预算只读）、创建（须关联已有 user 或外部身份对）、
  * 详情、日志、密钥级 metadata/status/name 更新、物理删除。预算与邮箱在 `/admin/users`。
  */
-import type { GatewayRepositories, RequestLogsByKeyIdFilter } from '@octafuse/core';
-import { createKey, updateKeyName } from '@octafuse/core/services/key-service';
+import type { GatewayRepositories, RequestLogsByKeyIdFilter } from '@cloud-api/core';
+import { createKey, updateKeyName } from '@cloud-api/core/services/key-service';
 import {
 	getKeyInfo,
 	getOrCreateUser,
 	replaceKeyMetadata,
 	updateKeyMetadata,
 	updateKeyStatus,
-} from '@octafuse/core/services/user-service';
-import type { ApiKeyListSortField, ApiKeyListSortOrder } from '@octafuse/core/db/api-keys-list-sort';
-import { filterAllowedRequestLogStatuses } from '@octafuse/core/db/request-log-status-filter';
-import { userBudgetAuditToInsertRowFull } from '@octafuse/core/db/user-budget-audit-mapper';
-import { snapshotToJson, userRowToSnapshot } from '@octafuse/core/db/user-audit-snapshot';
+} from '@cloud-api/core/services/user-service';
+import type { ApiKeyListSortField, ApiKeyListSortOrder } from '@cloud-api/core/db/api-keys-list-sort';
+import { filterAllowedRequestLogStatuses } from '@cloud-api/core/db/request-log-status-filter';
+import { userBudgetAuditToInsertRowFull } from '@cloud-api/core/db/user-budget-audit-mapper';
+import { snapshotToJson, userRowToSnapshot } from '@cloud-api/core/db/user-audit-snapshot';
 import { buildMetadataAuditChange } from './admin-profile-audit-metadata';
 import { badRequest, notFound } from './errors';
 import { normalizeMetadataInput } from './shared';

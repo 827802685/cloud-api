@@ -10,7 +10,7 @@ import type {
 	ProviderEndpointsMap,
 	ResolvedModelSurfaceRow,
 	UpstreamProtocol,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import {
 	effectiveUpstreamOperation,
 	extractMeteredProfileFromPriceOverrideJson,
@@ -18,7 +18,7 @@ import {
 	fingerprintProviderApiKey,
 	normalizeUpstreamProtocol,
 	parseProviderEndpoints,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { selectActiveRouteRows } from './route-selection';
 
 export interface RouteResult {

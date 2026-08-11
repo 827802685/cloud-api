@@ -6,7 +6,7 @@
  * 流程：鉴权 → 解析 model → 预算预检 → openai 路由故障转移 → 成功后按 Images usage token 分项扣费。
  * 日志禁止写入 prompt 原文、参考图与 Base64。
  */
-import type { GatewayRepositories, ModelRow, ResolvedModelSurfaceRow } from '@octafuse/core';
+import type { GatewayRepositories, ModelRow, ResolvedModelSurfaceRow } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../../app';

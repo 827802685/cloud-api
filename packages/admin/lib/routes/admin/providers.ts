@@ -20,7 +20,7 @@ import type {
 	AdminProvidersImportOutput,
 } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 
 export const adminProvidersRoutes = new Hono<AdminEnv>();
 

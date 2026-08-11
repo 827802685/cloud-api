@@ -3,8 +3,8 @@
  * API: https://tms.tencentcloudapi.com/ Version=2020-12-29
  */
 
-import type { ResolvedAiDetectionConfig } from '@octafuse/core/lib/ai-detection-system-config';
-import { AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS } from '@octafuse/core/lib/ai-detection-system-config';
+import type { ResolvedAiDetectionConfig } from '@cloud-api/core/lib/ai-detection-system-config';
+import { AI_DETECTION_PROVIDER_REQUIRED_CREDENTIALS } from '@cloud-api/core/lib/ai-detection-system-config';
 import { signTc3Request } from '../../tencent/tc3-sign';
 import {
 	AiDetectionProviderError,

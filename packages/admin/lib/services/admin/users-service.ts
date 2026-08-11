@@ -2,9 +2,9 @@
  * 管理端 `/admin/users`：列表、按外部对幂等创建、详情（懒重置预算）、计划/资料 PATCH、
  * 物理删除、子资源 keys / request-logs / audit-logs。
  */
-import type { BudgetPeriod, GatewayRepositories } from '@octafuse/core';
-import type { UserListSortField, UserListSortOrder } from '@octafuse/core/db/users-list-sort';
-import { createKey, revokeKey, updateKeyName } from '@octafuse/core/services/key-service';
+import type { BudgetPeriod, GatewayRepositories } from '@cloud-api/core';
+import type { UserListSortField, UserListSortOrder } from '@cloud-api/core/db/users-list-sort';
+import { createKey, revokeKey, updateKeyName } from '@cloud-api/core/services/key-service';
 import {
 	computeFirstReset,
 	getKeyInfo,
@@ -14,20 +14,20 @@ import {
 	updateKeyMetadata,
 	updateKeyStatus,
 	updateUserPlan,
-} from '@octafuse/core/services/user-service';
+} from '@cloud-api/core/services/user-service';
 import {
 	applyBudgetTransition,
 	previewBudgetTransition,
 	type BudgetTransitionParams,
-} from '@octafuse/core/services/budget-transition-service';
-import { userBudgetAuditToInsertRowFull } from '@octafuse/core/db/user-budget-audit-mapper';
-import { roundGatewayMoney } from '@octafuse/core/lib/money-precision';
+} from '@cloud-api/core/services/budget-transition-service';
+import { userBudgetAuditToInsertRowFull } from '@cloud-api/core/db/user-budget-audit-mapper';
+import { roundGatewayMoney } from '@cloud-api/core/lib/money-precision';
 import {
 	changedFieldsToJson,
 	computeChangedFields,
 	snapshotToJson,
 	userRowToSnapshot,
-} from '@octafuse/core/db/user-audit-snapshot';
+} from '@cloud-api/core/db/user-audit-snapshot';
 import { buildMetadataAuditChange } from './admin-profile-audit-metadata';
 import { badRequest, conflict, notFound } from './errors';
 import { normalizeMetadataInput } from './shared';

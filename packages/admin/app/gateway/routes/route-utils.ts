@@ -2,15 +2,15 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 	isTextLlmModel,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import {
 	DEFAULT_ROUTE_STRATEGY,
 	isRouteStrategyName,
 	parseModelRoutePolicy,
 	routePolicyRuleKey,
-} from '@octafuse/core/db/model-route-policy';
-import { parseRoutePoolTierStrategies } from '@octafuse/core/db/route-pool-tier-strategies';
-import { parseRoutePoolStickyConfig } from '@octafuse/core/db/route-pool-sticky-types';
+} from '@cloud-api/core/db/model-route-policy';
+import { parseRoutePoolTierStrategies } from '@cloud-api/core/db/route-pool-tier-strategies';
+import { parseRoutePoolStickyConfig } from '@cloud-api/core/db/route-pool-sticky-types';
 import {
 	ANTHROPIC_ENDPOINT_CAPABILITIES,
 	GEMINI_ENDPOINT_CAPABILITIES,
@@ -18,15 +18,15 @@ import {
 	listConfiguredCapabilities,
 	parseProviderEndpoints,
 	type ProviderEndpointCapability,
-} from '@octafuse/core/provider-endpoints';
-import { REQUEST_OPERATIONS_BY_PROTOCOL } from '@octafuse/core/route-topology';
+} from '@cloud-api/core/provider-endpoints';
+import { REQUEST_OPERATIONS_BY_PROTOCOL } from '@cloud-api/core/route-topology';
 import {
 	findDailyWindowOverlap,
 	parseHhMmToMinutes,
 	parseRouteBaseFactors,
 	parseRoutePricingSchedule,
 	type DailyScheduleWindow,
-} from '@octafuse/core/db/pricing-schedule';
+} from '@cloud-api/core/db/pricing-schedule';
 import { compareModelsByReleasedAtDesc } from '@/lib/model-catalog-sort';
 import { getModelVendorLabel, normalizeModelVendorInput } from '@/lib/model-vendor';
 import { compareRouteGroupsForDisplay, normalizeRouteGroup } from '@/lib/route-group-ui';

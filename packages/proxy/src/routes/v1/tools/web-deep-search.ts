@@ -1,7 +1,7 @@
 /**
  * 用户路由：`POST /v1/tools/web-deep-search` — 搜+读一体；成功后按固定单价计入 budget_spent。
  */
-import { resolveWebDeepSearchConfig } from '@octafuse/core';
+import { resolveWebDeepSearchConfig } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
@@ -10,7 +10,7 @@ import {
 	clampDeepSearchCount,
 	deepSearchByProvider,
 	WebDeepSearchProviderError,
-} from '@octafuse/tool-engines/web-deep-search';
+} from '@cloud-api/tool-engines/web-deep-search';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

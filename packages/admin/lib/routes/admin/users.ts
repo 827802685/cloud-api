@@ -2,7 +2,7 @@
  * 管理路由：`/admin/users` — 用户 CRUD、子资源 keys / logs / audit-logs。
  */
 import { Hono } from 'hono';
-import { parseUserListSortQuery } from '@octafuse/core/db/users-list-sort';
+import { parseUserListSortQuery } from '@cloud-api/core/db/users-list-sort';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
@@ -23,7 +23,7 @@ import {
 import type { AdminUserCreateInput, AdminUserUpdateInput, AdminBudgetTransitionInput } from '@/lib/services/admin/types';
 import type { AdminUserKeyPatchInput } from '@/lib/services/admin/users-service';
 import { handleAdminRouteError, jsonErr } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 
 export const adminUsersRoutes = new Hono<AdminEnv>();
 

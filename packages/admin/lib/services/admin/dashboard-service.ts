@@ -1,8 +1,8 @@
 /**
  * 管理后台聚合服务：仪表盘 KPI、全局请求日志列表、`system_config` 读写，以及模型/供应商/用户/可靠性分析 API 的数据装配。
  */
-import type { GatewayRepositories } from '@octafuse/core';
-import { BILLING_CURRENCY_KEY, tryParseGatewaySupportedBillingCurrencyInput } from '@octafuse/core/lib/billing-currency';
+import type { GatewayRepositories } from '@cloud-api/core';
+import { BILLING_CURRENCY_KEY, tryParseGatewaySupportedBillingCurrencyInput } from '@cloud-api/core/lib/billing-currency';
 import {
 	parseWebSearchActiveInput,
 	parseWebSearchCatalogInput,
@@ -13,7 +13,7 @@ import {
 	WEB_SEARCH_COST_KEY,
 	WEB_SEARCH_PROVIDER_KEY,
 	WEB_SEARCH_PROVIDERS,
-} from '@octafuse/core/lib/web-search-system-config';
+} from '@cloud-api/core/lib/web-search-system-config';
 import {
 	parseWebFetchActiveInput,
 	parseWebFetchCatalogInput,
@@ -24,7 +24,7 @@ import {
 	WEB_FETCH_COST_KEY,
 	WEB_FETCH_PROVIDER_KEY,
 	WEB_FETCH_PROVIDERS,
-} from '@octafuse/core/lib/web-fetch-system-config';
+} from '@cloud-api/core/lib/web-fetch-system-config';
 import {
 	parseWebDeepSearchActiveInput,
 	parseWebDeepSearchCatalogInput,
@@ -32,7 +32,7 @@ import {
 	WEB_DEEP_SEARCH_ACTIVE_KEY,
 	WEB_DEEP_SEARCH_CATALOG_KEY,
 	WEB_DEEP_SEARCH_PROVIDERS,
-} from '@octafuse/core/lib/web-deep-search-system-config';
+} from '@cloud-api/core/lib/web-deep-search-system-config';
 import {
 	AI_DETECTION_ACTIVE_KEY,
 	AI_DETECTION_CATALOG_KEY,
@@ -44,17 +44,17 @@ import {
 	parseAiDetectionActiveInput,
 	parseAiDetectionCatalogInput,
 	serializeAiDetectionCatalog,
-} from '@octafuse/core/lib/ai-detection-system-config';
+} from '@cloud-api/core/lib/ai-detection-system-config';
 import {
 	DEFAULT_ROUTE_STRATEGY,
 	isRouteStrategyName,
 	ROUTE_STRATEGY_NAMES,
-} from '@octafuse/core/db/model-route-policy';
-import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
+} from '@cloud-api/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@cloud-api/core/lib/route-strategy-system-config';
 import { badRequest } from './errors';
 import { clampAnalyticsRange, rangeToDates, resolveStatsDateRange } from './shared';
-import { getBusinessDayWindow, getBusinessTimezone } from '@octafuse/core/lib/business-timezone';
-import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
+import { getBusinessDayWindow, getBusinessTimezone } from '@cloud-api/core/lib/business-timezone';
+import { normalizeUpstreamProtocol } from '@cloud-api/core/upstream-protocol';
 import type {
 	AdminConfigRow,
 	AdminConfigUpdateInput,

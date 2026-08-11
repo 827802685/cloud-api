@@ -7,9 +7,9 @@ import {
 	type ProviderEndpointCapability,
 	type ProviderEndpointsMap,
 	type ProtocolEndpointsConfig,
-} from '@octafuse/core/provider-endpoints';
-import { GEMINI_GENERATE_OPERATION } from '@octafuse/core/route-topology';
-import type { UpstreamProtocol } from '@octafuse/core/upstream-protocol';
+} from '@cloud-api/core/provider-endpoints';
+import { GEMINI_GENERATE_OPERATION } from '@cloud-api/core/route-topology';
+import type { UpstreamProtocol } from '@cloud-api/core/upstream-protocol';
 import type {
 	GeminiLegacyPerActionEndpoints,
 	ProtocolEndpointForm,

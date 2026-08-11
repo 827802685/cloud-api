@@ -5,9 +5,9 @@
  * - 全部候选因熔断不可用时返回 429 + Retry-After（而非 502）。
  * - 循环内复查：本次请求内刚被熔断的 provider（同 providerId 多 target）不再打。
  */
-import type { GatewayRepositories, RouteStrategyName, UpstreamProtocol } from '@octafuse/core';
-import { DEFAULT_ROUTE_STRATEGY, fingerprintProviderApiKey } from '@octafuse/core';
-import type { RoutePoolStickyRoutingConfig } from '@octafuse/core/db/route-pool-sticky-types';
+import type { GatewayRepositories, RouteStrategyName, UpstreamProtocol } from '@cloud-api/core';
+import { DEFAULT_ROUTE_STRATEGY, fingerprintProviderApiKey } from '@cloud-api/core';
+import type { RoutePoolStickyRoutingConfig } from '@cloud-api/core/db/route-pool-sticky-types';
 import type { RouteResult } from './model-router';
 import type { UsageFromStream } from './proxy';
 import { EMPTY_USAGE } from './proxy';
@@ -65,7 +65,7 @@ export type ImageDispatchAbortReason = 'client_abort' | 'gateway_timeout';
 
 /** 协议 driver 可选透传（如 Images / Audio 已解析的 body / usage，避免 route 侧重复 parse）。 */
 export type ProxyDispatchMeta = {
-	imageUsage?: import('@octafuse/core').ImageTokenUsage | null;
+	imageUsage?: import('@cloud-api/core').ImageTokenUsage | null;
 	parsedBody?: unknown;
 	/** 仅 Images：上游 wait 被 abort 时由 driver 写入（见 openai-images-driver） */
 	imageAbortReason?: ImageDispatchAbortReason;
@@ -76,7 +76,7 @@ export type ProxyDispatchMeta = {
 	/** 仅 Audio：上传文件字节数 */
 	audioFileBytes?: number;
 	/** 仅 Audio token 计费：上游 `usage.type=tokens` */
-	audioTokenUsage?: import('@octafuse/core').AudioTokenUsage | null;
+	audioTokenUsage?: import('@cloud-api/core').AudioTokenUsage | null;
 };
 
 /** Images abort 的 504 不得换 provider / 换路由（避免客户端取消或超时后二次打 OpenAI）。 */

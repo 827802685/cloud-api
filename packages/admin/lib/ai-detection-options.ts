@@ -1,5 +1,5 @@
 /**
- * Tools → Configuration：AI Detection 引擎下拉（与 `@octafuse/core` 白名单一致）。
+ * Tools → Configuration：AI Detection 引擎下拉（与 `@cloud-api/core` 白名单一致）。
  * 多 provider：扩 `AI_DETECTION_PROVIDERS` + driver 后，UI 按 `requiredCredentials` 动态渲染凭证框。
  */
 import {
@@ -14,7 +14,7 @@ import {
 	isAiDetectionImplementedProvider,
 	type AiDetectionCredentialField,
 	type AiDetectionProvider,
-} from '@octafuse/core/lib/ai-detection-system-config';
+} from '@cloud-api/core/lib/ai-detection-system-config';
 
 export {
 	AI_DETECTION_ACTIVE_KEY,

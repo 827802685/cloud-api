@@ -2,7 +2,7 @@ import type { GatewayProvider } from '@/lib/types';
 import type {
 	ProviderEndpointCapability,
 	ProviderEndpointsMap,
-} from '@octafuse/core/provider-endpoints';
+} from '@cloud-api/core/provider-endpoints';
 
 /** 卡片上紧凑展示的能力标签（OpenAI images.* 合并为 images；audio.transcriptions → audio）。 */
 export type ProviderCapabilityBadge =

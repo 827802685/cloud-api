@@ -24,12 +24,12 @@ import {
 	DEFAULT_ROUTE_STRATEGY,
 	ROUTE_STRATEGY_NAMES,
 	isRouteStrategyName,
-} from '@octafuse/core/db/model-route-policy';
-import { ROUTE_STRATEGY_KEY } from '@octafuse/core/lib/route-strategy-system-config';
+} from '@cloud-api/core/db/model-route-policy';
+import { ROUTE_STRATEGY_KEY } from '@cloud-api/core/lib/route-strategy-system-config';
 import {
 	ALERT_WEBHOOK_FEISHU_URL_KEY,
 	ALERT_WEBHOOK_WECOM_URL_KEY,
-} from '@octafuse/core/lib/alert-webhook-system-config';
+} from '@cloud-api/core/lib/alert-webhook-system-config';
 import {
 	WEB_SEARCH_ACTIVE_KEY,
 	WEB_SEARCH_API_KEY_KEY,

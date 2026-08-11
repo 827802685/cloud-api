@@ -27,20 +27,20 @@ function trimEnv(key) {
 
 function resolveNames() {
 	const d1DatabaseName =
-		trimEnv("D1_DATABASE_NAME") || "octafuse-gateway";
+		trimEnv("D1_DATABASE_NAME") || "cloud-api";
 
 	return {
 		proxyWorkerName:
-			trimEnv("PROXY_WORKER_NAME") || "octafuse-gateway-proxy",
+			trimEnv("PROXY_WORKER_NAME") || "cloud-api-proxy",
 		adminWorkerName:
-			trimEnv("ADMIN_WORKER_NAME") || "octafuse-gateway-admin",
+			trimEnv("ADMIN_WORKER_NAME") || "cloud-api-admin",
 		d1MigrationsWorkerName:
 			trimEnv("D1_MIGRATIONS_WORKER_NAME") ||
-			"octafuse-d1-migrations",
+			"cloud-api-d1-migrations",
 		d1DatabaseName,
 		d1DatabaseId: trimEnv("D1_DATABASE_ID"),
-		proxyCustomDomain: trimEnv("PROXY_CUSTOM_DOMAIN") || "api.zjkl.dpdns.org",
-		adminCustomDomain: trimEnv("ADMIN_CUSTOM_DOMAIN") || "admin.api.zjkl.dpdns.org",
+		proxyCustomDomain: trimEnv("PROXY_CUSTOM_DOMAIN") || "",
+		adminCustomDomain: trimEnv("ADMIN_CUSTOM_DOMAIN") || "",
 	};
 }
 

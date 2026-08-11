@@ -5,7 +5,7 @@
  * 流程：鉴权 → 解析 model/file → 预算预检 → openai 路由故障转移 → 成功后按秒扣费。
  * 日志禁止写入音频二进制。
  */
-import type { GatewayRepositories, ModelRow, ResolvedModelSurfaceRow } from '@octafuse/core';
+import type { GatewayRepositories, ModelRow, ResolvedModelSurfaceRow } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { Env } from '../../app';

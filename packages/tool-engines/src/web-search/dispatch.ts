@@ -2,7 +2,7 @@
  * 按 `WEB_SEARCH_PROVIDER` 分发到已实现的引擎客户端。
  */
 
-import type { WebSearchProvider } from '@octafuse/core/lib/web-search-system-config';
+import type { WebSearchProvider } from '@cloud-api/core/lib/web-search-system-config';
 import { searchBochaWeb } from './bocha';
 import { searchCleverSeeWeb } from './cleversee';
 import { searchTavilyWeb } from './tavily';

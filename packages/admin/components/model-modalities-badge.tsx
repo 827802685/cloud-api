@@ -9,7 +9,7 @@ import {
 	PhotoIcon,
 	VideoCameraIcon,
 } from '@heroicons/react/24/solid';
-import { parseModelModalitiesJson } from '@octafuse/core/db/model-modalities';
+import { parseModelModalitiesJson } from '@cloud-api/core/db/model-modalities';
 import { useTranslations } from 'next-intl';
 
 const MODALITY_ORDER = ['text', 'image', 'audio', 'video', 'file'] as const;

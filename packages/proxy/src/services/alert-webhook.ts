@@ -1,12 +1,12 @@
 /**
  * `api_key_request_logs.status = error` 时可选的企业微信 / 飞书群机器人告警（`system_config` 非空 URL 即启用）。
  */
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
 import {
 	ALERT_WEBHOOK_FEISHU_URL_KEY,
 	ALERT_WEBHOOK_WECOM_URL_KEY,
 	getSystemConfigValue,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { isSensitiveContentErrorMessage } from './sensitive-content-detector';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
 

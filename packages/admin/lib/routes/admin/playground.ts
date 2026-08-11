@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
-import type { GeminiContentAction } from '@octafuse/core/gemini-upstream-url';
+import type { GeminiContentAction } from '@cloud-api/core/gemini-upstream-url';
 import type { ImageOperation } from '@/lib/image-generations';
 import { invokePlaygroundUpstream } from '@/lib/services/admin/playground-service';
 import { invokePlaygroundTool } from '@/lib/services/admin/playground-tools-service';

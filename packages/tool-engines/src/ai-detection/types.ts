@@ -1,6 +1,6 @@
 /**
  * AI Detection driver 契约。
- * 配置解析见 `@octafuse/core` `resolveAiDetectionConfig`（按 `requiredCredentials` 校验）。
+ * 配置解析见 `@cloud-api/core` `resolveAiDetectionConfig`（按 `requiredCredentials` 校验）。
  * 多 provider：每个引擎一个 driver，登记到 `getAiDetectionDriver`。
  */
 
@@ -8,7 +8,7 @@ import type {
 	AiDetectionCredentialField,
 	AiDetectionProvider,
 	ResolvedAiDetectionConfig,
-} from '@octafuse/core/lib/ai-detection-system-config';
+} from '@cloud-api/core/lib/ai-detection-system-config';
 
 export type AiDetectionSegmentDetectResult = {
 	/** 归一化到 0–100 的 AI 率 */

@@ -19,7 +19,7 @@ import {
 } from '@/lib/services/admin/model-routes-service';
 import type { AdminAutoAddRoutesBody, AdminModelRouteMutationInput } from '@/lib/services/admin/types';
 import { handleAdminRouteError } from './error-response';
-import { normalizeApiTimeFields } from '@octafuse/core/lib/time-format';
+import { normalizeApiTimeFields } from '@cloud-api/core/lib/time-format';
 export const adminModelRoutes = new Hono<AdminEnv>();
 
 adminModelRoutes.use('*', requireMasterKey);

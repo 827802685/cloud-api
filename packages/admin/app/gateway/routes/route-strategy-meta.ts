@@ -1,5 +1,5 @@
-import type { RouteStrategyName } from '@octafuse/core';
-import { ROUTE_STRATEGY_NAMES } from '@octafuse/core/db/model-route-policy';
+import type { RouteStrategyName } from '@cloud-api/core';
+import { ROUTE_STRATEGY_NAMES } from '@cloud-api/core/db/model-route-policy';
 
 export type RouteStrategyDiagramKind = RouteStrategyName;
 

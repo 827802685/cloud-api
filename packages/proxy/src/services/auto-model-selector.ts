@@ -7,7 +7,7 @@
  * 3. 同等 context_window 时，按厂商偏好和模型 ID 稳定排序
  * 4. 实际的 provider 健康检查由 failover dispatch 负责
  */
-import type { GatewayRepositories, ModelRow } from '@octafuse/core';
+import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
 
 /** Auto 模型选择结果 */
 export interface AutoModelSelection {

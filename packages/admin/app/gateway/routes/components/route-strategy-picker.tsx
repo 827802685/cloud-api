@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { RouteStrategyName } from '@octafuse/core';
+import type { RouteStrategyName } from '@cloud-api/core';
 import { ROUTE_STRATEGY_META_LIST } from '../route-strategy-meta';
 import { RouteStrategyDiagram } from './route-strategy-diagram';
 

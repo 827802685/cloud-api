@@ -1,141 +1,28 @@
-# Octafuse Gateway
+# Cloud API
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
-[![Release](https://img.shields.io/github/v/release/OctaFuse/octafuse-gateway?sort=semver&display_name=tag&color=2f80ed)](https://github.com/OctaFuse/octafuse-gateway/releases)
-[![Package Versions](https://github.com/OctaFuse/octafuse-gateway/actions/workflows/verify-package-versions.yml/badge.svg)](https://github.com/OctaFuse/octafuse-gateway/actions/workflows/verify-package-versions.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](./.nvmrc)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1-F38020?logo=cloudflare&logoColor=white)](./docs/operators/deployment/cloudflare-quickstart.md)
-[![Docker](https://img.shields.io/badge/Docker-optional-2496ED?logo=docker&logoColor=white)](./docs/operators/deployment/docker.md)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%2B%20D1-F38020?logo=cloudflare&logoColor=white)](#部署到-cloudflare)
 
-**Octafuse Gateway** 是面向 Agent 的可自托管开源 AI 网关。它汇聚多供应商模型、图像生成与编辑、语音转写、智能体工具（Agent Tools），以及自建或私有部署的 AI 服务，将分散的 AI 资源组织为统一入口，并通过路由、密钥、预算、用量和审计，实现资源的集中管理、调度与控制。它不只是中转模型请求，而是为 Agent 集中提供可发现、可调用、可管理且可持续扩展的资源与能力支持。
-
-**语言：** [中文](./README.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · **官网：** [octafuse.dev](https://octafuse.dev/)
+可自托管的开源 AI 网关。支持多供应商模型接入、图像生成、语音转写、智能体工具（Agent Tools），通过 Cloudflare Workers + D1 实现零成本边缘部署，也支持 Docker + PostgreSQL/MySQL 自托管。
 
 ## 核心能力
 
-Octafuse Gateway 的核心目标是**构建统一超级个体（OPC）或企业内部的 AI 能力中枢**。通过 Octafuse 将你所持有的各种模态的 AI 能力和多种多样的工具能力实现统一接入、分发、计费等企业级管理控制。
+1. **多供应商接入**：支持 OpenAI、Anthropic、Gemini 等主流模型厂商及自建 OpenAI-compatible 服务，内置导入模板一键接入
+2. **多协议支持**：OpenAI Chat/Images/Audio、Anthropic Messages、Gemini generateContent 等
+3. **智能体工具**：联网搜索、网页抓取、深度搜索，统一通过 `/v1/tools/*` 接入
+4. **灵活路由策略**：hash_affinity（缓存亲和）、weighted_random（加权随机）、weight_priority（优先级主备）、weighted_round_robin（加权轮转）
+5. **用户与额度管理**：外部系统、用户、API 密钥三层维度，三账本计费设计
+6. **管理后台**：供应商/模型/路由可视化管理，请求日志、数据分析、调试台与模拟器
+7. **边缘部署**：Cloudflare Workers + D1 免费部署，也可 Docker 自托管
 
-所以它具备以下这些核心能力：
+## 快速开始（本地开发）
 
-1. 供应商（Provider）接入：支持接入任意模型厂商或聚合平台的模型服务。同时，内置大量导入模板（含各种 Coding/Token Plan），无需复制黏贴各平台的接入端点，直接一键导入，然后复制对应的 API 密钥（ApiKey）即可完成接入。支持一键导入的完整列表见官网 [Providers Catalog](https://octafuse.dev/zh/catalog/providers/)，若有希望加入预置供应商的厂商，欢迎提交 PR。
-2. AI模型接入：需要提供哪些 AI 模型的接入，也可以通过预置的模型数据直接导入，无需配置各种模型参数、价格等基本信息。支持一键导入的模型列表见官网 [Models Catalog](https://octafuse.dev/zh/catalog/models/)；若希望接入新的模型，欢迎提交 PR。
-3. 多协议接入：AI 模型全协议接入，目前支持:
-    - OpenAI 端点：
-      - Chat Completions：`POST /v1/chat/completions`
-      - Images：`POST /v1/images/generations`、`POST /v1/images/edits`
-      - Audio Transcriptions：`POST /v1/audio/transcriptions`
-      - Models：`GET /v1/models`
-    - Anthropic 端点：`POST /v1/messages`
-    - Google Gemini 端点：`POST /v1beta/models/{model}:generateContent`（含 `streamGenerateContent`）
-4. 智能体工具接入：通过 `/v1/tools/*` 统一接入各种供 Agent 使用的工具，并提供日志、计费、成本管控，以方便 Agent 同时从 Gateway 接入模型和工具。当前预置工具如下：
-    - 联网搜索（`POST /v1/tools/web-search`）：博查、Tavily、阿里云 CleverSee、腾讯云联网搜索 WSA
-    - 网页抓取（`POST /v1/tools/web-fetch`）：Firecrawl、Tavily Extract、Jina Reader
-    - 深度搜索（`POST /v1/tools/web-deep-search`，搜+读一体）：Firecrawl Search、Jina Search
-    - 更多工具持续接入中，也欢迎 PR 继续丰富智能体常用工具。
-5. AI 能力统一出口：与所有网关一样，它是请求的中枢，即使能力汇总的地方，也是能力集中分发的地方。上面所有接入的 AI 能力都通过Octafuse Gateway 部署后的地址提供统一的接入 BaseUrl。换言之，上面你接入的各种平台、工具的 BaseUrl都不需要记了，只需要记住网关的即可。
-6. 多样的路由策略：当一个模型我们有多个资源的时候，为了更高效的使用资源，可以根据情况配置不同的路由策略。目前支持四种策略：
-    - hash_affinity：默认策略；同用户、模型、协议稳定首选上游，**缓存命中率高**，适合依赖 Prompt Cache、会话连续性的场景；短时流量不一定完全均匀
-    - weighted_random：按权重加权随机分流，**负载均衡性高**，适合按比例分摊成本或 A/B；同一用户可能频繁切换供应商，缓存命中率较低
-    - weight_priority：按权重从高到低固定排序，结果可预测，适合同层明确主备；首选供应商会承担大部分流量
-    - weighted_round_robin：按权重轮转分摊，流量更均匀；计数器按运行实例维护，多实例间不保证全局同步
-7. 用户管理与记账一体化：有了统一接入点之后，剩下用户管理、额度管理、成本管理一堆下游的功能。Octafuse 提供了一套企业化的管理机制，包括：
-    - 支持系统（External system）、用户（User）、API 密钥三层维度：每个用户因为有一个External system字段，所以可以区分不同的系统或者团队。用户下面是 API 密钥，真正调用 Gateway 能力通过 API 密钥完成鉴权、扣费和审计。
-    - 三账本设计：每一个调用对于计费涵盖三个费用计算，包括：目录价（模型/工具标准价）、成本价（实际采购价格）、用户价（用户扣除额度）
-    - 分时倍率：有的模型有峰谷计费的设计，利用分时倍率可以更精准的计算成本数据；同时如果对外服务，也可以更配置灵活的计价方案来支持运营促销
-8. 管理后台（Admin）与管理API：
-    - 具备完善的管理后台和管理接口，可以手工维护也可以接入其他系统门户使用
-    - 可观测性与数据分析：详细记录了请求细节和各类数据，可以方便查看、统计、分析
-    - 测试与联调：提供调试台（Playground）/ 模拟器（Simulator）页面功能，用户在接入新供应商和模型的时候，可以快速检验接口配置是否正确，服务商模型是否可靠
-9. 灵活的部署方式：
-    - 支持 **Cloudflare Workers + D1 免费部署**
-    - 支持 Docker + Postgres / MySQL 部署
-
-## 管理后台一览
-
-| 供应商接入 | 请求入口（Request Surface）→ 策略 → 上游目标（Upstream Target） 路由拓扑 |
-|---|---|
-| ![新建供应商：配置单个上游账号的 API 密钥与多协议端点](./docs/assets/screenshots/providers.png) | ![路由（Routes）：按协议、operation 和路由组组织路由策略与上游目标](./docs/assets/screenshots/routes.png) |
-
-供应商页面负责接入上游账号与协议端点；路由页面把客户端请求入口、路由策略和上游目标放在一条可视链路中。完整配置顺序见 [管理后台配置指南](./docs/users/configuration.md)。
-
-## 与其他开源 AI Gateway 的差异
-
-[New API](https://github.com/QuantumNous/new-api)、[LiteLLM](https://github.com/BerriAI/litellm)、[Sub2API](https://github.com/Wei-Shaw/sub2api) 和 [Bifrost](https://github.com/maximhq/bifrost) 都是成熟且各有所长的开源 AI Gateway。Octafuse 更关注 **Agent 能力交付与 AI 资源运营**，主要差异集中在以下五个方向：
-
-| 重点方向 | Octafuse 内建机制 | 适合场景 |
-|---|---|---|
-| Agent 能力 | 联网搜索、网页抓取、深度搜索，以及工具调用日志与计费 | 为 Agent 同时提供模型与工具 |
-| 资源接入 | 供应商 / 模型预设、多协议端点和一键导入 | 统一管理分散的 AI 资源 |
-| 精细路由 | 独立路由池、分层策略、缓存亲和、主备与熔断 | 在稳定性、缓存命中率和成本间平衡 |
-| 运营计费 | 目录价、供应成本、用户扣费三账本，支持分时与多模态计价 | 内部核算、额度管理或对外运营 |
-| 灵活部署 | Docker + 多数据库，或 Cloudflare Workers + D1 | 自托管、边缘部署与低成本起步 |
-
-**评级说明：**
-
-- **✅ 完善**：公开版本已形成覆盖该维度主要场景的完整机制
-- **🟡 良好**：具备成熟的核心能力，但覆盖范围或运营深度相对有限
-- **🟠 基础**：具备可用的基础实现，仍需较多外部组件或二次开发
-- **⚪ 无**：官方公开文档未将其列为同类内建能力
-
-<details>
-<summary><strong>展开完整能力对比（22 项）</strong></summary>
-
-### 能力接入与 Agent
-
-| 细分能力 | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
-|---|:---:|:---:|:---:|:---:|:---:|
-| 供应商 / 模型预设与一键导入 | ✅ | 🟡 | 🟡 | 🟡 | 🟡 |
-| 原生协议与多模态覆盖 | 🟡¹ | ✅ | ✅ | ✅ | ✅ |
-| 内置联网搜索、抓取与深度搜索 | ✅ | ⚪ | 🟠 | 🟠 | 🟠 |
-| 工具供应商配置、调用日志与计费 | ✅ | ⚪ | 🟡 | 🟠 | 🟠 |
-
-### 路由与治理
-
-| 细分能力 | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
-|---|:---:|:---:|:---:|:---:|:---:|
-| 协议 / operation 级请求入口与独立路由池 | ✅ | 🟠 | 🟡 | 🟡 | 🟡 |
-| 多策略分流与分层覆盖 | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
-| Prompt Cache 亲和路由 | ✅ | 🟡 | ✅ | ✅ | ✅ |
-| 优先级主备、故障转移与供应商熔断 | ✅ | 🟡 | ✅ | 🟡 | ✅ |
-| 外部系统、用户与 API 密钥分层治理 | ✅ | 🟡 | ✅ | 🟡 | ✅ |
-| 周期预算、状态与模型访问控制 | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-### 计费
-
-| 细分能力 | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
-|---|:---:|:---:|:---:|:---:|:---:|
-| 目录价、供应成本、用户扣费三账本 | ✅ | ⚪ | ⚪ | ✅ | ⚪ |
-| 按业务时区的分时计价倍率 | ✅ | ⚪ | ⚪ | 🟡 | ⚪ |
-| 图像 / 语音差异化计价 | ✅ | 🟡 | 🟡 | 🟡 | 🟠 |
-| 智能体工具按次计费 | ✅ | ⚪ | 🟡 | 🟠 | 🟠 |
-
-### 运维与部署
-
-| 细分能力 | Octafuse | New API | LiteLLM | Sub2API | Bifrost |
-|---|:---:|:---:|:---:|:---:|:---:|
-| 管理后台 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 管理 API | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 可观测性 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SQLite / D1 | ✅ | ✅ | ⚪ | ⚪ | ✅ |
-| PostgreSQL | ✅ | ✅ | ✅ | ✅ | ✅ |
-| MySQL | ✅ | ✅ | ⚪ | ⚪ | ⚪ |
-| Docker 自托管部署 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Cloudflare Workers 边缘部署 | ✅ | ⚪ | ⚪ | ⚪ | ⚪ |
-
-<sup>1</sup> Octafuse 的原生协议与多模态覆盖仍在持续完善。
-
-</details>
-
-评价基于各项目当前公开仓库与官方文档，重点衡量“是否内建并形成完整机制”，不评价性能、社区规模、商业支持或二次开发潜力。这是围绕 Octafuse 产品定位的能力比较，不是对各项目全部功能的综合排名。各项目持续演进，具体能力和授权范围请以其最新官方文档为准。
-
-
-## 快速开始
-
-需要 **Node.js 20+**。代理服务（Proxy）与管理后台需**两个终端**同时运行。
+需要 **Node.js 20+**。代理服务与管理后台需**两个终端**同时运行。
 
 ```bash
-git clone https://github.com/OctaFuse/octafuse-gateway.git
-cd octafuse-gateway
+git clone https://github.com/827802685/cloud-api.git
+cd cloud-api
 npm install
 npm run db:migrate
 ```
@@ -155,38 +42,130 @@ npm run dev:admin
 | 服务 | 地址 | 说明 |
 |------|------|------|
 | 代理服务 | http://127.0.0.1:8787 | 推理入口 |
-| 管理后台 | http://127.0.0.1:8789 | 控制台；本地默认账号 **`admin` / `admin`** |
+| 管理后台 | http://127.0.0.1:8789 | 控制台；默认账号 **`admin` / `admin`** |
 
-首次运行 `dev:admin` 会生成 `packages/admin/.dev.vars`。打开管理后台，配置供应商、路由和用户 API 密钥，然后使用该密钥调用代理服务。详细步骤与 `curl` 示例见 [docs/users/quickstart.md](./docs/users/quickstart.md)。
+## 部署到 Cloudflare
 
-### 部署到 Cloudflare
+本项目通过 **GitHub Actions** 实现自动部署，push 到 `main` 分支即可触发。
+
+### 前置准备
+
+1. **Cloudflare 账号**：确保已开通 Workers 和 D1 服务
+2. **创建 D1 数据库**：
+   ```bash
+   npx wrangler login
+   npx wrangler d1 create cloud-api
+   ```
+   记录输出的 `database_id`
+
+3. **创建 Cloudflare API Token**：前往 [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) 创建，需包含以下权限：
+   - Account → Cloudflare D1 → Edit
+   - Account → Cloudflare Workers → Edit
+
+### 配置 GitHub 仓库
+
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 中配置：
+
+**Variables（变量）：**
+
+| 变量名 | 说明 | 示例 |
+|--------|------|------|
+| `PROXY_WORKER_NAME` | Proxy Worker 名称 | `cloud-api-proxy` |
+| `ADMIN_WORKER_NAME` | Admin Worker 名称 | `cloud-api-admin` |
+| `D1_DATABASE_NAME` | D1 数据库名称 | `cloud-api` |
+| `D1_DATABASE_ID` | D1 数据库 ID | `de9cc5da-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+| `D1_MIGRATIONS_WORKER_NAME` | 迁移配置名称 | `cloud-api-d1-migrations` |
+| `PROXY_CUSTOM_DOMAIN` | Proxy 自定义域名（可选） | `api.example.com` |
+| `ADMIN_CUSTOM_DOMAIN` | Admin 自定义域名（可选） | `admin.example.com` |
+
+**Secrets（密钥）：**
+
+| 密钥名 | 说明 |
+|--------|------|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID |
+
+### 自动部署
+
+配置完成后，push 到 `main` 分支将自动触发：
+
+- **Proxy Worker 部署**：当 `packages/proxy/**`、`packages/core/**`、`packages/tool-engines/**`、`scripts/deploy/**` 有变更时
+- **Admin Worker 部署**：同上路径变更时
+- **D1 数据库迁移**：当 `packages/core/migrations-d1/**` 有变更时
+
+### 首次部署（本地 CLI）
+
+如果更倾向于首次部署使用本地 CLI：
 
 ```bash
-npx wrangler login
+# 交互式引导（推荐首次使用）
 npm run bootstrap:cloudflare
+
+# 或手动部署
+npm run deploy:cloudflare -- production --migrate
 ```
 
-详见 [Cloudflare 快速部署](./docs/operators/deployment/cloudflare-quickstart.md)。用于生产环境前，请修改默认管理后台密码，并轮换 `MASTER_KEY`。
+引导脚本会依次完成：创建/复用 D1 → 写入实例配置 → 应用数据库迁移 → 部署 Proxy Worker → 构建并部署 Admin Worker → 设置 ADMIN_PASSWORD。
 
-Docker 自托管及 Postgres / MySQL 数据库方案见 [部署文档索引](./docs/operators/deployment/README.md)。
+### 部署后验证
 
-## 文档
+```bash
+# 健康检查
+curl -i "https://<your-proxy-worker>.workers.dev/health"
+# 预期返回：{"status":"ok","service":"cloud-api-proxy"}
 
-| 任务 | 链接 |
-|------|------|
-| 功能地图、管理后台配置、客户端接入 | [docs/users/](./docs/users/) |
-| 本地上手与示例请求 | [docs/users/quickstart.md](./docs/users/quickstart.md) |
-| API、集成、本地开发、架构 | [docs/developers/](./docs/developers/) |
-| Cloudflare / Docker / 迁移 | [docs/operators/](./docs/operators/) |
-| 发版与维护 | [docs/maintainers/](./docs/maintainers/) |
-| HTTP 示例 | [examples/README.md](./examples/README.md) |
+# 打开管理后台
+# https://<your-admin-worker>.workers.dev
+# 使用 admin / 你设置的 ADMIN_PASSWORD 登录
+```
 
-## 贡献与安全
+### 部署后安全初始化
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md)
-- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
-- [SECURITY.md](./SECURITY.md)
-- [docs/CONVENTIONS.md](./docs/CONVENTIONS.md)
+| 凭据 | 用途 | 存储位置 |
+|------|------|----------|
+| `ADMIN_PASSWORD` | 浏览器登录管理后台 | Cloudflare Worker Secret |
+| `MASTER_KEY` | 调用 `/api/admin/*` | D1 `system_config` 表 |
+| 用户 API Key | 调用代理服务 `/v1/*` | D1，管理后台创建 |
+
+首次迁移会写入开发占位值 `sk-dev-admin-key`。部署后请立即在管理后台 **系统 → 配置** 中替换 MASTER_KEY。
+
+## 项目结构
+
+```
+cloud-api/
+├── packages/
+│   ├── core/           # 核心业务逻辑、数据库层、D1/Postgres/MySQL 实现
+│   ├── proxy/          # Proxy Worker（Hono），推理/工具 API 入口
+│   ├── admin/          # Admin Worker（Next.js + OpenNext），管理后台
+│   └── tool-engines/   # 智能体工具引擎（联网搜索、网页抓取等）
+├── scripts/
+│   └── deploy/         # 部署脚本（wrangler 配置生成、引导脚本等）
+├── cloudflare-worker/  # Cloudflare 部署实例配置（.env 文件）
+├── docker/             # Docker 部署配置
+└── docs/               # 文档
+```
+
+## 常见问题
+
+### GitHub Actions 报 "not permitted to create or approve pull requests"
+
+前往仓库 **Settings → Actions → General → Workflow permissions**，勾选 **"Allow GitHub Actions to create and approve pull requests"**。
+
+### 管理后台登录 401
+
+`ADMIN_PASSWORD`（网页登录密码）与 `MASTER_KEY`（API 主密钥）不同。重设登录密码：
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD --name <admin-worker-name>
+```
+
+### `/catalog/models` 返回空数组
+
+部署正常。新数据库没有已启用的路由，请在管理后台添加供应商、模型并创建路由。
+
+### 自定义域名部署失败
+
+先去掉 `PROXY_CUSTOM_DOMAIN` / `ADMIN_CUSTOM_DOMAIN`，用 `*.workers.dev` 地址验证通过后再绑定域名。确保域名所在 zone 已加入同一 Cloudflare 账号。
 
 ## 开源协议
 

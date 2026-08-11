@@ -1,5 +1,5 @@
 {
-	"name": "@octafuse/admin",
+	"name": "@cloud-api/admin",
 	"version": "2.3.0",
 	"private": true,
 	"scripts": {
@@ -19,8 +19,8 @@
 	"dependencies": {
 		"@heroicons/react": "^2.2.0",
 		"@lobehub/icons-static-svg": "1.94.0",
-		"@octafuse/core": "*",
-		"@octafuse/tool-engines": "*",
+		"@cloud-api/core": "*",
+		"@cloud-api/tool-engines": "*",
 		"@opennextjs/cloudflare": "1.19.4",
 		"@swc/helpers": "^0.5.18",
 		"hono": "^4.12.9",

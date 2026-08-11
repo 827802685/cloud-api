@@ -1,12 +1,12 @@
 /**
- * 管理 API：`pricing_profile` / `price_override` 的规范化与校验（与 `@octafuse/core` 解析一致）。
+ * 管理 API：`pricing_profile` / `price_override` 的规范化与校验（与 `@cloud-api/core` 解析一致）。
  */
 import {
 	parsePricingProfile,
 	type ImagePricingConfig,
 	type ParsedPricingProfile,
-} from '@octafuse/core/db/pricing-profile';
-import { coerceRoutePricingScheduleInput } from '@octafuse/core/db/pricing-schedule';
+} from '@cloud-api/core/db/pricing-profile';
+import { coerceRoutePricingScheduleInput } from '@cloud-api/core/db/pricing-schedule';
 import { badRequest } from './errors';
 
 function serializeImagePricingConfig(image: ImagePricingConfig): Record<string, unknown> {

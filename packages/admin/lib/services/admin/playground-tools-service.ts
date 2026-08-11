@@ -2,53 +2,53 @@
  * Playground Tools：读 system_config catalog，按指定 provider 直连引擎。
  * 不经 Proxy、不计费、不写 api_key_request_logs；可测非 Active 引擎以验证密钥。
  */
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
 import {
 	AI_DETECTION_CATALOG_KEY,
 	AI_DETECTION_IMPLEMENTED_PROVIDERS,
 	parseAiDetectionCatalogLenient,
 	resolveAiDetectionConfigForProvider,
-} from '@octafuse/core/lib/ai-detection-system-config';
+} from '@cloud-api/core/lib/ai-detection-system-config';
 import {
 	WEB_DEEP_SEARCH_CATALOG_KEY,
 	WEB_DEEP_SEARCH_PROVIDERS,
 	isWebDeepSearchProvider,
 	parseWebDeepSearchCatalogLenient,
 	type WebDeepSearchProvider,
-} from '@octafuse/core/lib/web-deep-search-system-config';
+} from '@cloud-api/core/lib/web-deep-search-system-config';
 import {
 	WEB_FETCH_CATALOG_KEY,
 	WEB_FETCH_PROVIDERS,
 	isWebFetchProvider,
 	parseWebFetchCatalogLenient,
 	type WebFetchProvider,
-} from '@octafuse/core/lib/web-fetch-system-config';
+} from '@cloud-api/core/lib/web-fetch-system-config';
 import {
 	WEB_SEARCH_CATALOG_KEY,
 	WEB_SEARCH_PROVIDERS,
 	isWebSearchProvider,
 	parseWebSearchCatalogLenient,
 	type WebSearchProvider,
-} from '@octafuse/core/lib/web-search-system-config';
+} from '@cloud-api/core/lib/web-search-system-config';
 import {
 	detectAiRate,
 	getAiDetectionDriver,
 	AiDetectionProviderError,
-} from '@octafuse/tool-engines/ai-detection';
+} from '@cloud-api/tool-engines/ai-detection';
 import {
 	deepSearchByProvider,
 	WebDeepSearchProviderError,
 	clampDeepSearchCount,
-} from '@octafuse/tool-engines/web-deep-search';
+} from '@cloud-api/tool-engines/web-deep-search';
 import {
 	assertFetchUrlSafe,
 	fetchUrlByProvider,
 	WebFetchProviderError,
-} from '@octafuse/tool-engines/web-fetch';
+} from '@cloud-api/tool-engines/web-fetch';
 import {
 	searchWebByProvider,
 	WebSearchProviderError,
-} from '@octafuse/tool-engines/web-search';
+} from '@cloud-api/tool-engines/web-search';
 import { parseGatewayToolId, type GatewayToolId } from '@/lib/invoke-kind';
 import { badRequest } from './errors';
 

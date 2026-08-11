@@ -1,22 +1,22 @@
 /**
  * 管理后台 `model_routes` CRUD：校验上游协议与 provider 是否配置对应 base URL，并规范化 JSON 参数字段。
  */
-import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@cloud-api/core';
 import {
 	canonicalizeRequestOperation,
 	isRequestOperationForProtocol,
 	normalizeRouteOperation,
 	PASSTHROUGH_ROUTE_ADAPTER,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
-import { normalizeUpstreamProtocol } from '@octafuse/core/upstream-protocol';
-import { isRouteStrategyName } from '@octafuse/core/db/model-route-policy';
-import { normalizeRoutePoolTierStrategiesInput } from '@octafuse/core/db/route-pool-tier-strategies';
-import { buildAffinityKey, hashAffinityKey } from '@octafuse/core/db/route-affinity-key';
-import { normalizeStickyRoutingInput } from '@octafuse/core/db/route-pool-sticky-types';
+} from '@cloud-api/core/db/model-modalities';
+import { normalizeUpstreamProtocol } from '@cloud-api/core/upstream-protocol';
+import { isRouteStrategyName } from '@cloud-api/core/db/model-route-policy';
+import { normalizeRoutePoolTierStrategiesInput } from '@cloud-api/core/db/route-pool-tier-strategies';
+import { buildAffinityKey, hashAffinityKey } from '@cloud-api/core/db/route-affinity-key';
+import { normalizeStickyRoutingInput } from '@cloud-api/core/db/route-pool-sticky-types';
 import { badRequest, notFound } from './errors';
 import { coerceRoutePriceOverrideInput, assertRoutePriceOverrideFactors } from './pricing-input';
 import { normalizeJsonObjectField, providerSupportsUpstreamProtocol } from './shared';

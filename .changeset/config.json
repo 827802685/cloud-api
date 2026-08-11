@@ -2,10 +2,10 @@
 	"$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
 	"changelog": [
 		"@changesets/changelog-github",
-		{ "repo": "OctaFuse/octafuse-gateway" }
+		{ "repo": "827802685/cloud-api" }
 	],
 	"commit": false,
-	"fixed": [["octafuse", "@octafuse/core", "@octafuse/tool-engines", "@octafuse/proxy", "@octafuse/admin"]],
+	"fixed": [["cloud-api", "@cloud-api/core", "@cloud-api/tool-engines", "@cloud-api/proxy", "@cloud-api/admin"]],
 	"linked": [],
 	"access": "restricted",
 	"baseBranch": "main",

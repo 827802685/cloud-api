@@ -1,20 +1,20 @@
 /**
  * 管理后台 `models` + `model_tags`：列表/详情（含路由计数）、创建、部分更新、级联删除、静态目录导入。
  */
-import type { GatewayRepositories } from '@octafuse/core';
-import { normalizeModelRoutePolicyInput } from '@octafuse/core/db/model-route-policy';
+import type { GatewayRepositories } from '@cloud-api/core';
+import { normalizeModelRoutePolicyInput } from '@cloud-api/core/db/model-route-policy';
 import {
 	coerceModelInputModalitiesInput,
 	coerceModelOutputModalitiesInput,
 	coerceModelReleasedAtInput,
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
-} from '@octafuse/core/db/model-modalities';
+} from '@cloud-api/core/db/model-modalities';
 import {
 	BILLING_CURRENCY_KEY,
 	tryParseGatewaySupportedBillingCurrencyInput,
 	type GatewaySupportedBillingCurrency,
-} from '@octafuse/core/lib/billing-currency';
+} from '@cloud-api/core/lib/billing-currency';
 import { getGatewayCurrencySymbol } from '@/lib/format-gateway-currency';
 import { listStaticModelPresets, pickPresetPricingRawForBillingCurrency } from '@/lib/model-preset';
 import { badRequest, notFound } from './errors';

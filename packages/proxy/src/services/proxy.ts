@@ -2,7 +2,7 @@
  * 上游 HTTP 代理与故障转移：按协议分发到 openai/anthropic/gemini driver，并在流开始前按路由顺序重试。
  * 返回的 `usagePromise` 在流结束后解析 token 用量，供 `usage-tracker` 记账。
  */
-import type { GatewayRepositories } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
 import type { RouteResult } from './model-router';
 import { dispatchOpenAiRoute } from './egress/openai-driver';
 import {

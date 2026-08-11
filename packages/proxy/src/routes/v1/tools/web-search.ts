@@ -2,12 +2,12 @@
  * 用户路由：`POST /v1/tools/web-search` — 联网搜索工具；成功后按固定单价计入 budget_spent。
  * 引擎/密钥/单价读自 `system_config`（见 `resolveWebSearchConfig`）。
  */
-import { resolveWebSearchConfig } from '@octafuse/core';
+import { resolveWebSearchConfig } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
-import { searchWebByProvider, WebSearchProviderError } from '@octafuse/tool-engines/web-search';
+import { searchWebByProvider, WebSearchProviderError } from '@cloud-api/tool-engines/web-search';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 

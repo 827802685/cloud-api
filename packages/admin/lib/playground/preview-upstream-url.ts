@@ -4,16 +4,16 @@
 import {
 	type GeminiContentAction,
 	prepareGeminiUpstreamFetch,
-} from '@octafuse/core/gemini-upstream-url';
+} from '@cloud-api/core/gemini-upstream-url';
 import {
 	parseProviderEndpoints,
 	resolveUpstreamEndpoint,
 	type ProviderEndpointsSource,
-} from '@octafuse/core/provider-endpoints';
+} from '@cloud-api/core/provider-endpoints';
 import {
 	normalizeUpstreamProtocol,
 	type UpstreamProtocol,
-} from '@octafuse/core/upstream-protocol';
+} from '@cloud-api/core/upstream-protocol';
 import { modelKindFromFlags, resolveOpenaiUpstreamCapability } from '@/lib/invoke-kind';
 
 export type PlaygroundProviderBaseUrls = ProviderEndpointsSource & {

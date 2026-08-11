@@ -1,8 +1,8 @@
 /**
  * 用户密钥鉴权：校验 Bearer sk-，并在读库时触发与 `user-service.maybeResetBudget` 一致的预算周期重置写回。
  */
-import type { GatewayRepositories } from '@octafuse/core';
-import { persistLazyBudgetResetIfNeeded, resolveMeMetadata, roundGatewayMoney } from '@octafuse/core';
+import type { GatewayRepositories } from '@cloud-api/core';
+import { persistLazyBudgetResetIfNeeded, resolveMeMetadata, roundGatewayMoney } from '@cloud-api/core';
 
 /** 鉴权成功后注入上下文（与中间件 `ApiKeyContext` 字段对应）。 */
 export type AuthenticatedApiKey = {

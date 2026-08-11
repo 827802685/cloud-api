@@ -4,7 +4,7 @@
  * - `token`：上游 usage tokens × $/1M × 路由 factor（gpt-4o-*transcribe）
  * 最终扣费禁止用字节估算冒充 token；缺上游 token usage 时计 0 并审计。
  */
-import type { GatewayRepositories, UpstreamProtocol } from '@octafuse/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@cloud-api/core';
 import {
 	buildAudioTokenPrecheckUsage,
 	changedFieldsToJson,
@@ -35,7 +35,7 @@ import {
 	type AudioTokenUsage,
 	type ParsedPricingProfile,
 	type PriceResolutionAuditSide,
-} from '@octafuse/core';
+} from '@cloud-api/core';
 import { canAffordToolCost } from './tool-usage-charge';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
 import { fireGatewayErrorWebhooks } from './alert-webhook';

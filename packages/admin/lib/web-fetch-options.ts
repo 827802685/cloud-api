@@ -1,5 +1,5 @@
 /**
- * Tools → Configuration：Web Fetch 引擎下拉（与 `@octafuse/core` 白名单一致）。
+ * Tools → Configuration：Web Fetch 引擎下拉（与 `@cloud-api/core` 白名单一致）。
  */
 import {
 	DEFAULT_WEB_FETCH_COST,
@@ -11,7 +11,7 @@ import {
 	WEB_FETCH_PROVIDER_KEY,
 	WEB_FETCH_PROVIDERS,
 	type WebFetchProvider,
-} from '@octafuse/core/lib/web-fetch-system-config';
+} from '@cloud-api/core/lib/web-fetch-system-config';
 
 export {
 	DEFAULT_WEB_FETCH_COST,
