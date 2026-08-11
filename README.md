@@ -46,7 +46,11 @@ npm run dev:admin
 
 ## 部署到 Cloudflare
 
-本项目通过 **GitHub Actions** 实现自动部署，push 到 `main` 分支即可触发。
+本项目采用**双轨部署架构**：
+- **Admin Worker**：通过 GitHub Actions 自动部署到 Cloudflare
+- **Proxy Worker**：通过 Cloudflare "Connect to Git" 拉取代码并构建
+
+这种设计的原因是 Proxy Worker 依赖 monorepo 中的 `@cloud-api/*` workspace 包，需要在 GitHub Actions 中预构建后才能部署。
 
 ### 前置准备
 
@@ -85,13 +89,34 @@ npm run dev:admin
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API Token |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID |
 
-### 自动部署
+### Admin Worker 部署（GitHub Actions）
 
-配置完成后，push 到 `main` 分支将自动触发：
+Push 到 `main` 分支时，GitHub Actions 会自动：
+1. 安装依赖并生成 Wrangler 配置
+2. 构建并部署 Admin Worker 到 Cloudflare
 
-- **Proxy Worker 部署**：当 `packages/proxy/**`、`packages/core/**`、`packages/tool-engines/**`、`scripts/deploy/**` 有变更时
-- **Admin Worker 部署**：同上路径变更时
-- **D1 数据库迁移**：当 `packages/core/migrations-d1/**` 有变更时
+触发条件：当 `packages/admin/**`、`packages/core/**`、`scripts/deploy/**` 有变更时。
+
+### Proxy Worker 部署（Cloudflare Connect to Git）
+
+1. **连接 GitHub 仓库**：
+   - 前往 Cloudflare Dashboard → Workers & Pages
+   - 点击 "Create application" → "Connect to Git"
+   - 选择本仓库，配置分支为 `main`
+
+2. **构建配置**：
+   - **Build command**：`npm install && npm run build -w @cloud-api/proxy`
+   - **Deploy target**：`packages/proxy`
+   - Cloudflare 会自动检测 `wrangler.toml` 或 `wrangler.jsonc` 配置
+
+3. **工作原理**：
+   - GitHub Actions 在部署前会预构建 Proxy Worker（`dist/worker.js`）
+   - 构建脚本将所有 `@cloud-api/*` workspace 依赖打包进 bundle
+   - Cloudflare 拉取代码后直接使用预构建产物，避免 monorepo 依赖解析问题
+
+### D1 数据库迁移
+
+当 `packages/core/migrations-d1/**` 有变更时，GitHub Actions 会自动执行数据库迁移。
 
 ### 首次部署（本地 CLI）
 

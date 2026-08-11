@@ -1,4 +1,4 @@
-# `@octafuse/proxy`
+# `@cloud-api/proxy`
 
 **推理入口**：Cloudflare Worker（`wrangler.jsonc`）或 **Node**（Postgres / MySQL）。对外：
 
@@ -14,7 +14,7 @@
 
 2.0 按 Request Surface → Route Pool → Upstream Target 解析路由；Pool 内以 priority 分层，同层使用 `hash_affinity`（默认）/ `weighted_random` / `weight_priority` / `weighted_round_robin` 与 weight 排序，并按 Provider 维度熔断。一个 Provider 维护一把上游 API Key。
 
-**不提供** `/admin/*`。管理 API 由 **`@octafuse/admin`** 在 **`/api/admin/*`** 提供。Tools 引擎 Key 与单价在 Admin → **Tools** 维护。
+**不提供** `/admin/*`。管理 API 由 **`@cloud-api/admin`** 在 **`/api/admin/*`** 提供。Tools 引擎 Key 与单价在 Admin → **Tools** 维护。
 
 ## 命令（在仓库根 `npm install` 后）
 

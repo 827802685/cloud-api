@@ -1,5 +1,5 @@
 # gateway-admin — Next.js standalone 多阶段（运行层仅含 standalone + static）
-# Build: docker build -f Dockerfile.admin -t octafuse-admin:latest .
+# Build: docker build -f Dockerfile.admin -t cloud-api-admin:latest .
 # Base: Node 22 on Alpine 3.22, pinned digest for reproducible builds / scanner baselines.
 # Bump digest: docker buildx imagetools inspect docker.io/library/node:22-alpine3.22
 ARG NODE_IMAGE=node:22-alpine3.22@sha256:b77017c37f430e4466ff497058948a2f16e8b59779600d53711eeb7b999b0f4e
@@ -20,12 +20,12 @@ COPY packages/admin/package.json packages/admin/
 
 RUN --mount=type=cache,target=/root/.npm \
 	npm ci --ignore-scripts \
-	--workspace=@octafuse/core \
-	--workspace=@octafuse/tool-engines \
-	--workspace=@octafuse/admin
+	--workspace=@cloud-api/core \
+	--workspace=@cloud-api/tool-engines \
+	--workspace=@cloud-api/admin
 
 # esbuild 依赖 postinstall 拉取当前平台二进制；--ignore-scripts 会跳过。
-# 树内可能有多份 esbuild（如 @octafuse/core 与 @opennextjs/aws 嵌套版本）；勿用 `npm rebuild esbuild`（会对多版本做错误校验）。
+# 树内可能有多份 esbuild（如 @cloud-api/core 与 @opennextjs/aws 嵌套版本）；勿用 `npm rebuild esbuild`（会对多版本做错误校验）。
 RUN find node_modules -path '*/esbuild/install.js' -exec node {} \;
 
 # next-intl → @swc/core：加载 next.config 时需要当前平台的 musl 原生绑定。
@@ -49,7 +49,7 @@ COPY packages/admin ./packages/admin
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build -w @octafuse/core && npm run build:docker -w @octafuse/admin
+RUN npm run build -w @cloud-api/core && npm run build:docker -w @cloud-api/admin
 
 FROM ${NODE_IMAGE} AS runner
 

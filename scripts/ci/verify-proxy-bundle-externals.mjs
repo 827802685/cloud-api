@@ -20,7 +20,7 @@ if (!existsSync(bundlePath)) {
 
 const source = readFileSync(bundlePath, 'utf8');
 /** 匹配 from/import 中的 `@cloud-api/...` 说明符（含动态 import）。 */
-const re = /(?:from\s+|import\s*\(\s*)["'](@octafuse\/[^"']+)["']/g;
+const re = /(?:from\s+|import\s*\(\s*)["'](@cloud-api\/[^"']+)["']/g;
 const found = new Set();
 for (const m of source.matchAll(re)) {
 	found.add(m[1]);

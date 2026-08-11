@@ -1,5 +1,5 @@
 # gateway-migrate — 一次性 Postgres / MySQL 迁移 Job（不含 proxy / admin 应用代码）
-# Build: docker build -f Dockerfile.migrate -t octafuse-migrate:latest .
+# Build: docker build -f Dockerfile.migrate -t cloud-api-migrate:latest .
 # Base: Node 22 on Alpine 3.22, pinned digest (see Dockerfile.admin).
 ARG NODE_IMAGE=node:22-alpine3.22@sha256:b77017c37f430e4466ff497058948a2f16e8b59779600d53711eeb7b999b0f4e
 
@@ -18,14 +18,14 @@ COPY packages/proxy/package.json packages/proxy/
 COPY packages/admin/package.json packages/admin/
 
 RUN --mount=type=cache,target=/root/.npm \
-	npm ci --ignore-scripts --workspace=@octafuse/core
+	npm ci --ignore-scripts --workspace=@cloud-api/core
 
 # esbuild：见 Dockerfile.admin 同段注释
 RUN find node_modules -path '*/esbuild/install.js' -exec node {} \;
 
 COPY packages/core ./packages/core
 
-RUN npm run build -w @octafuse/core
+RUN npm run build -w @cloud-api/core
 
 FROM ${NODE_IMAGE} AS runner
 

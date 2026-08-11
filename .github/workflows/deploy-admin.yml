@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Build core package
-        run: npm run build -w @octafuse/core
+        run: npm run build -w @cloud-api/core
 
       - name: Generate wrangler config
         env:
@@ -44,7 +44,7 @@ jobs:
         run: npm run gen:wrangler -- --remote
 
       - name: Build Admin Worker for Cloudflare
-        run: npm run build:cf -w @octafuse/admin
+        run: npm run build:cf -w @cloud-api/admin
 
       - name: Deploy Admin Worker to Cloudflare
         uses: cloudflare/wrangler-action@v3
