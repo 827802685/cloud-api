@@ -50,7 +50,7 @@ npm run dev:admin
 - **Admin Worker**：通过 GitHub Actions 自动部署到 Cloudflare
 - **Proxy Worker**：通过 Cloudflare "Connect to Git" 拉取代码并构建
 
-这种设计的原因是 Proxy Worker 依赖 monorepo 中的 `@cloud-api/*` workspace 包，需要在 GitHub Actions 中预构建后才能部署。
+Proxy Worker 的构建完全由 Cloudflare 负责。构建脚本会将 monorepo 中的 `@cloud-api/*` workspace 依赖全部打包进单一 bundle（`dist/worker.js`），Cloudflare 拉取代码后自行构建部署，无需 GitHub Actions 介入。
 
 ### 前置准备
 
@@ -102,17 +102,20 @@ Push 到 `main` 分支时，GitHub Actions 会自动：
 1. **连接 GitHub 仓库**：
    - 前往 Cloudflare Dashboard → Workers & Pages
    - 点击 "Create application" → "Connect to Git"
-   - 选择本仓库，配置分支为 `main`
+   - 选择本仓库，分支设为 `main`
 
-2. **构建配置**：
-   - **Build command**：`npm install && npm run build -w @cloud-api/proxy`
-   - **Deploy target**：`packages/proxy`
-   - Cloudflare 会自动检测 `wrangler.toml` 或 `wrangler.jsonc` 配置
+2. **构建配置**（在 Cloudflare Dashboard 中设置）：
+   - **Build command**：`npm install && npm run build:proxy`
+   - **Root directory / Deploy target**：`packages/proxy`
+   - Cloudflare 会自动检测 `packages/proxy/wrangler.jsonc` 配置
+
+   > **注意**：构建命令从仓库根目录执行，`npm install` 会安装所有 workspace 依赖并触发 `postinstall` 生成 wrangler 配置文件；`npm run build:proxy` 会先构建 `@cloud-api/core`，再构建 `@cloud-api/proxy`，最终输出 `packages/proxy/dist/worker.js`。
 
 3. **工作原理**：
-   - GitHub Actions 在部署前会预构建 Proxy Worker（`dist/worker.js`）
-   - 构建脚本将所有 `@cloud-api/*` workspace 依赖打包进 bundle
-   - Cloudflare 拉取代码后直接使用预构建产物，避免 monorepo 依赖解析问题
+   - Cloudflare 每次拉取最新代码后自动执行构建命令
+   - 构建脚本（`packages/proxy/scripts/build.mjs`）将所有 `@cloud-api/*` workspace 依赖打包进单一 ESM bundle
+   - 产物 `dist/worker.js` 不包含任何 workspace 外部引用，可独立运行
+   - Wrangler 读取 `wrangler.jsonc` 中的 `main: "dist/worker.js"` 完成部署
 
 ### D1 数据库迁移
 
