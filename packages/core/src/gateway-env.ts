@@ -3,7 +3,8 @@
  * 确保两个 Hono 应用可以互相挂载路由而不出现类型不兼容。
  */
 import type { D1Database } from '@cloudflare/workers-types';
-import type { GatewayRepositories, StorageContext } from './storage';
+import type { GatewayRepositories } from './storage/repositories-types';
+import type { StorageContext } from './storage/context';
 
 /** API Key 鉴权上下文，由 proxy `requireApiKey` 中间件注入。 */
 export type ApiKeyContext = {
