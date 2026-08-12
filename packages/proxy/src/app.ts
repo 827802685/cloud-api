@@ -1,10 +1,8 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { GatewayRepositories, StorageContext } from '@cloud-api/core';
+import type { GatewayRepositories, StorageContext, GatewayEnv } from '@cloud-api/core';
 import { Hono } from 'hono';
 import type { Context, MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { ApiKeyContext } from './middleware/auth';
 import { healthRoutes } from './routes/health';
 import { chatRoutes } from './routes/v1/chat';
 import { geminiRoutes } from './routes/v1/gemini';
@@ -22,33 +20,21 @@ import { audioRoutes } from './routes/v1/audio';
 import { proxyAppVersion } from './app-version';
 import { LANDING_PAGE_HTML } from './routes/landing-page';
 
-/** Cloudflare Worker bindings：D1 `DB`。Postgres 见 `src/runtime/node.ts`。 */
-export type GatewayBindings = {
-	DB?: D1Database;
-	/** 可选；仅允许 `d1` 或省略。 */
-	DATABASE_DRIVER?: string;
-};
+/** 向后兼容：保留 Env 别名，实际使用 GatewayEnv。 */
+export type Env = GatewayEnv;
 
-export type Env = {
-	Bindings: GatewayBindings;
-	Variables: {
-		apiKey?: ApiKeyContext;
-		repositories: GatewayRepositories;
-	};
-};
-
-export type StorageResolver = (context: Context<Env>) => Promise<StorageContext>;
+export type StorageResolver = (context: Context<GatewayEnv>) => Promise<StorageContext>;
 
 export type ProxyAppOptions = {
 	/**
 	 * 在所有其它中间件（含 logger / CORS / 存储）之前执行。
 	 * Worker 场景下用于尽早校验 D1 绑定：Cloudflare 仅在请求进入 fetch 时注入 `env`，无独立「进程启动」钩子，故最早失败点为首个请求的此处。
 	 */
-	beforeAll?: MiddlewareHandler<Env>;
+	beforeAll?: MiddlewareHandler<GatewayEnv>;
 };
 
-export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyAppOptions): Hono<Env> {
-	const app = new Hono<Env>();
+export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyAppOptions): Hono<GatewayEnv> {
+	const app = new Hono<GatewayEnv>();
 
 	if (options?.beforeAll) {
 		app.use('*', options.beforeAll);
@@ -92,6 +78,12 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 	});
 
 	app.use('*', async (c, next) => {
+		// 若 repositories 已由外层（如 Admin）设置，则跳过存储解析
+		const existing = c.get('repositories' as never);
+		if (existing) {
+			await next();
+			return;
+		}
 		try {
 			const storage = await resolveStorage(c);
 			c.set('repositories', storage.repositories);

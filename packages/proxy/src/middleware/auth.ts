@@ -4,7 +4,7 @@
  */
 import { createMiddleware } from 'hono/factory';
 import { authenticateApiKey } from '../services/api-key-auth';
-import type { Env } from '../app';
+import type { GatewayEnv } from '@cloud-api/core';
 import { GatewayErrorCode } from '../services/gateway-error-codes';
 import { gatewayErrorJson } from '../services/gateway-error-response';
 
@@ -71,7 +71,7 @@ function extractApiKey(c: { req: { header: (name: string) => string | undefined;
 /**
  * 校验 API Key 并注入上下文；未授权返回 401，超额预算返回 403（部分路由豁免，见内联注释）。
  */
-export const requireApiKey = createMiddleware<Env>(async (c, next) => {
+export const requireApiKey = createMiddleware<GatewayEnv>(async (c, next) => {
   const key = extractApiKey(c);
   if (!key) {
     console.warn('[Gateway Auth] 401: missing API key in supported auth locations');

@@ -17,6 +17,8 @@ export * from './storage/repository-dtos';
 export * from './storage/critical-write-paths';
 export * from './storage/critical-write-paths-utils';
 
+export * from './gateway-env';
+
 export * from './db/providers';
 export * from './db/system-config';
 export * from './db/user-budget-audit-params';

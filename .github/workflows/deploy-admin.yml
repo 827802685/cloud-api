@@ -1,4 +1,4 @@
-name: Deploy Admin Worker to Cloudflare
+name: Deploy Gateway Worker to Cloudflare
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'packages/admin/**'
+      - 'packages/proxy/**'
       - 'packages/core/**'
       - 'packages/tool-engines/**'
       - 'scripts/deploy/**'
