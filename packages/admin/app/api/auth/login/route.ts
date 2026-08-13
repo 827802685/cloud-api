@@ -5,6 +5,7 @@
 import { createSessionCookieValue, resolveCookieSecure } from '@/lib/auth';
 import { getMasterKey } from '@/lib/services/admin/master-key-service';
 import { resolveAdminStorageContext } from '@/lib/storage-context';
+import { getCloudflareEnv } from '@/lib/cloudflare';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -19,18 +20,10 @@ export async function POST(request: Request) {
     const body = await request.json() as LoginRequest;
     const { username, password } = body;
 
-    // 凭据来自 OpenNext env；本地 dev 回退 process.env
-    let adminUsername: string | undefined;
-    let adminPassword: string | undefined;
-
-    try {
-      const { env } = await import('@opennextjs/cloudflare').then(m => m.getCloudflareContext());
-      adminUsername = env.ADMIN_USERNAME;
-      adminPassword = env.ADMIN_PASSWORD;
-    } catch {
-      adminUsername = process.env.ADMIN_USERNAME;
-      adminPassword = process.env.ADMIN_PASSWORD;
-    }
+    // 凭据与 DB 绑定来自 OpenNext env；本地 dev 回退 process.env
+    const cfEnv = getCloudflareEnv(request);
+    const adminUsername = cfEnv?.ADMIN_USERNAME || process.env.ADMIN_USERNAME;
+    const adminPassword = cfEnv?.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
 
     if (!adminUsername || !adminPassword) {
       console.error('Admin credentials not configured');
@@ -51,7 +44,15 @@ export async function POST(request: Request) {
     // 读取 MASTER_KEY 用于签名会话 cookie（无状态验证，防止伪造 cookie 绕过）
     let masterKey: string | null = null;
     try {
-      const storage = await resolveAdminStorageContext(undefined, 'auto');
+      // 必须把 Cloudflare 的 DB 绑定传给存储上下文，否则无法读取 system_config.MASTER_KEY
+      const bindings = cfEnv?.DB
+        ? {
+            DB: cfEnv.DB,
+            ASSETS: cfEnv.ASSETS,
+            DATABASE_DRIVER: cfEnv.DATABASE_DRIVER,
+          }
+        : undefined;
+      const storage = await resolveAdminStorageContext(bindings, cfEnv?.DB ? 'cloudflare' : 'auto');
       masterKey = await getMasterKey(storage.repositories);
     } catch (error) {
       console.error('Failed to load MASTER_KEY for session signing:', error);
