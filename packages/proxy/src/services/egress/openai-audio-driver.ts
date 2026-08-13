@@ -356,7 +356,7 @@ export async function dispatchOpenAiAudioTranscriptions(
 		}
 	}
 	// Copy into a fresh Uint8Array — `BlobPart` typing rejects some ArrayBufferView brands under Workers TS.
-	const blob = new Blob([new Uint8Array(req.file.bytes) as BlobPart], {
+	const blob = new Blob([new Uint8Array(req.file.bytes) as unknown as Blob], {
 		type: req.file.mimeType || 'application/octet-stream',
 	});
 	form.append(

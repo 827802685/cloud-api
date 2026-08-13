@@ -28,6 +28,7 @@ import cerebrasPresets from './model-presets/cerebras.json';
 import cloudflarePresets from './model-presets/cloudflare.json';
 import coherePresets from './model-presets/cohere.json';
 import deepseekPresets from './model-presets/deepseek.json';
+import freeModelsPresets from './model-presets/free-models.json';
 import githubPresets from './model-presets/github.json';
 import googlePresets from './model-presets/google.json';
 import googleImagePresets from './model-presets/google-image.json';
@@ -99,6 +100,7 @@ const STATIC_MODEL_PRESETS_BY_VENDOR = [
 	cloudflarePresets,
 	coherePresets,
 	deepseekPresets,
+	freeModelsPresets,
 	githubPresets,
 	googlePresets,
 	googleImagePresets,

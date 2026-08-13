@@ -1,0 +1,496 @@
+[
+	{
+		"id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+		"display_name": "Nemotron 3 Ultra 550B (OpenRouter :free)",
+		"description": "NVIDIA Nemotron 3 Ultra 550B (MoE, 55B active) served free via OpenRouter. 1M context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron 3 Ultra 550B (MoE) free via OpenRouter, 1M context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron 3 Ultra 550B（MoE，55B 激活），1M 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 1048576,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-3-super-120b-a12b:free",
+		"display_name": "Nemotron 3 Super 120B (OpenRouter :free)",
+		"description": "NVIDIA Nemotron 3 Super 120B (MoE, 12B active) served free via OpenRouter. 262K context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron 3 Super 120B (MoE) free via OpenRouter, 262K context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron 3 Super 120B（MoE，12B 激活），262K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 262144,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-3-nano-30b-a3b:free",
+		"display_name": "Nemotron 3 Nano 30B (OpenRouter :free)",
+		"description": "NVIDIA Nemotron 3 Nano 30B-A3B (MoE) served free via OpenRouter. 256K context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron 3 Nano 30B-A3B (MoE) free via OpenRouter, 256K context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron 3 Nano 30B-A3B（MoE），256K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 262144,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-3.5-lightning:free",
+		"display_name": "Nemotron 3.5 Lightning (OpenRouter :free)",
+		"description": "NVIDIA Nemotron 3.5 Lightning 30B (MoE, 3B active) served free via OpenRouter. 1M context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron 3.5 Lightning 30B (MoE) free via OpenRouter, 1M context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron 3.5 Lightning 30B（MoE，3B 激活），1M 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 1048576,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-nano-9b-v2:free",
+		"display_name": "Nemotron Nano 9B v2 (OpenRouter :free)",
+		"description": "NVIDIA Nemotron Nano 9B v2 served free via OpenRouter. 128K context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron Nano 9B v2 free via OpenRouter, 128K context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron Nano 9B v2，128K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-nano-12b-v2-vl:free",
+		"display_name": "Nemotron Nano 12B v2 VL (OpenRouter :free)",
+		"description": "NVIDIA Nemotron Nano 12B v2 Vision-Language served free via OpenRouter. 128K context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron Nano 12B v2 VL free via OpenRouter, 128K context.",
+			"zh": "通过 OpenRouter 免费使用的 NVIDIA Nemotron Nano 12B v2 视觉语言模型，128K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "google/gemma-4-26b-a4b-it:free",
+		"display_name": "Gemma 4 26B (OpenRouter :free)",
+		"description": "Google Gemma 4 26B-A4B Instruct (MoE) served free via OpenRouter. 262K context.",
+		"i18n": {
+			"en": "Google Gemma 4 26B-A4B Instruct (MoE) free via OpenRouter, 262K context.",
+			"zh": "通过 OpenRouter 免费使用的 Google Gemma 4 26B-A4B Instruct（MoE），262K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 262144,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "openai/gpt-oss-20b:free",
+		"display_name": "GPT-OSS 20B (OpenRouter :free)",
+		"description": "OpenAI GPT-OSS 20B (MoE, 3.6B active) served free via OpenRouter. 131K context.",
+		"i18n": {
+			"en": "OpenAI GPT-OSS 20B (MoE) free via OpenRouter, 131K context.",
+			"zh": "通过 OpenRouter 免费使用的 OpenAI GPT-OSS 20B（MoE，3.6B 激活），131K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "cohere/north-mini-code:free",
+		"display_name": "North Mini Code (OpenRouter :free)",
+		"description": "Cohere North Mini Code 30B (MoE, 3B active) served free via OpenRouter. 256K context.",
+		"i18n": {
+			"en": "Cohere North Mini Code 30B (MoE) free via OpenRouter, 256K context.",
+			"zh": "通过 OpenRouter 免费使用的 Cohere North Mini Code 30B（MoE，3B 激活），256K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 262144,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "poolside/laguna-s-2.1:free",
+		"display_name": "Laguna S 2.1 (OpenRouter :free)",
+		"description": "Poolside Laguna S 2.1 118B (MoE, 8B active) served free via OpenRouter. 262K context.",
+		"i18n": {
+			"en": "Poolside Laguna S 2.1 118B (MoE) free via OpenRouter, 262K context.",
+			"zh": "通过 OpenRouter 免费使用的 Poolside Laguna S 2.1 118B（MoE，8B 激活），262K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 262144,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "z-ai/glm-4.5-air:free",
+		"display_name": "GLM-4.5 Air (OpenRouter :free)",
+		"description": "Z.AI GLM-4.5 Air served free via OpenRouter. 128K context.",
+		"i18n": {
+			"en": "Z.AI GLM-4.5 Air free via OpenRouter, 128K context.",
+			"zh": "通过 OpenRouter 免费使用的 Z.AI GLM-4.5 Air，128K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "deepseek/deepseek-r1-0528:free",
+		"display_name": "DeepSeek R1 0528 (OpenRouter :free)",
+		"description": "DeepSeek R1 0528 served free via OpenRouter. 160K context.",
+		"i18n": {
+			"en": "DeepSeek R1 0528 free via OpenRouter, 160K context.",
+			"zh": "通过 OpenRouter 免费使用的 DeepSeek R1 0528，160K 上下文。"
+		},
+		"vendor": "openrouter",
+		"context_window": 163840,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "glm-4.7-flash",
+		"display_name": "GLM-4.7-Flash (Free)",
+		"description": "Zhipu GLM-4.7-Flash, the latest free tier base model. 200K context, 128K max output.",
+		"i18n": {
+			"en": "Zhipu GLM-4.7-Flash free model, 200K context.",
+			"zh": "智谱 GLM-4.7-Flash 免费模型，200K 上下文，128K 最大输出。"
+		},
+		"vendor": "zhipu",
+		"context_window": 200000,
+		"max_tokens": 128000,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "glm-4-flash-250414",
+		"display_name": "GLM-4-Flash (Free)",
+		"description": "Zhipu GLM-4-Flash, the first free API model. 128K context, 16K max output.",
+		"i18n": {
+			"en": "Zhipu GLM-4-Flash free model, 128K context.",
+			"zh": "智谱 GLM-4-Flash 免费模型，128K 上下文，16K 最大输出。"
+		},
+		"vendor": "zhipu",
+		"context_window": 128000,
+		"max_tokens": 16000,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "Qwen/Qwen3-32B",
+		"display_name": "Qwen3 32B (ModelScope API)",
+		"description": "Qwen3 32B Instruct served free via ModelScope API-Inference. 32K context.",
+		"i18n": {
+			"en": "Qwen3 32B free via ModelScope API-Inference, 32K context.",
+			"zh": "通过魔搭 API-Inference 免费使用的 Qwen3 32B，32K 上下文。"
+		},
+		"vendor": "modelscope",
+		"context_window": 32768,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "Qwen/Qwen3-14B",
+		"display_name": "Qwen3 14B (ModelScope API)",
+		"description": "Qwen3 14B Instruct served free via ModelScope API-Inference. 32K context.",
+		"i18n": {
+			"en": "Qwen3 14B free via ModelScope API-Inference, 32K context.",
+			"zh": "通过魔搭 API-Inference 免费使用的 Qwen3 14B，32K 上下文。"
+		},
+		"vendor": "modelscope",
+		"context_window": 32768,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "Qwen/Qwen3-8B",
+		"display_name": "Qwen3 8B (ModelScope API)",
+		"description": "Qwen3 8B Instruct served free via ModelScope API-Inference. 32K context.",
+		"i18n": {
+			"en": "Qwen3 8B free via ModelScope API-Inference, 32K context.",
+			"zh": "通过魔搭 API-Inference 免费使用的 Qwen3 8B，32K 上下文。"
+		},
+		"vendor": "modelscope",
+		"context_window": 32768,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+		"display_name": "DeepSeek R1 Distill Qwen 32B (ModelScope API)",
+		"description": "DeepSeek R1 Distill Qwen 32B served free via ModelScope API-Inference. 32K context.",
+		"i18n": {
+			"en": "DeepSeek R1 Distill Qwen 32B free via ModelScope API-Inference, 32K context.",
+			"zh": "通过魔搭 API-Inference 免费使用的 DeepSeek R1 Distill Qwen 32B，32K 上下文。"
+		},
+		"vendor": "modelscope",
+		"context_window": 32768,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "gemini-2.0-flash",
+		"display_name": "Gemini 2.0 Flash (Free tier)",
+		"description": "Google Gemini 2.0 Flash, free tier. 1M context.",
+		"i18n": {
+			"en": "Google Gemini 2.0 Flash free tier, 1M context.",
+			"zh": "Google Gemini 2.0 Flash 免费档，1M 上下文。"
+		},
+		"vendor": "google",
+		"context_window": 1048576,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-3.5-lightning",
+		"display_name": "Nemotron 3.5 Lightning (NVIDIA NIM)",
+		"description": "NVIDIA Nemotron 3.5 Lightning 30B (MoE, 3B active) free NIM endpoint. 1M context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron 3.5 Lightning free NIM endpoint, 1M context.",
+			"zh": "NVIDIA Nemotron 3.5 Lightning 免费 NIM 端点，1M 上下文。"
+		},
+		"vendor": "nvidia",
+		"context_window": 1048576,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2026-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/nemotron-nano-12b-v2-vl",
+		"display_name": "Nemotron Nano 12B v2 VL (NVIDIA NIM)",
+		"description": "NVIDIA Nemotron Nano 12B v2 Vision-Language free NIM endpoint. 128K context.",
+		"i18n": {
+			"en": "NVIDIA Nemotron Nano 12B v2 VL free NIM endpoint, 128K context.",
+			"zh": "NVIDIA Nemotron Nano 12B v2 视觉语言模型免费 NIM 端点，128K 上下文。"
+		},
+		"vendor": "nvidia",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+		"display_name": "Llama 3.1 Nemotron Nano VL 8B (NVIDIA NIM)",
+		"description": "NVIDIA Llama 3.1 Nemotron Nano VL 8B free NIM endpoint. 128K context.",
+		"i18n": {
+			"en": "NVIDIA Llama 3.1 Nemotron Nano VL 8B free NIM endpoint, 128K context.",
+			"zh": "NVIDIA Llama 3.1 Nemotron Nano VL 8B 免费 NIM 端点，128K 上下文。"
+		},
+		"vendor": "nvidia",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text", "image"], "output": ["text"] },
+		"released": "2025-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "qwen-turbo",
+		"display_name": "Qwen Turbo (Bailian free quota)",
+		"description": "Alibaba Qwen Turbo, new-user free quota on Bailian. 128K context.",
+		"i18n": {
+			"en": "Alibaba Qwen Turbo, Bailian new-user free quota, 128K context.",
+			"zh": "阿里云百炼 Qwen Turbo，新人免费额度，128K 上下文。"
+		},
+		"vendor": "aliyun",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "qwen-plus",
+		"display_name": "Qwen Plus (Bailian free quota)",
+		"description": "Alibaba Qwen Plus, new-user free quota on Bailian. 128K context.",
+		"i18n": {
+			"en": "Alibaba Qwen Plus, Bailian new-user free quota, 128K context.",
+			"zh": "阿里云百炼 Qwen Plus，新人免费额度，128K 上下文。"
+		},
+		"vendor": "aliyun",
+		"context_window": 131072,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "qwen-long",
+		"display_name": "Qwen Long (Bailian free quota)",
+		"description": "Alibaba Qwen Long, new-user free quota on Bailian. 10M context.",
+		"i18n": {
+			"en": "Alibaba Qwen Long, Bailian new-user free quota, 10M context.",
+			"zh": "阿里云百炼 Qwen Long，新人免费额度，10M 上下文。"
+		},
+		"vendor": "aliyun",
+		"context_window": 10000000,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	},
+	{
+		"id": "qwen-max",
+		"display_name": "Qwen Max (Bailian free quota)",
+		"description": "Alibaba Qwen Max, new-user free quota on Bailian. 32K context.",
+		"i18n": {
+			"en": "Alibaba Qwen Max, Bailian new-user free quota, 32K context.",
+			"zh": "阿里云百炼 Qwen Max，新人免费额度，32K 上下文。"
+		},
+		"vendor": "aliyun",
+		"context_window": 32768,
+		"max_tokens": 8192,
+		"tags": ["Free"],
+		"modalities": { "input": ["text"], "output": ["text"] },
+		"released": "2024-01-01",
+		"pricing": {
+			"usd": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] },
+			"cny": { "tiers": [{ "upto": null, "input_price": 0, "output_price": 0, "cache_read_price": 0, "cache_write_price": 0 }] }
+		}
+	}
+]

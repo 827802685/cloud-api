@@ -13,6 +13,10 @@ import type { UsageFromStream } from './proxy';
 import { EMPTY_USAGE } from './proxy';
 import { buildRouteAttemptPlan } from './route-attempt-planner';
 import {
+	recordRouteStabilityFailure,
+	recordRouteStabilitySuccess,
+} from './route-stability-tracker';
+import {
 	getProviderCircuitRemainingMs,
 	markProviderFailure,
 	markProviderSuccess,
@@ -324,6 +328,7 @@ export async function failoverDispatch(
 				`[Gateway Proxy] fetch failed providerId=${route.providerId} error=${errMessage}`
 			);
 			const fetchClassification = classifyUpstreamFetchFailure();
+			recordRouteStabilityFailure(route.targetId, 'error');
 			if (
 				stickySession &&
 				isStickyAttempt &&
@@ -352,6 +357,7 @@ export async function failoverDispatch(
 			markProviderSuccess(route.providerId);
 			recordProviderSuccess(route.providerId);
 			recordProviderRequest(route.providerId);
+			recordRouteStabilitySuccess(route.targetId);
 			if (stickySession) {
 				if (isStickyAttempt && stickySession.bindingToken) {
 					scheduleStickyTouchIfNeeded(repos, stickySession);
@@ -407,6 +413,7 @@ export async function failoverDispatch(
 		}
 
 		if (classification.failureKind) {
+			recordRouteStabilityFailure(route.targetId, 'error');
 			const circuitResult = markProviderFailure(
 				route.providerId,
 				classification.failureKind,

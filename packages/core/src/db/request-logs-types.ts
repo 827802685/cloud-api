@@ -7,7 +7,8 @@ import type { UpstreamProtocol } from '../upstream-protocol';
 export type InsertRequestLogParams = {
 	id: string;
 	userId: string | null;
-	apiKeyId: string;
+	/** 可为 null（Playground 测试台等无 API Key 场景） */
+	apiKeyId: string | null;
 	userEmail: string | null;
 	modelId: string;
 	providerId: string;

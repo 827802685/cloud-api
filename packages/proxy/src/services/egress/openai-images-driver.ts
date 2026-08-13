@@ -417,7 +417,7 @@ export async function dispatchOpenAiImageEdits(
 	}
 	for (const img of edit.images) {
 		// 直接用已有 Uint8Array 构造 Blob，避免再 copy 一份驻留内存
-		const blob = new Blob([img.bytes as BlobPart], { type: img.mimeType });
+		const blob = new Blob([img.bytes as unknown as Blob], { type: img.mimeType });
 		form.append('image', blob, img.filename || 'image.png');
 	}
 

@@ -16,6 +16,7 @@ import type { ApiKeyListSortField, ApiKeyListSortOrder } from '../db/api-keys-li
 import type { UserListSortField, UserListSortOrder } from '../db/users-list-sort';
 import type { ProviderProtocolBases } from '../db/providers-types';
 import type { SystemConfigRow } from '../db/system-config-types';
+import type { InsertRequestLogParams } from '../db/request-logs-types';
 import type {
 	AdminApiKeyListItem,
 	EntityCountSnapshot,
@@ -364,6 +365,8 @@ export interface RequestLogsRepository {
 	getRecentLogs(limit: number): Promise<RequestLogRow[]>;
 	getRecentErrors(limit: number): Promise<RequestLogRow[]>;
 	getDistinctActiveUsersCount(options: { startDate: string; endDate: string; endExclusive?: boolean }): Promise<number>;
+	/** 写入一条请求日志（Playground 测试台/无计费场景使用，best-effort）。 */
+	insertRequestLog(params: InsertRequestLogParams): Promise<void>;
 }
 
 export interface SystemConfigRepository {

@@ -2,7 +2,7 @@
  * MySQL：`api_key_request_logs` 读查询。
  */
 import type { RowDataPacket } from 'mysql2/promise';
-import { sqlMoneyRound } from '../../lib/money-precision';
+import { roundGatewayMoney, sqlMoneyRound } from '../../lib/money-precision';
 import {
 	mapRequestStatsByRangeRow,
 	mapRequestTimeseriesRows,
@@ -14,6 +14,7 @@ import {
 import type { RequestLogRow } from '../../types';
 import type { MySqlDatabaseClient } from '../../storage/database-client';
 import type { RequestLogsRepository } from '../../storage/gateway-repository-interfaces';
+import type { InsertRequestLogParams } from '../request-logs-types';
 import { asMySqlPool } from './mysql2-compat';
 import { filterAllowedRequestLogStatuses } from '../request-log-status-filter';
 
@@ -266,6 +267,77 @@ export function createMySqlRequestLogsRepository(db: MySqlDatabaseClient): Reque
 				[options.startDate, options.endDate]
 			);
 			return Number(rows[0]?.active_users ?? 0);
+		},
+
+		async insertRequestLog(params: InsertRequestLogParams): Promise<void> {
+			await pool.query(
+				`INSERT INTO api_key_request_logs (
+					id, user_id, api_key_id, user_email, model_id, provider_id, provider_model_name, model_name, provider_name,
+					request_body, upstream_request_body, request_protocol, request_operation, upstream_protocol, upstream_operation,
+					model_surface_id, route_pool_id, route_target_id, adapter, route_trace,
+					input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, total_tokens,
+					metered_cost, standard_cost, charged_cost, route_group, status, latency_ms,
+					gateway_overhead_ms, upstream_response_ms, final_upstream_headers_ms, first_reasoning_token_ms, first_token_ms,
+					stream_duration_ms, upstream_attempt_count, upstream_failover_count, timing_metadata, error_message, raw_usage,
+					pricing_audit, provider_key_id, provider_key_label, provider_key_fingerprint, upstream_request_id, upstream_message_id,
+					billing_kind, input_image_count, output_image_count, audio_duration_seconds
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				[
+					params.id,
+					params.userId,
+					params.apiKeyId,
+					params.userEmail,
+					params.modelId,
+					params.providerId,
+					params.providerModelName,
+					params.modelName,
+					params.providerName,
+					params.requestBody,
+					params.upstreamRequestBody,
+					params.requestProtocol,
+					params.requestOperation ?? null,
+					params.upstreamProtocol,
+					params.upstreamOperation ?? null,
+					params.modelSurfaceId ?? null,
+					params.routePoolId ?? null,
+					params.routeTargetId ?? null,
+					params.adapter ?? null,
+					params.routeTrace ?? null,
+					params.inputTokens,
+					params.outputTokens,
+					params.cacheReadTokens,
+					params.cacheWriteTokens,
+					params.reasoningTokens,
+					params.totalTokens,
+					String(roundGatewayMoney(params.meteredCost)),
+					String(roundGatewayMoney(params.standardCost)),
+					String(roundGatewayMoney(params.chargedCost)),
+					params.routeGroup,
+					params.status,
+					params.latencyMs,
+					params.gatewayOverheadMs ?? null,
+					params.upstreamResponseMs ?? null,
+					params.finalUpstreamHeadersMs ?? null,
+					params.firstReasoningTokenMs ?? null,
+					params.firstTokenMs ?? null,
+					params.streamDurationMs ?? null,
+					params.upstreamAttemptCount ?? null,
+					params.upstreamFailoverCount ?? null,
+					params.timingMetadata ?? null,
+					params.errorMessage,
+					params.rawUsage,
+					params.pricingAudit ?? null,
+					params.providerKeyId ?? null,
+					params.providerKeyLabel ?? null,
+					params.providerKeyFingerprint ?? null,
+					params.upstreamRequestId ?? null,
+					params.upstreamMessageId ?? null,
+					params.billingKind ?? null,
+					params.inputImageCount ?? 0,
+					params.outputImageCount ?? 0,
+					params.audioDurationSeconds ?? null,
+				]
+			);
 		},
 	};
 }

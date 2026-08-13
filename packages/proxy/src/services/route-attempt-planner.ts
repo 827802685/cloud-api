@@ -7,6 +7,7 @@ import type { RouteResult } from './model-router';
 import { getProviderCircuitRemainingMs } from './provider-circuit-breaker';
 import { ROUTE_STRATEGIES } from './route-strategies';
 import { getProviderHealthScore } from './provider-rate-tracker';
+import { getRouteStabilityScore } from './route-stability-tracker';
 
 export type RouteAttemptPlan = {
 	attempts: RouteResult[];
@@ -63,6 +64,7 @@ export function buildRouteAttemptPlan(
 		const scored = ordered.map((route) => ({
 			route,
 			healthScore: getProviderHealthScore(route.providerId, now),
+			stabilityScore: getRouteStabilityScore(route.targetId, now),
 		}));
 
 		// 稳定排序：同等健康分保持原策略排序
@@ -73,6 +75,10 @@ export function buildRouteAttemptPlan(
 			// 健康分差异大于阈值时调整顺序
 			if (Math.abs(a.healthScore - b.healthScore) > 0.1) {
 				return b.healthScore - a.healthScore;
+			}
+			// 健康分相近时，用稳定性评分微调（稳定性高的优先）
+			if (Math.abs(a.stabilityScore - b.stabilityScore) > 0.05) {
+				return b.stabilityScore - a.stabilityScore;
 			}
 			return 0; // 保持原策略排序
 		});

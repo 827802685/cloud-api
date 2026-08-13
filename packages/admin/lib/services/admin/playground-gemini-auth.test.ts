@@ -5,6 +5,12 @@ import { buildPlaygroundGeminiUpstreamRequest } from './playground-service';
 
 function route(base: string, apiKey: string): PlaygroundResolvedRoute {
 	return {
+		routeId: 'r1',
+		modelId: 'm1',
+		modelName: null,
+		contextWindow: null,
+		providerName: null,
+		routeGroup: 'default',
 		upstreamProtocol: 'gemini',
 		providerEndpoints: { gemini: { base } },
 		providerId: 'p1',

@@ -86,6 +86,10 @@ export function createD1RequestLogsRepository(db: D1DatabaseClient): RequestLogs
 	return {
 		buildInsertRequestLogStatement,
 
+		async insertRequestLog(params: InsertRequestLogParams): Promise<void> {
+			await buildInsertRequestLogStatement(raw, params).run();
+		},
+
 		async getRequestLogsByKeyId(
 			apiKeyId: string,
 			page: number,

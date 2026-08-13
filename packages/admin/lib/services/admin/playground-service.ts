@@ -26,9 +26,25 @@ import {
 import { modelKindFromFlags, resolveOpenaiUpstreamCapability } from '@/lib/invoke-kind';
 import { AdminServiceError, badRequest, notFound } from './errors';
 import { isPendingProviderImportApiKey } from '@cloud-api/core/db/provider-key-utils';
+import {
+	recordRouteStabilityFailure,
+	recordRouteStabilitySuccess,
+} from '@cloud-api/proxy';
 
 /** 与 Proxy `RouteResult` 对齐的最小子集，供合并默认参数与拼 URL。 */
 export type PlaygroundResolvedRoute = {
+	/** `model_routes.id`，用于稳定性上报与日志 */
+	routeId: string;
+	/** `models.id`，用于日志 */
+	modelId: string;
+	/** `models.name`，用于日志 */
+	modelName: string | null;
+	/** `models.context_window`，用于自适应超时（大上下文模型放宽） */
+	contextWindow: number | null;
+	/** `providers.name`，用于日志 */
+	providerName: string | null;
+	/** `model_routes.route_group`，用于日志 */
+	routeGroup: string;
 	upstreamProtocol: UpstreamProtocol;
 	providerEndpoints: ProviderEndpointsMap;
 	providerId: string;
@@ -149,6 +165,12 @@ export async function resolvePlaygroundRoute(
 		: false;
 
 	return {
+		routeId: row.id,
+		modelId: row.model_id,
+		modelName: model?.display_name ?? null,
+		contextWindow: model?.context_window ?? null,
+		providerName: provider.name ?? null,
+		routeGroup: row.route_group ?? 'default',
 		upstreamProtocol: protocol,
 		providerEndpoints,
 		providerId: provider.id,
@@ -394,7 +416,29 @@ export type PlaygroundInvokeResult = {
 	latencyMs: number;
 	/** 与上游 `fetch` body 一致的 JSON 文本（合并 custom_params、写入 model 等之后） */
 	upstreamWireBodyJson: string;
+	/** 本次调用是否因超时中止（用于稳定性上报与日志） */
+	timedOut: boolean;
+	/** 解析后的路由信息（用于稳定性上报与日志写入） */
+	route: PlaygroundResolvedRoute;
 };
+
+/** 默认超时（毫秒）：20 秒。 */
+export const PLAYGROUND_DEFAULT_TIMEOUT_MS = 20_000;
+/** 大上下文模型（>=128k）放宽到 60 秒，避免误伤大参数模型。 */
+export const PLAYGROUND_LARGE_CONTEXT_TIMEOUT_MS = 60_000;
+/** 中等上下文（>=32k）放宽到 40 秒。 */
+export const PLAYGROUND_MEDIUM_CONTEXT_TIMEOUT_MS = 40_000;
+
+/** 根据模型上下文长度自适应超时阈值。 */
+export function resolvePlaygroundTimeoutMs(contextWindow: number | null): number {
+	if (typeof contextWindow === 'number' && contextWindow >= 128_000) {
+		return PLAYGROUND_LARGE_CONTEXT_TIMEOUT_MS;
+	}
+	if (typeof contextWindow === 'number' && contextWindow >= 32_000) {
+		return PLAYGROUND_MEDIUM_CONTEXT_TIMEOUT_MS;
+	}
+	return PLAYGROUND_DEFAULT_TIMEOUT_MS;
+}
 
 /**
  * 发起一次上游请求并透传 `Response`（含 body stream）。不计费、不写日志。
@@ -608,21 +652,61 @@ export async function invokePlaygroundUpstream(
 	}
 
 	let response: Response;
+	let timedOut = false;
 	try {
+		const timeoutMs = resolvePlaygroundTimeoutMs(route.contextWindow);
+		const timeoutSignal = AbortSignal.timeout(timeoutMs);
+		const signal =
+			requestSignal && !requestSignal.aborted
+				? AbortSignal.any([requestSignal, timeoutSignal])
+				: timeoutSignal;
 		response = await fetch(url, {
 			method: 'POST',
 			headers,
 			body: fetchBody,
-			signal: requestSignal,
+			signal,
 		});
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : 'Upstream fetch failed';
+		// 超时（AbortSignal.timeout 触发 TimeoutError / AbortError）标记为超时
+		if (e instanceof DOMException && e.name === 'TimeoutError') {
+			timedOut = true;
+			recordRouteStabilityFailure(route.routeId, 'timeout');
+			await writePlaygroundRequestLog(repos, route, {
+				status: 'error',
+				latencyMs: Date.now() - start,
+				errorMessage: `Playground upstream timed out after ${resolvePlaygroundTimeoutMs(route.contextWindow)}ms`,
+			});
+			throw new AdminServiceError(504, `Upstream timed out after ${resolvePlaygroundTimeoutMs(route.contextWindow)}ms`);
+		}
+		recordRouteStabilityFailure(route.routeId, 'error');
+		await writePlaygroundRequestLog(repos, route, {
+			status: 'error',
+			latencyMs: Date.now() - start,
+			errorMessage: msg,
+		});
 		throw new AdminServiceError(502, msg);
 	}
 
 	const latencyMs = Date.now() - start;
 	const upstreamUrlForHeader =
 		route.upstreamProtocol === 'gemini' ? stripApiKeyFromUrlForHeader(url) : url;
+
+	// 上报稳定性 + 写日志
+	if (response.ok) {
+		recordRouteStabilitySuccess(route.routeId);
+		await writePlaygroundRequestLog(repos, route, {
+			status: 'success',
+			latencyMs,
+		});
+	} else {
+		recordRouteStabilityFailure(route.routeId, 'error');
+		await writePlaygroundRequestLog(repos, route, {
+			status: 'error',
+			latencyMs,
+			errorMessage: `Upstream returned HTTP ${response.status}`,
+		});
+	}
 
 	/** 响应自定义头不宜过大；超长时截断并标注（避免中间截断破坏 JSON）。 */
 	const WIRE_BODY_HEADER_MAX = 6144;
@@ -638,5 +722,58 @@ export async function invokePlaygroundUpstream(
 		);
 	}
 
-	return { response, upstreamUrlForHeader, latencyMs, upstreamWireBodyJson };
+	return { response, upstreamUrlForHeader, latencyMs, upstreamWireBodyJson, timedOut, route };
+}
+
+/**
+ * 写入一条 Playground 测试台请求日志（best-effort，失败不影响响应）。
+ * 不计费、无 API Key，故 apiKeyId/userId 为 null，cost 全为 0。
+ */
+async function writePlaygroundRequestLog(
+	repos: GatewayRepositories,
+	route: PlaygroundResolvedRoute,
+	opts: { status: 'success' | 'error'; latencyMs: number; errorMessage?: string }
+): Promise<void> {
+	try {
+		await repos.requestLogs.insertRequestLog({
+			id: crypto.randomUUID(),
+			userId: null,
+			apiKeyId: null,
+			userEmail: null,
+			modelId: route.modelId,
+			providerId: route.providerId,
+			providerModelName: route.providerModelName,
+			modelName: route.modelName,
+			providerName: route.providerName,
+			requestBody: null,
+			upstreamRequestBody: null,
+			requestProtocol: route.upstreamProtocol === 'anthropic' ? 'anthropic' : route.upstreamProtocol === 'gemini' ? 'gemini' : 'openai',
+			upstreamProtocol: route.upstreamProtocol,
+			modelSurfaceId: null,
+			routePoolId: null,
+			routeTargetId: route.routeId,
+			adapter: null,
+			routeTrace: JSON.stringify({ source: 'playground', target: route.routeId }),
+			inputTokens: 0,
+			outputTokens: 0,
+			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
+			reasoningTokens: 0,
+			totalTokens: 0,
+			meteredCost: 0,
+			standardCost: 0,
+			chargedCost: 0,
+			routeGroup: route.routeGroup,
+			status: opts.status,
+			latencyMs: opts.latencyMs,
+			errorMessage: opts.errorMessage ?? null,
+			rawUsage: null,
+		});
+	} catch (e) {
+		console.warn(
+			`[Playground] failed to write request log routeId=${route.routeId}: ${
+				e instanceof Error ? e.message : String(e)
+			}`
+		);
+	}
 }
