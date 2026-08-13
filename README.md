@@ -46,11 +46,14 @@ npm run dev:admin
 
 ## 部署到 Cloudflare
 
-本项目采用**双轨部署架构**：
-- **Admin Worker**：通过 GitHub Actions 自动部署到 Cloudflare
-- **Proxy Worker**：通过 Cloudflare "Connect to Git" 拉取代码并构建
+本项目采用**单 Worker 二合一架构**：只部署一个 **Admin Worker**（`cloud-api-admin`），通过 GitHub Actions 自动部署到 Cloudflare。Proxy 的推理/工具 API 逻辑（`@cloud-api/proxy`）作为库被 Admin Worker 复用，不再单独部署独立 Worker。
 
-Proxy Worker 的构建完全由 Cloudflare 负责。构建脚本会将 monorepo 中的 `@cloud-api/*` workspace 依赖全部打包进单一 bundle（`dist/worker.js`），Cloudflare 拉取代码后自行构建部署，无需 GitHub Actions 介入。
+对外 API 地址就是该 Worker 的域名，例如 `https://api.zjkl.dpdns.org/v1/chat/completions`。Admin Worker 同时处理：
+- `/v1/*`（裸路径，标准 API 入口，如 `/v1/chat/completions`、`/v1/models`）
+- `/api/v1/*`（兼容前缀，内部重写为 `/v1/*`）
+- `/api/admin/*`（管理后台 API）
+
+这样无论域名指向哪个 Worker，`/v1` 都能作为 API 正常使用。
 
 ### 前置准备
 
@@ -74,13 +77,11 @@ Proxy Worker 的构建完全由 Cloudflare 负责。构建脚本会将 monorepo 
 
 | 变量名 | 说明 | 示例 |
 |--------|------|------|
-| `PROXY_WORKER_NAME` | Proxy Worker 名称 | `cloud-api-proxy` |
 | `ADMIN_WORKER_NAME` | Admin Worker 名称 | `cloud-api-admin` |
 | `D1_DATABASE_NAME` | D1 数据库名称 | `cloud-api` |
 | `D1_DATABASE_ID` | D1 数据库 ID | `de9cc5da-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
 | `D1_MIGRATIONS_WORKER_NAME` | 迁移配置名称 | `cloud-api-d1-migrations` |
-| `PROXY_CUSTOM_DOMAIN` | Proxy 自定义域名（可选） | `api.example.com` |
-| `ADMIN_CUSTOM_DOMAIN` | Admin 自定义域名（可选） | `admin.example.com` |
+| `ADMIN_CUSTOM_DOMAIN` | Admin 自定义域名（可选） | `api.example.com` |
 
 **Secrets（密钥）：**
 
@@ -95,27 +96,9 @@ Push 到 `main` 分支时，GitHub Actions 会自动：
 1. 安装依赖并生成 Wrangler 配置
 2. 构建并部署 Admin Worker 到 Cloudflare
 
-触发条件：当 `packages/admin/**`、`packages/core/**`、`scripts/deploy/**` 有变更时。
+触发条件：当 `packages/admin/**`、`packages/proxy/**`、`packages/core/**`、`packages/tool-engines/**`、`scripts/deploy/**` 有变更时。
 
-### Proxy Worker 部署（Cloudflare Connect to Git）
-
-1. **连接 GitHub 仓库**：
-   - 前往 Cloudflare Dashboard → Workers & Pages
-   - 点击 "Create application" → "Connect to Git"
-   - 选择本仓库，分支设为 `main`
-
-2. **构建配置**（在 Cloudflare Dashboard 中设置）：
-   - **Build command**：`npm install && npm run build:proxy`
-   - **Root directory / Deploy target**：`packages/proxy`
-   - Cloudflare 会自动检测 `packages/proxy/wrangler.jsonc` 配置
-
-   > **注意**：构建命令从仓库根目录执行，`npm install` 会安装所有 workspace 依赖并触发 `postinstall` 生成 wrangler 配置文件；`npm run build:proxy` 会先构建 `@cloud-api/core`，再构建 `@cloud-api/proxy`，最终输出 `packages/proxy/dist/worker.js`。
-
-3. **工作原理**：
-   - Cloudflare 每次拉取最新代码后自动执行构建命令
-   - 构建脚本（`packages/proxy/scripts/build.mjs`）将所有 `@cloud-api/*` workspace 依赖打包进单一 ESM bundle
-   - 产物 `dist/worker.js` 不包含任何 workspace 外部引用，可独立运行
-   - Wrangler 读取 `wrangler.jsonc` 中的 `main: "dist/worker.js"` 完成部署
+> 单 Worker 二合一：Proxy 逻辑（`@cloud-api/proxy`）作为库被 Admin Worker 复用，无需单独部署 Proxy Worker。对外 API 地址即 Admin Worker 的域名，例如 `https://api.zjkl.dpdns.org/v1/chat/completions`。
 
 ### D1 数据库迁移
 
@@ -133,17 +116,17 @@ npm run bootstrap:cloudflare
 npm run deploy:cloudflare -- production --migrate
 ```
 
-引导脚本会依次完成：创建/复用 D1 → 写入实例配置 → 应用数据库迁移 → 部署 Proxy Worker → 构建并部署 Admin Worker → 设置 ADMIN_PASSWORD。
+引导脚本会依次完成：创建/复用 D1 → 写入实例配置 → 应用数据库迁移 → 构建并部署 Admin Worker（含 Proxy 逻辑）→ 设置 ADMIN_PASSWORD。
 
 ### 部署后验证
 
 ```bash
-# 健康检查
-curl -i "https://<your-proxy-worker>.workers.dev/health"
+# 健康检查（Admin Worker 也暴露 /health）
+curl -i "https://<your-worker>.workers.dev/health"
 # 预期返回：{"status":"ok","service":"cloud-api-proxy"}
 
 # 打开管理后台
-# https://<your-admin-worker>.workers.dev
+# https://<your-worker>.workers.dev
 # 使用 admin / 你设置的 ADMIN_PASSWORD 登录
 ```
 
@@ -163,8 +146,8 @@ curl -i "https://<your-proxy-worker>.workers.dev/health"
 cloud-api/
 ├── packages/
 │   ├── core/           # 核心业务逻辑、数据库层、D1/Postgres/MySQL 实现
-│   ├── proxy/          # Proxy Worker（Hono），推理/工具 API 入口
-│   ├── admin/          # Admin Worker（Next.js + OpenNext），管理后台
+│   ├── proxy/          # Proxy 逻辑（Hono），推理/工具 API 入口；作为库被 Admin Worker 复用
+│   ├── admin/          # Admin Worker（Next.js + OpenNext），管理后台 + 对外 API（含 /v1/*）
 │   └── tool-engines/   # 智能体工具引擎（联网搜索、网页抓取等）
 ├── scripts/
 │   └── deploy/         # 部署脚本（wrangler 配置生成、引导脚本等）
@@ -193,7 +176,7 @@ npx wrangler secret put ADMIN_PASSWORD --name <admin-worker-name>
 
 ### 自定义域名部署失败
 
-先去掉 `PROXY_CUSTOM_DOMAIN` / `ADMIN_CUSTOM_DOMAIN`，用 `*.workers.dev` 地址验证通过后再绑定域名。确保域名所在 zone 已加入同一 Cloudflare 账号。
+先去掉 `ADMIN_CUSTOM_DOMAIN`，用 `*.workers.dev` 地址验证通过后再绑定域名。确保域名所在 zone 已加入同一 Cloudflare 账号。
 
 ## 开源协议
 

@@ -40,6 +40,7 @@
 		"batchDelete": "批量删除",
 		"selectAll": "全选",
 		"clear": "清除",
+		"select": "选择",
 		"copy": "复制",
 		"copied": "已复制",
 		"dismiss": "关闭",

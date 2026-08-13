@@ -7,6 +7,7 @@ import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import { listStaticProviderImportCatalogForAdmin } from '@/lib/provider-import-preset';
 import {
 	createProviderService,
+	batchDeleteProvidersService,
 	deleteProviderService,
 	getProviderService,
 	importProvidersFromStaticPresetsService,
@@ -16,6 +17,8 @@ import {
 } from '@/lib/services/admin/providers-service';
 import type {
 	AdminProviderMutationInput,
+	AdminProvidersBatchDeleteBody,
+	AdminProvidersBatchDeleteOutput,
 	AdminProvidersImportBody,
 	AdminProvidersImportOutput,
 } from '@/lib/services/admin/types';
@@ -133,6 +136,39 @@ adminProvidersRoutes.patch('/:id', async (c) => {
 		return c.json({ success: true, message: 'Provider updated successfully' });
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to update provider');
+	}
+});
+
+/** 批量删除供应商（仍被路由引用的记入 failed，不删除）。 */
+adminProvidersRoutes.post('/batch-delete', async (c) => {
+	let body: AdminProvidersBatchDeleteBody;
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
+	}
+	try {
+		const repos = c.get('repositories');
+		const data: AdminProvidersBatchDeleteOutput = await batchDeleteProvidersService(
+			repos,
+			Array.isArray(body.ids) ? body.ids : []
+		);
+		const parts = [`deleted ${data.deleted}`];
+		if (data.not_found.length) {
+			parts.push(`${data.not_found.length} not found`);
+		}
+		if (data.failed.length) {
+			parts.push(`${data.failed.length} failed`);
+		}
+		return c.json(
+			normalizeApiTimeFields({
+				success: true,
+				message: `Batch delete finished (${parts.join(', ')})`,
+				data,
+			})
+		);
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to batch delete providers');
 	}
 });
 

@@ -1,6 +1,6 @@
 # 用户接口
 
-需要用户 API Key 认证的 OpenAI / Anthropic / Gemini 兼容 API。以下路径均部署在 **Proxy Worker**（`GATEWAY_URL`），与 Admin 的 `/api/admin/*` 无关。
+需要用户 API Key 认证的 OpenAI / Anthropic / Gemini 兼容 API。以下路径均部署在 **Admin Worker（含 Proxy 逻辑）**（`GATEWAY_URL`），与 Admin 的 `/api/admin/*` 无关。
 
 ## 认证
 
@@ -475,7 +475,7 @@ Catalog 条目同样包含 `input_modalities`、`output_modalities`、`released_
 
 | 维度 | `GET /v1/models` | `GET /catalog/models` | `GET /admin/models` |
 |------|------------------|------------------------|---------------------|
-| 部署 | Proxy | Proxy | Admin |
+| 部署 | Admin Worker（含 Proxy 逻辑） | Admin Worker（含 Proxy 逻辑） | Admin |
 | 认证 | 用户 API Key | **无** | MASTER_KEY |
 | 默认 `route_groups` | `default,free` | 未传 → **全部** active group | — |
 | 默认 `kind` | `llm`（排除文生图） | 不过滤 kind | — |

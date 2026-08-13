@@ -27,7 +27,7 @@ npm run dev:admin
 
 | 服务 | 地址 / 位置 |
 |------|-------------|
-| 代理服务 Worker | `http://127.0.0.1:8787` |
+| Proxy 逻辑（本地 `dev:proxy`） | `http://127.0.0.1:8787` |
 | 管理后台 preview | `http://127.0.0.1:8789` |
 | 控制台登录 | `admin` / `admin`（本地默认；首次 `dev:admin` 会自动生成 `packages/admin/.dev.vars`） |
 | D1 本地状态 | `./.wrangler/state` |
@@ -35,7 +35,7 @@ npm run dev:admin
 
 ## 2. 部署到 Cloudflare
 
-把代理服务 + 管理后台 + 共享 D1 部署到你自己的 Cloudflare 账号。前置：Cloudflare 账号、`npx wrangler login`。
+把 Admin Worker（单 Worker 二合一，含 Proxy 逻辑）+ 共享 D1 部署到你自己的 Cloudflare 账号。前置：Cloudflare 账号、`npx wrangler login`。
 
 ```bash
 npm install
@@ -43,9 +43,9 @@ npx wrangler login
 npm run bootstrap:cloudflare
 ```
 
-完成后按终端提示核对 `GATEWAY_URL` / `GATEWAY_MASTER_URL`，并用 `GET $GATEWAY_URL/health` 做健康检查。
+完成后按终端提示核对 `GATEWAY_URL` / `GATEWAY_MASTER_URL`（单 Worker 二合一，两者指向同一地址），并用 `GET $GATEWAY_URL/health` 做健康检查。
 
-完整说明：[operators/deployment/cloudflare-quickstart.md](../operators/deployment/cloudflare-quickstart.md)。运维与 Workers Builds：[operators/deployment/cloudflare.md](../operators/deployment/cloudflare.md)。
+完整说明：[operators/deployment/cloudflare-quickstart.md](../operators/deployment/cloudflare-quickstart.md)。运维与 GitHub Actions 部署：[operators/deployment/cloudflare.md](../operators/deployment/cloudflare.md)。
 
 ## 3. 打开管理后台后配置
 

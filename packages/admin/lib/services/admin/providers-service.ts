@@ -20,6 +20,7 @@ import type {
 	AdminCreatedIdOutput,
 	AdminProviderMutationInput,
 	AdminProviderRow,
+	AdminProvidersBatchDeleteOutput,
 	AdminProvidersImportOutput,
 } from './types';
 
@@ -174,6 +175,49 @@ export async function deleteProviderService(repos: GatewayRepositories, id: stri
 
 	const changes = await repos.providers.deleteProviderById(id);
 	if (!changes) throw notFound('Provider not found');
+}
+
+/**
+ * 批量删除供应商。逐条调用 `deleteProviderService` 的删除逻辑：
+ * 仍被 model route 引用的供应商记入 `failed`（不删除），其余正常删除。
+ * 不存在的 id 记入 `not_found`；异常记入 `failed`，不回滚已成功删除的条目。
+ */
+export async function batchDeleteProvidersService(
+	repos: GatewayRepositories,
+	ids: string[]
+): Promise<AdminProvidersBatchDeleteOutput> {
+	const uniqueIds = [...new Set(ids.map((x) => String(x).trim()).filter((x) => x.length > 0))];
+	if (uniqueIds.length === 0) {
+		throw badRequest('ids must be a non-empty array of provider ids');
+	}
+
+	let deleted = 0;
+	const not_found: string[] = [];
+	const failed: Array<{ id: string; message: string }> = [];
+
+	for (const id of uniqueIds) {
+		try {
+			const referencingRoutes = await repos.routes.listModelRoutesWithJoins({ providerId: id });
+			if (referencingRoutes.length > 0) {
+				failed.push({
+					id,
+					message: `Cannot delete provider: ${referencingRoutes.length} model route(s) still reference it. Delete or reassign those routes first.`,
+				});
+				continue;
+			}
+			const changes = await repos.providers.deleteProviderById(id);
+			if (changes) {
+				deleted++;
+			} else {
+				not_found.push(id);
+			}
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			failed.push({ id, message });
+		}
+	}
+
+	return { deleted, not_found, failed };
 }
 
 /** 在 `providers.name` UNIQUE 约束下为模板导入生成唯一显示名。 */

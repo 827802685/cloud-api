@@ -1,6 +1,6 @@
 # 本地开发与测试：Octafuse
 
-本文说明如何在本地组合 **Proxy Worker**、**Admin（OpenNext）** 与 **D1**，以及可选 **Node + Postgres** 或 **Node + MySQL**。整体「运行时 × 数据库」矩阵见 **[architecture/runtime-data.md](./architecture/runtime-data.md)**（canonical）。
+本文说明如何在本地组合 **Proxy 逻辑（`dev:proxy`）**、**Admin（OpenNext）** 与 **D1**，以及可选 **Node + Postgres** 或 **Node + MySQL**。整体「运行时 × 数据库」矩阵见 **[architecture/runtime-data.md](./architecture/runtime-data.md)**（canonical）。生产 Cloudflare 为**单 Worker 二合一**（Proxy 逻辑并入 Admin Worker，见 [cloudflare.md](../operators/deployment/cloudflare.md)）。
 
 **Cloudflare 本地开发 vs 远程部署**：本文件 §1–2 为**本机 D1**（不上线）。远程 dev 演示、生产 Git 部署见 **[cloudflare.md](../operators/deployment/cloudflare.md)**；实例 env 约定见 [cloudflare-worker/README.md](../../cloudflare-worker/README.md)。
 
@@ -51,7 +51,7 @@ npm run dev:proxy    # http://127.0.0.1:8787
 **常见触发**：在本机跑完
 
 ```bash
-./cloudflare-worker/deploy-soloent.sh --migrate   # 或任意 dotenv + deploy:proxy / db:migrate:remote
+./cloudflare-worker/deploy-soloent.sh --migrate   # 或任意 dotenv + deploy:admin / db:migrate:remote
 ```
 
 之后未切回本地配置，直接 `npm run dev:proxy` / `dev:admin`。远程 deploy 会通过 `gen:wrangler --remote` 把 **`D1_DATABASE_ID` 写入** gitignore 的 `packages/proxy/wrangler.jsonc`、`packages/admin/wrangler.jsonc`、`packages/core/wrangler.d1.jsonc`。

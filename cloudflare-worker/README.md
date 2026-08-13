@@ -29,7 +29,7 @@
 ```bash
 npm run bootstrap:cloudflare                          # 首次
 npm run deploy:cloudflare -- <instance> --migrate     # 有新 D1 SQL 时
-npm run deploy:cloudflare -- <instance>               # 仅双 Worker
+npm run deploy:cloudflare -- <instance>               # 仅部署 Admin Worker（含 Proxy 逻辑）
 ```
 
 等价手动命令与 Workers Builds Dashboard 配置见 [cloudflare.md](../docs/operators/deployment/cloudflare.md)。
@@ -40,11 +40,11 @@ npm run deploy:cloudflare -- <instance>               # 仅双 Worker
 
 | 变量 | 说明 |
 |------|------|
-| `PROXY_WORKER_NAME` / `ADMIN_WORKER_NAME` | **须与 Dashboard Worker 名一致** |
+| `ADMIN_WORKER_NAME` | **须与 Dashboard Worker 名一致**（单 Worker 二合一，含 Proxy 逻辑） |
 | `D1_DATABASE_NAME` | D1 逻辑名 |
-| `D1_DATABASE_ID` | 远程 deploy / migrate **必填**；proxy 与 admin **共用**。本地 CLI deploy 写入 wrangler 后，继续 `dev:proxy`/`dev:admin` 前须 `npm run gen:wrangler`（见 [local-development.md §1](../docs/developers/local-development.md#️-本地-d1-与-database_id远程-deploy-后必读)） |
+| `D1_DATABASE_ID` | 远程 deploy / migrate **必填**；proxy 与 admin **共用**。本地 CLI deploy 写入 wrangler 后，继续 `dev:admin` 前须 `npm run gen:wrangler`（见 [local-development.md](../docs/developers/local-development.md#️-本地-d1-与-database_id远程-deploy-后必读)） |
 | `D1_MIGRATIONS_WORKER_NAME` | 仅写入 `wrangler.d1.jsonc` 的项目名；**无需**单独建 Worker |
-| `PROXY_CUSTOM_DOMAIN` / `ADMIN_CUSTOM_DOMAIN` | 可选；写入 wrangler `routes` |
+| `ADMIN_CUSTOM_DOMAIN` | 可选；写入 wrangler `routes`（对外 API 地址，如 `https://api.zjkl.dpdns.org`） |
 
 实现：`npm run gen:wrangler` → [`scripts/deploy/gen-wrangler.mjs`](../scripts/deploy/gen-wrangler.mjs)。
 
@@ -65,6 +65,6 @@ Catalog 按引擎保存 API Key 与按次单价；每种工具只启用一个 Ac
 | | `cloudflare-worker/` | 根 `.env.example` → `.env` |
 |--|----------------------|----------------------------|
 | 用途 | Cloudflare 部署 / 远程 D1 | Node + Postgres/MySQL、Docker、冒烟 |
-| 典型命令 | `deploy:proxy`、`db:migrate:remote` | `dev:proxy:node`、`db:migrate:pg` |
+| 典型命令 | `deploy:admin`、`db:migrate:remote` | `dev:proxy:node`、`db:migrate:pg` |
 
 两者互不替代。

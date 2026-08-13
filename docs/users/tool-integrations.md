@@ -8,7 +8,7 @@
 2. 在 Admin → 用户中创建用户 API Key（`sk-...`）。
 3. 按下表把工具指向 Gateway 的 `GATEWAY_URL`。
 
-> 下文所有 `GATEWAY_URL` 均指 Proxy Worker 根地址（如 `https://gateway.example.com`），`USER_API_KEY` 指你在 Admin 创建的用户 Key。模型名用 `baseId` 或 `baseId:route_group`（如 `glm-4.7-flash:free`）。
+> 下文所有 `GATEWAY_URL` 均指 Admin Worker（含 Proxy 逻辑）根地址（如 `https://gateway.example.com`），`USER_API_KEY` 指你在 Admin 创建的用户 Key。模型名用 `baseId` 或 `baseId:route_group`（如 `glm-4.7-flash:free`）。
 
 ## 概览
 

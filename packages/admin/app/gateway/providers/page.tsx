@@ -3,7 +3,7 @@
 /**
  * 上游供应商：CRUD、各协议 base URL 与单键 API Key；对应 Worker `/admin/providers`。
  */
-import { ArrowDownTrayIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, CheckIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ProviderCard } from './components/provider-card';
 import { ProviderImportModal } from './components/provider-import-modal';
@@ -36,22 +36,73 @@ export default function GatewayProvidersPage() {
 					<p className="text-xs text-gray-400 mt-1">{t('importHint')}</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						onClick={state.openImportModal}
-						className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-800 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-					>
-						<ArrowDownTrayIcon className="h-5 w-5" />
-						{tCommon('import')}
-					</button>
-					<button
-						type="button"
-						onClick={state.handleCreate}
-						className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-					>
-						<PlusIcon className="h-5 w-5" />
-						{tCommon('new')}
-					</button>
+					{state.batchMode ? (
+						<>
+							<button
+								type="button"
+								onClick={() => state.selectAllVisibleProviders(state.filteredProviders.map((p) => p.id))}
+								className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-800 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<CheckIcon className="h-5 w-5" />
+								{tCommon('selectAll')}
+							</button>
+							<button
+								type="button"
+								onClick={state.clearBatchSelection}
+								disabled={state.batchSelectedIds.size === 0}
+								className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-800 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+							>
+								<XMarkIcon className="h-5 w-5" />
+								{tCommon('clear')}
+							</button>
+							<button
+								type="button"
+								onClick={() => void state.handleBatchDelete()}
+								disabled={state.batchSelectedIds.size === 0 || state.isBatchDeleting}
+								className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+							>
+								<TrashIcon className="h-5 w-5" />
+								{state.isBatchDeleting
+									? tCommon('deleting')
+									: `${tCommon('delete')} (${state.batchSelectedIds.size})`}
+							</button>
+							<button
+								type="button"
+								onClick={state.toggleBatchMode}
+								className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-800 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								{tCommon('cancel')}
+							</button>
+						</>
+					) : (
+						<>
+							<button
+								type="button"
+								onClick={state.toggleBatchMode}
+								disabled={state.providers.length === 0}
+								className="flex items-center gap-2 px-4 py-2 border border-red-300 bg-white text-red-700 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+							>
+								<TrashIcon className="h-5 w-5" />
+								{tCommon('batchDelete')}
+							</button>
+							<button
+								type="button"
+								onClick={state.openImportModal}
+								className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-800 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<ArrowDownTrayIcon className="h-5 w-5" />
+								{tCommon('import')}
+							</button>
+							<button
+								type="button"
+								onClick={state.handleCreate}
+								className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<PlusIcon className="h-5 w-5" />
+								{tCommon('new')}
+							</button>
+						</>
+					)}
 				</div>
 			</div>
 
@@ -84,6 +135,9 @@ export default function GatewayProvidersPage() {
 								onEdit={state.handleEdit}
 								onToggleStatus={state.handleToggleStatus}
 								onCopyApiKey={state.handleCopyApiKey}
+								batchMode={state.batchMode}
+								batchSelected={state.batchSelectedIds.has(provider.id)}
+								onToggleBatchSelection={state.toggleBatchSelection}
 							/>
 						))}
 					</div>

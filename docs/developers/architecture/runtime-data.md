@@ -13,7 +13,7 @@
 
 | 组件 | Cloudflare 运行时 | Node 运行时 | 数据库 |
 |------|-------------------|-------------|--------|
-| **代理服务（Proxy）**（`packages/proxy`） | Worker：`npm run dev:proxy` / `deploy:proxy`；**仅绑定 D1**，不用 `DATABASE_URL` | `npm run dev:proxy:node`（`packages/proxy/src/runtime/node.ts`）；**Postgres 或 MySQL**（`DATABASE_DRIVER` + `DATABASE_URL`） | **D1 ⊕ Postgres ⊕ MySQL**（同进程不能混用） |
+| **代理服务（Proxy）**（`packages/proxy`） | **单 Worker 二合一**：逻辑作为库被 Admin Worker 复用（`deploy:admin`），不再单独部署独立 Worker；本地调试可用 `npm run dev:proxy`；**仅绑定 D1**，不用 `DATABASE_URL` | `npm run dev:proxy:node`（`packages/proxy/src/runtime/node.ts`）；**Postgres 或 MySQL**（`DATABASE_DRIVER` + `DATABASE_URL`） | **D1 ⊕ Postgres ⊕ MySQL**（同进程不能混用） |
 | **管理后台（Admin）**（`packages/admin`） | OpenNext + wrangler：`npm run dev:admin` / `deploy:admin`；**绑定同一 D1** | 本地开发：`npm run dev:admin:node`（或 `packages/admin` 内 `npm run dev:node`，`:8789`）；生产：`next start` / Docker：需 **`DATABASE_URL`** + **`DATABASE_DRIVER`**（与 Node 代理服务同语义；Postgres 可省略驱动，**MySQL 须 `mysql`**）与 **`ADMIN_*`** | **D1 ⊕ Postgres ⊕ MySQL 二选一** |
 | **Core**（`packages/core`） | 被 Worker / Pages 以 `d1` 驱动引用 | 被 Node 以 `postgres` / `mysql` 驱动引用 | 迁移见下 |
 
@@ -25,7 +25,7 @@
 
 | 模式 | 代理服务 | 管理后台 | 数据库 | 典型场景 |
 |------|---------|--------|--------|----------|
-| **A. Cloudflare 全托管（默认）** | Worker | Pages（OpenNext） | **共用 D1** | 生产默认；运维最简单 |
+| **A. Cloudflare 全托管（默认）** | 并入 Admin Worker（单 Worker 二合一） | Admin Worker（OpenNext，含 Proxy 逻辑） | **共用 D1** | 生产默认；运维最简单 |
 | **B. Hybrid** | **Node**（容器/VPS） | 仍为 **Cloudflare Pages** | 代理服务=**Postgres**，管理后台=**D1**（两库需分别迁移/对齐，适合分阶段上 PG） | 推理侧先行迁 PG，管理端仍在 CF |
 | **C. Full Node + Postgres** | Node | Node（Next 容器等） | **同一 Postgres** | 全自托管、与 K8s/Docker 一致；见 Docker 文档 |
 | **C′. Full Node + MySQL 8** | Node | Node（Next 容器等） | **同一 MySQL** | 与 C 相同交付形态；迁移目录 `migrations-mysql/` |
@@ -48,11 +48,9 @@ flowchart TB
   end
 
   subgraph cf ["Cloudflare 路径"]
-    W["Worker: packages/proxy"]
-    P["OpenNext Admin: packages/admin"]
+    W["Admin Worker（含 Proxy 逻辑）\npackages/admin + @cloud-api/proxy"]
     D1[(D1 octafuse-gateway)]
     W --> D1
-    P --> D1
   end
 
   subgraph node ["Node 路径"]
@@ -64,12 +62,11 @@ flowchart TB
   end
 
   logic -.-> W
-  logic -.-> P
   logic -.-> NP
   logic -.-> NA
 ```
 
-> 图中 **cf** 与 **node** 为并列交付方式；生产一般只选其中一条「竖条」（全 D1 或全关系型 PG/MySQL），Hybrid 则代理服务与管理后台分别落在不同竖条（含两套存储）时需严格约定账号与迁移顺序。
+> 图中 **cf** 与 **node** 为并列交付方式；生产一般只选其中一条「竖条」（全 D1 或全关系型 PG/MySQL）。Cloudflare 路径为**单 Worker 二合一**（Admin Worker 含 Proxy 逻辑）；Node 路径下代理服务与管理后台可分别部署。Hybrid 则代理服务与管理后台分别落在不同竖条（含两套存储）时需严格约定账号与迁移顺序。
 
 ---
 

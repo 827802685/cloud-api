@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+	batchDeleteProviders,
 	deleteProvider,
 	fetchImportCatalog,
 	fetchProviderApiKeyPlaintext,
@@ -38,6 +39,9 @@ export function useProvidersPageState() {
 	const [importSelected, setImportSelected] = useState<Record<string, boolean>>({});
 	const [importSubmitting, setImportSubmitting] = useState(false);
 	const [statusTogglingId, setStatusTogglingId] = useState<string | null>(null);
+	const [batchMode, setBatchMode] = useState(false);
+	const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
+	const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
 	const existingProviderIds = useMemo(() => new Set(providers.map((p) => p.id)), [providers]);
 	const filteredProviders = useMemo(() => {
@@ -196,6 +200,65 @@ export function useProvidersPageState() {
 		[refreshProviders]
 	);
 
+	const toggleBatchMode = useCallback(() => {
+		setBatchMode((prev) => {
+			if (prev) setBatchSelectedIds(new Set());
+			return !prev;
+		});
+	}, []);
+
+	const toggleBatchSelection = useCallback((id: string) => {
+		setBatchSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}, []);
+
+	const selectAllVisibleProviders = useCallback((ids: string[]) => {
+		setBatchSelectedIds(new Set(ids));
+	}, []);
+
+	const clearBatchSelection = useCallback(() => {
+		setBatchSelectedIds(new Set());
+	}, []);
+
+	const handleBatchDelete = useCallback(async () => {
+		if (batchSelectedIds.size === 0) return;
+		if (
+			!confirm(
+				`Are you sure you want to delete ${batchSelectedIds.size} provider(s)? Providers still referenced by model routes will be skipped. This action cannot be undone.`
+			)
+		) {
+			return;
+		}
+		setIsBatchDeleting(true);
+		try {
+			const result = await batchDeleteProviders([...batchSelectedIds]);
+			if (result.success) {
+				const { deleted, not_found, failed } = result.data;
+				const parts = [`Deleted: ${deleted}`];
+				if (not_found.length) parts.push(`Not found: ${not_found.length}`);
+				if (failed.length) {
+					parts.push(`Failed: ${failed.length}`);
+					parts.push(failed.map((f) => `  ${f.id}: ${f.message}`).join('\n'));
+				}
+				alert(parts.join('\n'));
+				setBatchSelectedIds(new Set());
+				setBatchMode(false);
+				await refreshProviders();
+			} else {
+				alert(result.message || 'Batch delete failed');
+			}
+		} catch (error) {
+			console.error('Batch delete error:', error);
+			alert('Batch delete failed');
+		} finally {
+			setIsBatchDeleting(false);
+		}
+	}, [batchSelectedIds, refreshProviders]);
+
 	const loadImportCatalog = useCallback(async () => {
 		setImportCatalogLoading(true);
 		setImportCatalogError('');
@@ -337,5 +400,13 @@ export function useProvidersPageState() {
 		runImportSelectedPresets,
 		handleCopyApiKey,
 		handleToggleStatus,
+		batchMode,
+		toggleBatchMode,
+		batchSelectedIds,
+		toggleBatchSelection,
+		selectAllVisibleProviders,
+		clearBatchSelection,
+		handleBatchDelete,
+		isBatchDeleting,
 	};
 }

@@ -1,6 +1,6 @@
 # `@cloud-api/proxy`
 
-**推理入口**：Cloudflare Worker（`wrangler.jsonc`）或 **Node**（Postgres / MySQL）。对外：
+**推理入口**：Cloudflare 上作为库被 **Admin Worker** 复用（**单 Worker 二合一**，见 [cloudflare.md](../../docs/operators/deployment/cloudflare.md)），或独立跑在 **Node**（Postgres / MySQL）。对外：
 
 - `GET /`、`GET /health`
 - 公开目录：`GET /catalog/models`（无需用户 Key）
@@ -19,9 +19,11 @@
 ## 命令（在仓库根 `npm install` 后）
 
 ```bash
-npm run dev:proxy          # Worker + 本地 D1
+npm run dev:proxy          # 本地调试 Proxy 逻辑（Worker + 本地 D1）
 npm run dev:proxy:node     # Node + SQL（根 `.env`）
-npm run deploy:proxy
+npm run deploy:admin       # Cloudflare 生产部署：Admin Worker（含 Proxy 逻辑）
 ```
+
+> Cloudflare 生产环境**不再单独部署**独立 Proxy Worker；Proxy 逻辑随 Admin Worker 一起通过 `deploy:admin` 部署。
 
 文档：[docs/README.md](../../docs/README.md) · [route-topology.md](../../docs/developers/architecture/route-topology.md) · [local-development.md](../../docs/developers/local-development.md)

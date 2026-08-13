@@ -61,6 +61,93 @@ export function inferParamsB(modelName: string): number | null {
 	return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+/** RSS 模型能力分类：文生图 / 音频转写 / 视频 / 文本聊天。 */
+export type RssModelKind = 'chat' | 'image' | 'audio' | 'video';
+
+/** 根据能力标签推断模型种类。优先级：image > audio > video > chat。 */
+export function resolveRssModelKind(capabilities: string[]): RssModelKind {
+	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
+	if (caps.has('image')) return 'image';
+	if (caps.has('audio')) return 'audio';
+	if (caps.has('video')) return 'video';
+	return 'chat';
+}
+
+/** 按能力生成 input/output modalities（vision 追加 image 输入）。 */
+export function resolveRssModalities(
+	kind: RssModelKind,
+	capabilities: string[]
+): { input: string[]; output: string[] } {
+	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
+	switch (kind) {
+		case 'image':
+			return { input: ['text'], output: ['image'] };
+		case 'audio':
+			return { input: ['audio'], output: ['text'] };
+		case 'video':
+			// 网关暂不支持 video 输出，按文本聊天模型导入
+			return { input: ['text'], output: ['text'] };
+		case 'chat':
+		default:
+			return {
+				input: caps.has('vision') ? ['text', 'image'] : ['text'],
+				output: ['text'],
+			};
+	}
+}
+
+/** 免费模型的零价 pricing_profile（按种类给出合法形状，供 isImageGenerationModel / isAudioTranscriptionModel 识别）。 */
+export function resolveRssPricingProfile(kind: RssModelKind): Record<string, unknown> {
+	switch (kind) {
+		case 'image':
+			return {
+				image_billing_mode: 'token',
+				tiers: [
+					{
+						upto: null,
+						input_price: 0,
+						output_price: 0,
+						image_input_price: 0,
+						image_output_price: 0,
+					},
+				],
+			};
+		case 'audio':
+			return {
+				audio_billing_mode: 'per_second',
+				audio: { price_per_second: 0, minimum_seconds: 1 },
+			};
+		case 'video':
+		case 'chat':
+		default:
+			return {
+				tiers: [
+					{
+						upto: null,
+						input_price: 0,
+						output_price: 0,
+						cache_read_price: 0,
+						cache_write_price: 0,
+					},
+				],
+			};
+	}
+}
+
+/** 路由 request/upstream operation（OpenAI 协议）。 */
+export function resolveRssRouteOperation(kind: RssModelKind): string {
+	switch (kind) {
+		case 'image':
+			return 'images.generations';
+		case 'audio':
+			return 'audio.transcriptions';
+		case 'video':
+		case 'chat':
+		default:
+			return 'chat';
+	}
+}
+
 /** 解析上下文数字（去掉千分位逗号）。 */
 function parseContext(raw: string | null): number | null {
 	if (!raw) return null;
@@ -219,9 +306,25 @@ export async function syncFreeModelsFromRss(
 
 	// 按 vendor 缓存已匹配的 provider，避免重复查询
 	const providerCache = new Map<string, string | null>();
+	// 本次同步内已处理过的模型 id，避免同一 id 在 feed 中重复出现时重复创建
+	const seenModelIds = new Set<string>();
 
 	for (const entry of entries) {
 		try {
+			// 0. 本次同步内去重：同一 id 只处理一次
+			if (seenModelIds.has(entry.id)) {
+				result.models_skipped++;
+				result.routes_skipped++;
+				continue;
+			}
+			seenModelIds.add(entry.id);
+
+			// 能力 → 模型种类 / modalities / pricing / operation
+			const kind = resolveRssModelKind(entry.capabilities);
+			const modalities = resolveRssModalities(kind, entry.capabilities);
+			const pricingProfile = resolveRssPricingProfile(kind);
+			const operation = resolveRssRouteOperation(kind);
+
 			// 1. provider：仅匹配平台上带 key 的已有 provider
 			let providerId = providerCache.get(entry.vendor);
 			if (providerId === undefined) {
@@ -234,7 +337,7 @@ export async function syncFreeModelsFromRss(
 				continue;
 			}
 
-			// 2. 模型（去重）
+			// 2. 模型（去重：同 id 已存在则跳过）
 			const existingModel = await repos.models.getModelDetailWithRouteCounts(entry.id);
 			if (!existingModel) {
 				await createModelService(repos, {
@@ -242,21 +345,12 @@ export async function syncFreeModelsFromRss(
 					display_name: entry.id,
 					vendor: entry.vendor,
 					context_window: entry.contextWindow,
-					max_tokens: 8192,
-					pricing_profile: {
-						tiers: [
-							{
-								upto: null,
-								input_price: 0,
-								output_price: 0,
-								cache_read_price: 0,
-								cache_write_price: 0,
-							},
-						],
-					},
+					// 文生图/音频转写模型不适用 LLM 默认 max_tokens
+					max_tokens: kind === 'chat' || kind === 'video' ? 8192 : null,
+					pricing_profile: pricingProfile,
 					tags: ['Free'],
-					input_modalities: ['text'],
-					output_modalities: ['text'],
+					input_modalities: modalities.input,
+					output_modalities: modalities.output,
 					description: `Free model via RSS sync (${entry.vendor}).`,
 				});
 				result.models_created++;
@@ -285,8 +379,8 @@ export async function syncFreeModelsFromRss(
 				provider_model_name: entry.providerModelName,
 				upstream_protocol: 'openai',
 				request_protocol: 'openai',
-				request_operation: 'chat',
-				upstream_operation: 'chat',
+				request_operation: operation,
+				upstream_operation: operation,
 				adapter: 'passthrough',
 				weight: quality.recommendedWeight,
 				status: 'active',

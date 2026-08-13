@@ -64,6 +64,19 @@ export async function deleteProvider(
 	return { success: false, message: data.message || 'Delete failed' };
 }
 
+export async function batchDeleteProviders(
+	ids: string[]
+): Promise<{ success: true; data: { deleted: number; not_found: string[]; failed: Array<{ id: string; message: string }> } } | { success: false; message: string }> {
+	const response = await fetch('/api/admin/providers/batch-delete', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ ids }),
+	});
+	const data = await readApiJson<{ deleted: number; not_found: string[]; failed: Array<{ id: string; message: string }> }>(response);
+	if (data.success && data.data) return { success: true, data: data.data };
+	return { success: false, message: data.message || 'Batch delete failed' };
+}
+
 export async function fetchImportCatalog(): Promise<ProviderImportCatalogRow[]> {
 	const response = await fetch('/api/admin/providers/import/catalog');
 	const data = await readApiJson<ProviderImportCatalogRow[]>(response);

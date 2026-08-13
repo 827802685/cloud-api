@@ -9,11 +9,10 @@
  * Options:
  *   --migrate, -m       Run db:migrate:remote before deploy
  *   --migrate-only      Only remote D1 migrate
- *   --proxy-only        Only deploy Proxy Worker
- *   --admin-only        Only deploy Admin Worker
  *   --show-master-key   Print remote system_config.MASTER_KEY (no deploy)
  *   --help, -h
  *
+ * 单 Worker 二合一：只部署 Admin Worker（含 Proxy 逻辑），不再单独部署 Proxy Worker。
  * Env file: cloudflare-worker/<instance>.env (gitignore)
  */
 import { existsSync } from "node:fs";
@@ -34,10 +33,10 @@ function usage() {
 Options:
   --migrate, -m       Run db:migrate:remote before deploy
   --migrate-only      Only remote D1 migrate
-  --proxy-only        Only deploy Proxy Worker
-  --admin-only        Only deploy Admin Worker
   --show-master-key   Print remote MASTER_KEY (no deploy)
   --help, -h          Show this help
+
+单 Worker 二合一：只部署 Admin Worker（含 Proxy 逻辑）。
 
 Example:
   npm run deploy:cloudflare -- mygw --migrate
@@ -59,8 +58,7 @@ function main() {
 	}
 
 	let doMigrate = false;
-	let doProxy = true;
-	let doAdmin = true;
+	let doAdmin = true; // 单 Worker 二合一：Admin Worker 含 Proxy 逻辑
 	let showMasterKey = false;
 
 	for (const arg of argv) {
@@ -74,20 +72,10 @@ function main() {
 				break;
 			case "--migrate-only":
 				doMigrate = true;
-				doProxy = false;
 				doAdmin = false;
-				break;
-			case "--proxy-only":
-				doProxy = true;
-				doAdmin = false;
-				break;
-			case "--admin-only":
-				doProxy = false;
-				doAdmin = true;
 				break;
 			case "--show-master-key":
 				showMasterKey = true;
-				doProxy = false;
 				doAdmin = false;
 				doMigrate = false;
 				break;
@@ -136,15 +124,12 @@ function main() {
 	if (doMigrate) {
 		runNpmWithEnv(vars, ["db:migrate:remote"]);
 	}
-	if (doProxy) {
-		runNpmWithEnv(vars, ["deploy:proxy"]);
-	}
 	if (doAdmin) {
 		runNpmWithEnv(vars, ["deploy:admin"]);
 	}
 
 	log(`${instance} done.`);
-	if (doProxy || doAdmin) {
+	if (doAdmin) {
 		printLocalDevHint();
 	}
 }

@@ -4,12 +4,14 @@
 
 ## 部署形态与 Base URL
 
-生产默认：**Cloudflare**（Proxy Worker + Admin Pages）+ **D1**。同一套 API 也可跑在 **Node + Postgres / MySQL**（或 Hybrid）；总表见 **[architecture/runtime-data.md](../architecture/runtime-data.md)**。
+生产默认：**Cloudflare**（单 Admin Worker 二合一，含 Proxy 逻辑）+ **D1**。同一套 API 也可跑在 **Node + Postgres / MySQL**（或 Hybrid）；总表见 **[architecture/runtime-data.md](../architecture/runtime-data.md)**。
 
 | 用途 | 运行时（典型） | Base URL（示例） | 路径前缀 |
 |------|----------------|------------------|----------|
-| 健康检查与用户 API | Proxy（CF Worker 或 Node） | `https://<proxy>/` | `/`、`/health`、`/catalog/*`、`/v1/*`、`/v1beta/*` |
-| 管理 API | Admin（OpenNext 或 Node） | `https://<admin>/` | **`/api/admin/*`**（服务端重写为内部 `/admin/*`） |
+| 健康检查与用户 API | Admin Worker（含 Proxy 逻辑；CF Worker 或 Node） | `https://<worker>/` | `/`、`/health`、`/catalog/*`、`/v1/*`、`/v1beta/*` |
+| 管理 API | Admin（OpenNext 或 Node） | `https://<worker>/` | **`/api/admin/*`**（服务端重写为内部 `/admin/*`） |
+
+**单 Worker 二合一**：只部署一个 Admin Worker，Proxy 逻辑（`@cloud-api/proxy`）作为库被它复用。对外 API 地址即该 Worker 域名，例如 `https://api.zjkl.dpdns.org/v1/chat/completions`；同时处理 `/v1/*`、`/api/v1/*` 与 `/api/admin/*`。
 
 **与实现对齐**：Proxy 路由以 **`packages/proxy/src/app.ts`** 及各 **`packages/proxy/src/routes/**`**（含 **`routes/catalog.ts`**）为准；根路径 JSON 见该文件（`name: octafuse-proxy`）。管理路由以 **`packages/admin/lib/admin-app.ts`** 及 **`packages/admin/lib/routes/admin/**`** 为准。
 

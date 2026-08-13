@@ -19,6 +19,9 @@ type ProviderCardProps = {
 	onEdit: (provider: GatewayProvider) => void;
 	onToggleStatus: (provider: GatewayProvider) => void;
 	onCopyApiKey: (provider: GatewayProvider) => void;
+	batchMode?: boolean;
+	batchSelected?: boolean;
+	onToggleBatchSelection?: (id: string) => void;
 };
 
 export function ProviderCard(props: ProviderCardProps) {
@@ -29,6 +32,9 @@ export function ProviderCard(props: ProviderCardProps) {
 		onEdit,
 		onToggleStatus,
 		onCopyApiKey,
+		batchMode = false,
+		batchSelected = false,
+		onToggleBatchSelection,
 	} = props;
 
 	const t = useTranslations('providers.card');
@@ -43,33 +49,49 @@ export function ProviderCard(props: ProviderCardProps) {
 
 	return (
 		<article
-			className="group relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3 lg:h-[72px] lg:grid-cols-[auto_minmax(210px,0.9fr)_minmax(340px,1.7fr)_minmax(180px,0.72fr)] lg:items-center lg:gap-5"
+			className={`group relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3 lg:h-[72px] lg:grid-cols-[auto_minmax(210px,0.9fr)_minmax(340px,1.7fr)_minmax(180px,0.72fr)] lg:items-center lg:gap-5 ${
+				batchMode && batchSelected ? 'bg-blue-50/70' : ''
+			}`}
 		>
 			<button
 				type="button"
-				onClick={() => onEdit(provider)}
+				onClick={() => (batchMode ? onToggleBatchSelection?.(provider.id) : onEdit(provider))}
 				className="absolute inset-0 z-0 cursor-pointer bg-transparent transition-colors group-hover:bg-slate-50/80 focus-visible:bg-blue-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-				title={t('editProvider', { name: provider.name })}
-				aria-label={t('editProvider', { name: provider.name })}
+				title={batchMode ? tCommon('select') : t('editProvider', { name: provider.name })}
+				aria-label={batchMode ? tCommon('select') : t('editProvider', { name: provider.name })}
 			/>
-			<div className="pointer-events-none relative z-10 col-start-1 row-start-1 flex items-center">
-				<button
-					type="button"
-					role="switch"
-					aria-checked={isActive}
-					disabled={statusTogglingId === provider.id}
-					onClick={() => void onToggleStatus(provider)}
-					className={`pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-50 ${
-						isActive
-							? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
-							: 'bg-red-50 text-red-600 ring-red-200 hover:bg-red-100'
-					}`}
-					title={isActive ? t('providerEnabled') : t('providerDisabled')}
-					aria-label={isActive ? t('providerEnabled') : t('providerDisabled')}
-				>
-					<PowerIcon className="h-4 w-4" aria-hidden />
-				</button>
-			</div>
+			{batchMode ? (
+				<div className="pointer-events-none relative z-10 col-start-1 row-start-1 flex items-center">
+					<span
+						className={`inline-flex h-5 w-5 items-center justify-center rounded border ${
+							batchSelected
+								? 'border-blue-600 bg-blue-600 text-white'
+								: 'border-gray-300 bg-white text-transparent'
+						}`}
+					>
+						<CheckIcon className="h-3.5 w-3.5" aria-hidden />
+					</span>
+				</div>
+			) : (
+				<div className="pointer-events-none relative z-10 col-start-1 row-start-1 flex items-center">
+					<button
+						type="button"
+						role="switch"
+						aria-checked={isActive}
+						disabled={statusTogglingId === provider.id}
+						onClick={() => void onToggleStatus(provider)}
+						className={`pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-50 ${
+							isActive
+								? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
+								: 'bg-red-50 text-red-600 ring-red-200 hover:bg-red-100'
+						}`}
+						title={isActive ? t('providerEnabled') : t('providerDisabled')}
+						aria-label={isActive ? t('providerEnabled') : t('providerDisabled')}
+					>
+						<PowerIcon className="h-4 w-4" aria-hidden />
+					</button>
+				</div>
+			)}
 
 			<div className="pointer-events-none relative z-10 col-start-2 row-start-1 flex min-w-0 items-start gap-3">
 				<VendorIcon vendor={provider.vendor_key} iconKey={provider.icon_key} size="compact" />

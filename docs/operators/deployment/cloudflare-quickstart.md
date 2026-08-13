@@ -4,7 +4,7 @@
 
 1. 获取并确认最新版代码；
 2. 创建共享 D1 数据库；
-3. 部署代理服务（Proxy）Worker 和管理后台（Admin）Worker；
+3. 部署 Admin Worker（单 Worker 二合一，含 Proxy 逻辑）；
 4. 设置管理后台登录密码；
 5. 验证 Worker、登录和 D1；
 6. 配置供应商（Provider）、模型（Model）、路由（Routes）和用户 API Key；
@@ -17,15 +17,13 @@
 AI client
     │  user API key
     ▼
-Proxy Worker  ──────┐
-                    ├── shared D1
-Admin Worker  ──────┘
+Admin Worker（含 Proxy 逻辑）── shared D1
     ▲
     │  browser login / MASTER_KEY
 Operator
 ```
 
-代理服务和管理后台是两个独立 Worker，但 D1 绑定名都为 `DB`，且必须指向同一个数据库。
+**单 Worker 二合一**：只部署一个 Admin Worker，Proxy 的推理/工具 API 逻辑（`@cloud-api/proxy`）作为库被它复用。对外 API 地址即该 Worker 的域名，例如 `https://api.zjkl.dpdns.org/v1/chat/completions`。Admin Worker 同时处理 `/v1/*`（标准 API 入口）、`/api/v1/*`（兼容前缀）与 `/api/admin/*`（管理后台 API）。D1 绑定名为 `DB`。
 
 ## 版本基线
 
@@ -128,8 +126,7 @@ npx wrangler whoami
 
 ```text
 D1:            my-octafuse
-Proxy Worker:  my-octafuse-proxy
-Admin Worker:  my-octafuse-admin
+Admin Worker:  my-octafuse-admin   （单 Worker 二合一，含 Proxy 逻辑）
 Migration name: my-octafuse-d1-migrations
 ```
 
@@ -196,30 +193,30 @@ npx wrangler secret put ADMIN_PASSWORD --name my-octafuse-prod-admin
 3. 写入被 `.gitignore` 排除的 `cloudflare-worker/<instance>.env`；
 4. 生成三个 `wrangler*.jsonc`；
 5. 请求确认后，对远程 D1 应用全部迁移；
-6. 部署代理服务 Worker；
-7. 构建并部署管理后台 Worker；
-8. 写入 `ADMIN_PASSWORD` Secret；
-9. 打印 Worker 名和后续操作提示。
+6. 构建并部署 Admin Worker（单 Worker 二合一，含 Proxy 逻辑）；
+7. 写入 `ADMIN_PASSWORD` Secret；
+8. 打印 Worker 名和后续操作提示。
 
-首次管理后台构建通常比代理服务慢。只要命令仍在输出 Next.js / OpenNext / asset upload 进度，就让它继续运行。
+首次管理后台构建通常较慢。只要命令仍在输出 Next.js / OpenNext / asset upload 进度，就让它继续运行。
 
 ---
 
-## 6. 找到两个访问地址
+## 6. 找到访问地址
 
-部署成功时，Wrangler 会分别打印：
+部署成功时，Wrangler 会打印 Admin Worker 地址：
 
 ```text
-https://<prefix>-proxy.<account-subdomain>.workers.dev
 https://<prefix>-admin.<account-subdomain>.workers.dev
 ```
 
 例如 Prefix 为 `my-octafuse-prod`：
 
 ```env
-GATEWAY_URL=https://my-octafuse-prod-proxy.<account-subdomain>.workers.dev
+GATEWAY_URL=https://my-octafuse-prod-admin.<account-subdomain>.workers.dev
 GATEWAY_MASTER_URL=https://my-octafuse-prod-admin.<account-subdomain>.workers.dev
 ```
+
+> **单 Worker 二合一**：对外 API 与管理后台共用同一个 Admin Worker。`GATEWAY_URL`（对外 API，如 `/v1/*`）与 `GATEWAY_MASTER_URL`（管理后台 `/api/admin/*`）指向同一地址。
 
 `<account-subdomain>` 不是 Account ID。请复制 Wrangler 的真实输出，或打开 Cloudflare Dashboard → Workers & Pages → 对应 Worker 查看 URL。
 
@@ -232,11 +229,11 @@ GATEWAY_MASTER_URL=https://my-octafuse-prod-admin.<account-subdomain>.workers.de
 先设置刚才复制的地址：
 
 ```bash
-export GATEWAY_URL='https://<proxy-worker>.<account-subdomain>.workers.dev'
+export GATEWAY_URL='https://<admin-worker>.<account-subdomain>.workers.dev'
 export GATEWAY_MASTER_URL='https://<admin-worker>.<account-subdomain>.workers.dev'
 ```
 
-### 7.1 代理服务健康检查
+### 7.1 对外 API 健康检查
 
 ```bash
 curl -i "$GATEWAY_URL/health"
@@ -491,8 +488,7 @@ curl -sS "$GATEWAY_URL/v1/tools/web-search" \
 先确保域名所在 zone 已加入同一个 Cloudflare 账号。编辑被 gitignore 的实例文件：
 
 ```env
-PROXY_CUSTOM_DOMAIN=api.example.com
-ADMIN_CUSTOM_DOMAIN=admin.example.com
+ADMIN_CUSTOM_DOMAIN=api.example.com
 ```
 
 重新部署：
@@ -505,7 +501,7 @@ npm run deploy:cloudflare -- production
 
 ```env
 GATEWAY_URL=https://api.example.com
-GATEWAY_MASTER_URL=https://admin.example.com
+GATEWAY_MASTER_URL=https://api.example.com
 ```
 
 管理后台必须通过 HTTPS 对公网提供；还可按需通过 Cloudflare Access 增加一层访问控制。
@@ -518,9 +514,8 @@ GATEWAY_MASTER_URL=https://admin.example.com
 
 本仓库已配置 GitHub Actions 自动部署，**直接 push 到 `main` 即可**：
 
-- **后端（Proxy Worker）**：push 后自动触发 `.github/workflows/deploy-proxy.yml`
+- **Admin Worker（含 Proxy 逻辑）**：push 后自动触发 `.github/workflows/deploy-admin.yml`
 - **D1 迁移**：push 后如果 `packages/core/migrations-d1/` 有变更，自动触发 `deploy-migrations.yml`
-- **前端（Admin Worker）**：通过 Cloudflare Connect to Git 自动构建
 
 查看部署状态：GitHub 仓库 → Actions 页面。
 
@@ -548,7 +543,6 @@ npm run deploy:cloudflare -- production
 也可只部署一侧：
 
 ```bash
-npm run deploy:cloudflare -- production --proxy-only
 npm run deploy:cloudflare -- production --admin-only
 ```
 
@@ -629,7 +623,7 @@ npx wrangler secret put ADMIN_PASSWORD --name <admin-worker-name>
 
 ### 自定义域名部署失败
 
-先去掉 `PROXY_CUSTOM_DOMAIN` / `ADMIN_CUSTOM_DOMAIN`，用 `workers.dev` 验证。确认 zone 在同一账号、DNS 和证书可用后再绑定。
+先去掉 `ADMIN_CUSTOM_DOMAIN`，用 `workers.dev` 验证。确认 zone 在同一账号、DNS 和证书可用后再绑定。
 
 ### 引导脚本中断后重试
 
@@ -645,10 +639,9 @@ npm run deploy:cloudflare -- production --migrate
 
 ## 15. 不再需要测试实例时
 
-先确认 Worker 名和 D1 名，再依次删除两个 Worker，最后删除 D1：
+先确认 Worker 名和 D1 名，再删除 Worker，最后删除 D1：
 
 ```bash
-npx wrangler delete <prefix>-proxy
 npx wrangler delete <prefix>-admin
 npx wrangler d1 delete <prefix>
 ```

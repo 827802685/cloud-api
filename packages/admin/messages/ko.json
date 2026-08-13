@@ -40,6 +40,7 @@
 		"batchDelete": "일괄 삭제",
 		"selectAll": "전체 선택",
 		"clear": "지우기",
+		"select": "선택",
 		"copy": "복사",
 		"copied": "복사됨",
 		"dismiss": "닫기",
