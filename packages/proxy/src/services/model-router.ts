@@ -177,40 +177,49 @@ export async function resolveRoutesForSurface(
 			),
 		}));
 
-	// Auto-route creation: if no routes found, try to create one automatically
+	// Auto-route creation: if no routes found, try to create one automatically.
+	// 仅当模型完全没有路由时才自动创建；若模型已有路由（即使全部被手动禁用），
+	// 保持禁用状态，避免绕过管理员的禁用操作。
 	if (routes.length === 0) {
 		try {
-			const model = await repos.modelRouting.getModelById(params.modelId);
-			if (model) {
-				const vendor = model.vendor?.toLowerCase().trim() ?? '';
-				const providerId = await repos.modelRouting.findProviderByVendor(vendor);
-				if (providerId) {
-					const protocol = params.requestProtocol || 'openai';
-					await repos.modelRouting.autoCreateRoute(params.modelId, providerId, params.modelId, protocol);
-					console.log(`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol}`);
-					// Re-query routes after creation
-					const newRows = surface
-						? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)
-						: selectActiveRouteRows(
-								await repos.modelRouting.getModelRoutesByModelId(params.modelId),
-								params.routeGroup
-							);
-					routes = (await resolveRouteResultsFromRows(repos, newRows))
-						.filter(
-							(route) =>
-								route.upstreamProtocol === params.requestProtocol &&
-								route.adapter === 'passthrough'
-						)
-						.map((route) => ({
-							...route,
-							modelSurfaceId: surface?.id ?? null,
-							upstreamOperation: effectiveUpstreamOperation(
-								route.upstreamOperation,
-								params.requestOperation
-							),
-						}));
-				} else {
-					console.warn(`[AutoRoute] no active provider found for vendor=${vendor} model=${params.modelId}`);
+			const existingRoutes = await repos.routes.listModelRoutesWithJoins({ modelId: params.modelId });
+			if (existingRoutes.length > 0) {
+				console.warn(
+					`[AutoRoute] model=${params.modelId} has ${existingRoutes.length} route(s) but none active; skipping auto-create to respect manual disable`
+				);
+			} else {
+				const model = await repos.modelRouting.getModelById(params.modelId);
+				if (model) {
+					const vendor = model.vendor?.toLowerCase().trim() ?? '';
+					const providerId = await repos.modelRouting.findProviderByVendor(vendor);
+					if (providerId) {
+						const protocol = params.requestProtocol || 'openai';
+						await repos.modelRouting.autoCreateRoute(params.modelId, providerId, params.modelId, protocol);
+						console.log(`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol}`);
+						// Re-query routes after creation
+						const newRows = surface
+							? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)
+							: selectActiveRouteRows(
+									await repos.modelRouting.getModelRoutesByModelId(params.modelId),
+									params.routeGroup
+								);
+						routes = (await resolveRouteResultsFromRows(repos, newRows))
+							.filter(
+								(route) =>
+									route.upstreamProtocol === params.requestProtocol &&
+									route.adapter === 'passthrough'
+							)
+							.map((route) => ({
+								...route,
+								modelSurfaceId: surface?.id ?? null,
+								upstreamOperation: effectiveUpstreamOperation(
+									route.upstreamOperation,
+									params.requestOperation
+								),
+							}));
+					} else {
+						console.warn(`[AutoRoute] no active provider found for vendor=${vendor} model=${params.modelId}`);
+					}
 				}
 			}
 		} catch (err) {

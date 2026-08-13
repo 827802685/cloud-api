@@ -7,7 +7,7 @@ import type { ModelRoutesRepository } from '../../storage/gateway-repository-int
 import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repository-dtos';
 import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
 import { isMysqlDuplicateKeyError } from '../shared/duplicate-key';
-import { asMySqlPool } from './mysql2-compat';
+import { asMySqlPool, mysqlExecute } from './mysql2-compat';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
 		mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
@@ -236,6 +236,21 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 			const [result] = await pool.execute<ResultSetHeader>(
 				`UPDATE model_routes SET ${updateFields.join(', ')} WHERE id = ?`,
 				[...bindValues, id]
+			);
+			return result.affectedRows;
+		},
+
+		async batchUpdateModelRoutesStatus(ids: string[], status: 'active' | 'disabled'): Promise<number> {
+			if (ids.length === 0) return 0;
+			const placeholders = ids.map(() => '?').join(',');
+			// 手动禁用/启用：清除 disabled_at（避免被 recoverExpiredDisabledRoutes 自动恢复）
+			// 并重置 consecutive_failures（手动启用视为全新开始）
+			const result = await mysqlExecute(
+				pool,
+				`UPDATE model_routes
+				 SET status = ?, disabled_at = NULL, consecutive_failures = 0
+				 WHERE id IN (${placeholders})`,
+				[status, ...ids]
 			);
 			return result.affectedRows;
 		},

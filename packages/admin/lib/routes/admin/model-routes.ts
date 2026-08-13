@@ -6,6 +6,7 @@ import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
 	autoAddModelRoutesService,
+	batchUpdateModelRoutesStatusService,
 	createModelRouteService,
 	deleteModelRouteService,
 	forceClearStickyBindingService,
@@ -158,6 +159,28 @@ adminModelRoutes.post('/auto-add', async (c) => {
 		);
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to auto-add routes');
+	}
+});
+
+/** 批量更新路由状态（启用/禁用）。 */
+adminModelRoutes.post('/batch-status', async (c) => {
+	let body: { ids?: unknown; status?: unknown };
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
+	}
+	try {
+		const repos = c.get('repositories');
+		const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
+		const status = String(body.status ?? '').trim();
+		if (status !== 'active' && status !== 'disabled') {
+			return c.json({ success: false, message: 'status must be "active" or "disabled"' }, 400);
+		}
+		const changes = await batchUpdateModelRoutesStatusService(repos, ids, status);
+		return c.json({ success: true, message: `${changes} route(s) updated`, data: { changes } });
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to batch update route status');
 	}
 });
 

@@ -287,6 +287,20 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			return updated.length;
 		},
 
+		async batchUpdateModelRoutesStatus(ids: string[], status: 'active' | 'disabled'): Promise<number> {
+			if (ids.length === 0) return 0;
+			const placeholders = ids.map((_, i) => `$${i + 2}`).join(',');
+			// 手动禁用/启用：清除 disabled_at（避免被 recoverExpiredDisabledRoutes 自动恢复）
+			// 并重置 consecutive_failures（手动启用视为全新开始）
+			const rows = await pg.unsafe<Array<{ id: string }>>(
+				`UPDATE model_routes
+				 SET status = $1, disabled_at = NULL, consecutive_failures = 0
+				 WHERE id IN (${placeholders}) RETURNING id`,
+				[status, ...ids]
+			);
+			return rows.length;
+		},
+
 		async deleteModelRouteById(id: string): Promise<number> {
 			const deleted = await drizzle.delete(pgMr).where(eq(pgMr.id, id)).returning({ id: pgMr.id });
 			return deleted.length;

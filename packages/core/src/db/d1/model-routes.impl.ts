@@ -232,6 +232,22 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 			return updated.meta.changes;
 		},
 
+		async batchUpdateModelRoutesStatus(ids: string[], status: 'active' | 'disabled'): Promise<number> {
+			if (ids.length === 0) return 0;
+			const placeholders = ids.map(() => '?').join(',');
+			// 手动禁用/启用：清除 disabled_at（避免被 recoverExpiredDisabledRoutes 自动恢复）
+			// 并重置 consecutive_failures（手动启用视为全新开始）
+			const updated = await raw
+				.prepare(
+					`UPDATE model_routes
+					 SET status = ?, disabled_at = NULL, consecutive_failures = 0
+					 WHERE id IN (${placeholders})`
+				)
+				.bind(status, ...ids)
+				.run();
+			return updated.meta.changes;
+		},
+
 		async deleteModelRouteById(id: string): Promise<number> {
 			const deleted = await raw.prepare('DELETE FROM model_routes WHERE id = ?').bind(id).run();
 			return deleted.meta.changes;

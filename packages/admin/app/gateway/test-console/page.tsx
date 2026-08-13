@@ -46,6 +46,8 @@ type ModelOption = {
 	display_name: string | null;
 	vendor: string;
 	is_llm: boolean;
+	/** 模型是否被禁用（没有任何 active 路由）。禁用后 auto 模式不会使用。 */
+	disabled: boolean;
 };
 
 type TestResult = {
@@ -114,17 +116,21 @@ function ModelChip(props: {
 	model: ModelOption;
 	selected: boolean;
 	onToggle: () => void;
+	onDisableToggle: () => void;
 }) {
-	const { model, selected, onToggle } = props;
+	const { model, selected, onToggle, onDisableToggle } = props;
 	const displayName = model.display_name || model.id;
 	return (
 		<button
 			type="button"
 			onClick={onToggle}
+			disabled={model.disabled}
 			className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-				selected
-					? 'border-blue-500 bg-blue-50 text-blue-900 ring-1 ring-blue-500'
-					: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+				model.disabled
+					? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+					: selected
+						? 'border-blue-500 bg-blue-50 text-blue-900 ring-1 ring-blue-500'
+						: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
 			}`}
 		>
 			<ModelVendorIcon vendor={model.vendor} size="compact" />
@@ -132,6 +138,25 @@ function ModelChip(props: {
 				<div className="truncate font-medium">{displayName}</div>
 				<div className="truncate font-mono text-[11px] text-gray-500">{model.id}</div>
 			</div>
+			{model.disabled ? (
+				<button
+					type="button"
+					onClick={(e) => { e.stopPropagation(); onDisableToggle(); }}
+					className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-green-600 hover:bg-green-50"
+					title="启用"
+				>
+					启用
+				</button>
+			) : (
+				<button
+					type="button"
+					onClick={(e) => { e.stopPropagation(); onDisableToggle(); }}
+					className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-red-500 hover:bg-red-50"
+					title="禁用"
+				>
+					禁用
+				</button>
+			)}
 			{selected && (
 				<svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
 					<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -254,7 +279,7 @@ function TestConsolePageInner() {
 
 	const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
-	/* Build model options (only LLM models with active routes) */
+	/* Build model options (LLM models with routes; disabled models shown grayed out) */
 	const modelOptions = useMemo<ModelOption[]>(() => {
 		const modelsWithRoutes = new Set<string>();
 		for (const r of routes) {
@@ -262,14 +287,20 @@ function TestConsolePageInner() {
 				modelsWithRoutes.add(r.model_id);
 			}
 		}
+		// 有任意路由（含 disabled）的模型都展示，便于在试玩台直接启用/禁用
+		const modelsWithAnyRoute = new Set<string>();
+		for (const r of routes) {
+			modelsWithAnyRoute.add(r.model_id);
+		}
 		return models
-			.filter((m) => modelsWithRoutes.has(m.id))
+			.filter((m) => modelsWithAnyRoute.has(m.id))
 			.filter((m) => !isImageGenerationModel(m) && !isAudioTranscriptionModel(m))
 			.map((m) => ({
 				id: m.id,
 				display_name: m.display_name,
 				vendor: m.vendor,
 				is_llm: true,
+				disabled: !modelsWithRoutes.has(m.id),
 			}))
 			.sort((a, b) => (a.display_name || a.id).localeCompare(b.display_name || b.id));
 	}, [models, routes]);
@@ -332,12 +363,83 @@ function TestConsolePageInner() {
 	}, []);
 
 	const selectAll = useCallback(() => {
-		setSelectedModelIds(new Set(filteredModelOptions.map((m) => m.id)));
+		setSelectedModelIds(new Set(filteredModelOptions.filter((m) => !m.disabled).map((m) => m.id)));
 	}, [filteredModelOptions]);
 
 	const clearSelection = useCallback(() => {
 		setSelectedModelIds(new Set());
 	}, []);
+
+	/* 批量启用/禁用模型：禁用 = 把该模型所有 active 路由置为 disabled（auto 模式不再使用） */
+	const [statusBusy, setStatusBusy] = useState(false);
+	const [statusError, setStatusError] = useState<string | null>(null);
+
+	const setModelsStatus = useCallback(
+		async (modelIds: string[], status: 'active' | 'disabled') => {
+			if (modelIds.length === 0) return;
+			setStatusBusy(true);
+			setStatusError(null);
+			try {
+				const routeIds: string[] = [];
+				for (const r of routes) {
+					if (modelIds.includes(r.model_id)) {
+						if (status === 'disabled' && r.status === 'active') routeIds.push(r.id);
+						if (status === 'active' && r.status === 'disabled') routeIds.push(r.id);
+					}
+				}
+				if (routeIds.length === 0) return;
+				const res = await fetch('/api/admin/routes/batch-status', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ ids: routeIds, status }),
+				});
+				const data = await readApiJson<{ changes: number }>(res);
+				if (!data.success) {
+					setStatusError(data.message || 'Failed to update model status');
+					return;
+				}
+				// 刷新路由状态
+				const rRes = await fetch('/api/admin/routes');
+				const routesData = await readApiJson<RouteRow[]>(rRes);
+				if (routesData.success && Array.isArray(routesData.data)) {
+					setRoutes(routesData.data);
+				}
+				// 被禁用的模型从选中集合移除
+				if (status === 'disabled') {
+					setSelectedModelIds((prev) => {
+						const next = new Set(prev);
+						for (const id of modelIds) next.delete(id);
+						return next;
+					});
+				}
+			} catch (e) {
+				setStatusError(e instanceof Error ? e.message : 'Failed to update model status');
+			} finally {
+				setStatusBusy(false);
+			}
+		},
+		[routes]
+	);
+
+	const toggleModelStatus = useCallback(
+		(modelId: string) => {
+			const model = modelOptions.find((m) => m.id === modelId);
+			if (!model) return;
+			void setModelsStatus([modelId], model.disabled ? 'active' : 'disabled');
+		},
+		[modelOptions, setModelsStatus]
+	);
+
+	const disableSelected = useCallback(() => {
+		void setModelsStatus([...selectedModelIds], 'disabled');
+	}, [selectedModelIds, setModelsStatus]);
+
+	const enableSelected = useCallback(() => {
+		const disabledSelected = filteredModelOptions
+			.filter((m) => m.disabled && selectedModelIds.has(m.id))
+			.map((m) => m.id);
+		void setModelsStatus(disabledSelected, 'active');
+	}, [filteredModelOptions, selectedModelIds, setModelsStatus]);
 
 	/* Send test to a single model */
 	const sendToModel = useCallback(
@@ -620,6 +722,29 @@ function TestConsolePageInner() {
 									</button>
 								</div>
 							</div>
+							<div className="mb-2 flex items-center gap-1">
+								<button
+									type="button"
+									onClick={disableSelected}
+									disabled={selectedModelIds.size === 0 || statusBusy}
+									className="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+								>
+									禁用选中
+								</button>
+								<button
+									type="button"
+									onClick={enableSelected}
+									disabled={statusBusy}
+									className="rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
+								>
+									启用已选禁用
+								</button>
+							</div>
+							{statusError && (
+								<div className="mb-2 rounded bg-red-50 px-2 py-1 text-[11px] text-red-600">
+									{statusError}
+								</div>
+							)}
 							<input
 								type="text"
 								value={filterText}
@@ -639,6 +764,7 @@ function TestConsolePageInner() {
 											model={model}
 											selected={selectedModelIds.has(model.id)}
 											onToggle={() => toggleModel(model.id)}
+											onDisableToggle={() => toggleModelStatus(model.id)}
 										/>
 									))}
 								</div>

@@ -155,6 +155,23 @@ export async function updateProviderService(
 
 	if (Object.keys(patch).length === 0) return;
 
+	if (body.status === 'disabled') {
+		// 停用供应商时，联动停用其所有 active 路由
+		const routes = await repos.routes.listModelRoutesWithJoins({ providerId: id });
+		const activeRouteIds = routes.filter((r) => r.status === 'active').map((r) => r.id);
+		if (activeRouteIds.length > 0) {
+			await repos.routes.batchUpdateModelRoutesStatus(activeRouteIds, 'disabled');
+		}
+	}
+	if (body.status === 'active') {
+		// 启用供应商时，联动启用其所有 disabled 路由
+		const routes = await repos.routes.listModelRoutesWithJoins({ providerId: id });
+		const disabledRouteIds = routes.filter((r) => r.status === 'disabled').map((r) => r.id);
+		if (disabledRouteIds.length > 0) {
+			await repos.routes.batchUpdateModelRoutesStatus(disabledRouteIds, 'active');
+		}
+	}
+
 	const changes = await repos.providers.updateProviderByPatch(id, patch);
 	if (changes === 0) {
 		throw notFound('Provider not found');

@@ -10,11 +10,82 @@ import type { GeminiContentAction } from '@cloud-api/core/gemini-upstream-url';
 import type { ImageOperation } from '@/lib/image-generations';
 import { invokePlaygroundUpstream } from '@/lib/services/admin/playground-service';
 import { invokePlaygroundTool } from '@/lib/services/admin/playground-tools-service';
+import { sanitizeJsonResponseText, sanitizeSseDataLine } from '@cloud-api/proxy';
 import { handleAdminRouteError } from './error-response';
 
 export const adminPlaygroundRoutes = new Hono<AdminEnv>();
 
 adminPlaygroundRoutes.use('*', requireMasterKey);
+
+/**
+ * 透传上游响应体时净化内部元数据字段（`extra_content` / `thought_signature` 等）。
+ * - `text/event-stream`：逐行净化 `data:` JSON。
+ * - `application/json`：整体解析净化后重序列化。
+ * - 其他（text/audio/image）：原样透传。
+ * 净化失败时回退原样，绝不破坏响应。
+ */
+function sanitizeResponseBodyStream(
+	body: ReadableStream<Uint8Array> | null,
+	contentType: string
+): ReadableStream<Uint8Array> | null {
+	if (!body) return null;
+	const encoder = new TextEncoder();
+	const decoder = new TextDecoder();
+
+	if (contentType.includes('text/event-stream')) {
+		return new ReadableStream<Uint8Array>({
+			async start(controller) {
+				const reader = body.getReader();
+				let buffer = '';
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						buffer += decoder.decode(value, { stream: true });
+						const lines = buffer.split('\n');
+						buffer = lines.pop() ?? '';
+						for (const line of lines) {
+							controller.enqueue(encoder.encode(sanitizeSseDataLine(line) + '\n'));
+						}
+					}
+					if (buffer) {
+						controller.enqueue(encoder.encode(sanitizeSseDataLine(buffer) + '\n'));
+					}
+				} catch (e) {
+					controller.error(e);
+				} finally {
+					reader.releaseLock();
+					controller.close();
+				}
+			},
+		});
+	}
+
+	if (contentType.includes('application/json')) {
+		return new ReadableStream<Uint8Array>({
+			async start(controller) {
+				const reader = body.getReader();
+				let acc = '';
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						acc += decoder.decode(value, { stream: true });
+					}
+					acc += decoder.decode();
+					controller.enqueue(encoder.encode(sanitizeJsonResponseText(acc)));
+				} catch (e) {
+					controller.error(e);
+				} finally {
+					reader.releaseLock();
+					controller.close();
+				}
+			},
+		});
+	}
+
+	return body;
+}
 
 type PlaygroundPostBody = {
 	routeId?: unknown;
@@ -69,7 +140,8 @@ adminPlaygroundRoutes.post('/', async (c) => {
 			headers.set('x-playground-request-body', encodeURIComponent(upstreamWireBodyJson));
 			headers.set('x-playground-mode', 'tool');
 
-			return new Response(response.body, {
+			const ct = headers.get('Content-Type') ?? '';
+			return new Response(sanitizeResponseBodyStream(response.body, ct), {
 				status: response.status,
 				statusText: response.statusText,
 				headers,
@@ -126,7 +198,8 @@ adminPlaygroundRoutes.post('/', async (c) => {
 		headers.set('x-playground-request-body', encodeURIComponent(upstreamWireBodyJson));
 		headers.set('x-playground-mode', 'route');
 
-		return new Response(response.body, {
+		const ct = headers.get('Content-Type') ?? '';
+		return new Response(sanitizeResponseBodyStream(response.body, ct), {
 			status: response.status,
 			statusText: response.statusText,
 			headers,

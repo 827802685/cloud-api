@@ -756,3 +756,17 @@ export async function autoAddModelRoutesService(
 
 	return { created, skipped, failed, details };
 }
+
+/**
+ * 批量更新路由状态（启用/禁用）。
+ * @throws `badRequest` ids 为空或去重后为空
+ */
+export async function batchUpdateModelRoutesStatusService(
+	repos: GatewayRepositories,
+	ids: string[],
+	status: 'active' | 'disabled'
+): Promise<number> {
+	const uniqueIds = [...new Set(ids.map((x) => String(x).trim()).filter((x) => x.length > 0))];
+	if (uniqueIds.length === 0) throw badRequest('ids must be a non-empty array');
+	return repos.routes.batchUpdateModelRoutesStatus(uniqueIds, status);
+}

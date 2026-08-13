@@ -29,3 +29,11 @@ export type {
 	WorkersAiClassification,
 	WorkersAiBinding,
 } from './services/model-quality-scorer';
+
+// 响应净化：供 Admin（Playground）透传上游响应时过滤内部元数据字段
+export {
+	sanitizeJsonResponseText,
+	sanitizeSseDataLine,
+	stripInternalFields,
+	isInternalFieldName,
+} from './services/response-sanitizer';
