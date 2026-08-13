@@ -20,7 +20,7 @@
 		"@cloud-api/core": "*"
 	},
 	"devDependencies": {
-		"@types/node": "^25.5.0",
+		"@types/node": "^26.2.0",
 		"typescript": "^5.7.2"
 	}
 }
