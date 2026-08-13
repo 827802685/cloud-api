@@ -411,9 +411,11 @@ export function listStaticProviderImportCatalogForAdmin(): AdminProviderImportCa
 	return listStaticProviderImportPresets().map((p) => {
 		const vendorCanon = normalizeModelVendorInput(p.vendor_key);
 		const map = parseProviderEndpoints({ endpoints: p.endpoints });
+		const zhName = p.catalog?.i18n?.zh?.name?.trim();
 		return {
 			id: p.catalog_key,
 			name: String(p.name ?? '').trim(),
+			name_zh: zhName || String(p.name ?? '').trim(),
 			vendor_key: vendorCanon,
 			icon_key: p.icon_key?.trim() || vendorCanon,
 			vendor_label: getModelVendorLabel(vendorCanon),

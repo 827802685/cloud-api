@@ -111,6 +111,8 @@ export type AdminProviderMutationInput = {
 export type AdminProviderImportCatalogItem = {
 	id: string;
 	name: string;
+	/** 中文显示名（catalog.i18n.zh.name）；无则回退 name。 */
+	name_zh: string;
 	vendor_key: string;
 	/** Provider 产品级静态图标 key；不写入数据库。 */
 	icon_key: string;

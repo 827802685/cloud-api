@@ -3,8 +3,9 @@
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { parseProviderEndpoints } from '@cloud-api/core/provider-endpoints';
 import { VendorIcon } from '@/components/model-vendor-icon';
+import { getModelVendorLabel } from '@/lib/model-vendor';
 import { summarizeOpenAiImportEndpoints } from '@/lib/provider-import-preset';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ProviderImportCatalogRow } from '../types';
 
 type ProviderImportModalProps = {
@@ -46,6 +47,8 @@ export function ProviderImportModal(props: ProviderImportModalProps) {
 
 	const t = useTranslations('providers.import');
 	const tCommon = useTranslations('common');
+	const locale = useLocale();
+	const isZh = locale === 'zh';
 
 	if (!open) return null;
 
@@ -169,7 +172,7 @@ export function ProviderImportModal(props: ProviderImportModalProps) {
 										<div
 											role="checkbox"
 											aria-checked={checked}
-											aria-label={t('selectRow', { name: row.name })}
+											aria-label={t('selectRow', { name: isZh ? row.name_zh : row.name })}
 											tabIndex={0}
 											onClick={() => onTogglePreset(row.id)}
 											onKeyDown={(e) => {
@@ -197,9 +200,11 @@ export function ProviderImportModal(props: ProviderImportModalProps) {
 												className="mt-0.5"
 											/>
 											<div className="min-w-0 flex-1 select-none">
-												<p className="text-sm font-semibold text-gray-900">{row.name}</p>
+												<p className="text-sm font-semibold text-gray-900">
+													{isZh ? row.name_zh : row.name}
+												</p>
 												<p className="text-xs text-gray-500">
-													{row.vendor_label} · {t('protocols')}: {row.protocols.join(', ') || '—'}
+													{getModelVendorLabel(row.vendor_key, locale)} · {t('protocols')}: {row.protocols.join(', ') || '—'}
 												</p>
 												{(() => {
 													const openai = summarizeOpenAiImportEndpoints(

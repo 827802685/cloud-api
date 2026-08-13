@@ -7,6 +7,8 @@ import modelVendorsJson from './model-vendors.json';
 export type ModelVendorCatalogEntry = {
 	key: string;
 	label: string;
+	/** 中文展示名；缺失时回退 label。 */
+	label_zh?: string;
 };
 
 const rawCatalog = modelVendorsJson as ModelVendorCatalogEntry[];
@@ -35,9 +37,14 @@ export function normalizeModelVendorInput(v: unknown): string {
 }
 
 /** 展示用：catalog 命中用 label；否则归为 Other（与 normalize 一致）。 */
-export function getModelVendorLabel(vendorKey: string | null | undefined): string {
+export function getModelVendorLabel(
+	vendorKey: string | null | undefined,
+	locale?: string
+): string {
 	const s = typeof vendorKey === 'string' ? vendorKey.trim() : '';
-	if (!s) return labelByCanonical.get('other') ?? 'Other';
-	const canon = canonicalByLower.get(s.toLowerCase()) ?? 'other';
-	return labelByCanonical.get(canon) ?? (labelByCanonical.get('other') ?? 'Other');
+	const canon = s ? (canonicalByLower.get(s.toLowerCase()) ?? 'other') : 'other';
+	const entry = rawCatalog.find((e) => e.key === canon);
+	if (!entry) return labelByCanonical.get('other') ?? 'Other';
+	if (locale === 'zh' && entry.label_zh) return entry.label_zh;
+	return entry.label;
 }

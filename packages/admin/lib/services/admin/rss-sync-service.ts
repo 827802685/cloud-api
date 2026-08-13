@@ -244,17 +244,15 @@ export async function syncFreeModelsFromRss(
 					context_window: entry.contextWindow,
 					max_tokens: 8192,
 					pricing_profile: {
-						usd: {
-							tiers: [
-								{
-									upto: null,
-									input_price: 0,
-									output_price: 0,
-									cache_read_price: 0,
-									cache_write_price: 0,
-								},
-							],
-						},
+						tiers: [
+							{
+								upto: null,
+								input_price: 0,
+								output_price: 0,
+								cache_read_price: 0,
+								cache_write_price: 0,
+							},
+						],
 					},
 					tags: ['Free'],
 					input_modalities: ['text'],

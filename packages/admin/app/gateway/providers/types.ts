@@ -18,6 +18,7 @@ export type ProviderCapabilityBadge =
 export type ProviderImportCatalogRow = {
 	id: string;
 	name: string;
+	name_zh: string;
 	vendor_key: string;
 	icon_key: string;
 	vendor_label: string;
