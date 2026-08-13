@@ -1018,7 +1018,11 @@
 		"waitingForResponse": "レスポンスを待っています...",
 		"noResponse": "レスポンスなし",
 		"thinking": "Thinking",
-		"usage": "使用量"
+		"usage": "使用量",
+		"disableSelected": "選択を無効化",
+		"enableSelected": "選択を有効化",
+		"selectModel": "このモデルを選択",
+		"deselectModel": "選択解除"
 	},
 	"simulator": {
 		"title": "Simulator",

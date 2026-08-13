@@ -1018,7 +1018,11 @@
 		"waitingForResponse": "Waiting for response...",
 		"noResponse": "No response",
 		"thinking": "Thinking",
-		"usage": "Usage"
+		"usage": "Usage",
+		"disableSelected": "Disable Selected",
+		"enableSelected": "Enable Selected",
+		"selectModel": "Select this model",
+		"deselectModel": "Deselect"
 	},
 	"simulator": {
 		"title": "Simulator",

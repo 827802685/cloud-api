@@ -1018,7 +1018,11 @@
 		"waitingForResponse": "等待响应...",
 		"noResponse": "无响应",
 		"thinking": "推理",
-		"usage": "用量"
+		"usage": "用量",
+		"disableSelected": "禁用选中",
+		"enableSelected": "启用选中",
+		"selectModel": "选中该模型",
+		"deselectModel": "取消选中"
 	},
 	"simulator": {
 		"title": "模拟器",

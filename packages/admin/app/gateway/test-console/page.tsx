@@ -116,61 +116,53 @@ function ModelChip(props: {
 	model: ModelOption;
 	selected: boolean;
 	onToggle: () => void;
-	onDisableToggle: () => void;
 }) {
-	const { model, selected, onToggle, onDisableToggle } = props;
+	const { model, selected, onToggle } = props;
 	const displayName = model.display_name || model.id;
 	return (
 		<button
 			type="button"
 			onClick={onToggle}
-			disabled={model.disabled}
+			title={model.disabled ? '已禁用（点击可选中后批量启用）' : undefined}
 			className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
 				model.disabled
-					? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+					? 'border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200'
 					: selected
 						? 'border-blue-500 bg-blue-50 text-blue-900 ring-1 ring-blue-500'
 						: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
 			}`}
 		>
+			<span
+				className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+					selected
+						? 'border-blue-500 bg-blue-500'
+						: model.disabled
+							? 'border-gray-300 bg-gray-100'
+							: 'border-gray-300 bg-white'
+				}`}
+			>
+				{selected && (
+					<svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+						<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+					</svg>
+				)}
+			</span>
 			<ModelVendorIcon vendor={model.vendor} size="compact" />
 			<div className="min-w-0 flex-1">
 				<div className="truncate font-medium">{displayName}</div>
 				<div className="truncate font-mono text-[11px] text-gray-500">{model.id}</div>
 			</div>
-			{model.disabled ? (
-				<button
-					type="button"
-					onClick={(e) => { e.stopPropagation(); onDisableToggle(); }}
-					className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-green-600 hover:bg-green-50"
-					title="启用"
-				>
-					启用
-				</button>
-			) : (
-				<button
-					type="button"
-					onClick={(e) => { e.stopPropagation(); onDisableToggle(); }}
-					className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-red-500 hover:bg-red-50"
-					title="禁用"
-				>
-					禁用
-				</button>
-			)}
-			{selected && (
-				<svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-					<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-				</svg>
-			)}
 		</button>
 	);
 }
 
 function ResultCard(props: {
 	result: TestResult;
+	selected: boolean;
+	onToggleSelect: () => void;
 	t: (key: string) => string;
 }) {
-	const { result, t } = props;
+	const { result, selected, onToggleSelect, t } = props;
 	const isPending = result.status === 'pending' || result.status === 'streaming';
 
 	return (
@@ -183,7 +175,23 @@ function ResultCard(props: {
 		}`}>
 			{/* Header */}
 			<div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
-				<div className="min-w-0">
+				<button
+					type="button"
+					onClick={onToggleSelect}
+					title={selected ? t('deselectModel') : t('selectModel')}
+					className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+						selected
+							? 'border-blue-500 bg-blue-500'
+							: 'border-gray-300 bg-white hover:border-gray-400'
+					}`}
+				>
+					{selected && (
+						<svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+							<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+						</svg>
+					)}
+				</button>
+				<div className="min-w-0 flex-1">
 					<div className="truncate text-sm font-semibold text-gray-900">{result.modelName}</div>
 					<div className="truncate text-[11px] text-gray-500">
 						{result.providerName} · {result.protocol}
@@ -421,25 +429,21 @@ function TestConsolePageInner() {
 		[routes]
 	);
 
-	const toggleModelStatus = useCallback(
-		(modelId: string) => {
-			const model = modelOptions.find((m) => m.id === modelId);
-			if (!model) return;
-			void setModelsStatus([modelId], model.disabled ? 'active' : 'disabled');
-		},
-		[modelOptions, setModelsStatus]
-	);
-
 	const disableSelected = useCallback(() => {
 		void setModelsStatus([...selectedModelIds], 'disabled');
 	}, [selectedModelIds, setModelsStatus]);
 
+	const hasDisabledSelected = useMemo(
+		() => modelOptions.some((m) => m.disabled && selectedModelIds.has(m.id)),
+		[modelOptions, selectedModelIds]
+	);
+
 	const enableSelected = useCallback(() => {
-		const disabledSelected = filteredModelOptions
+		const disabledSelected = modelOptions
 			.filter((m) => m.disabled && selectedModelIds.has(m.id))
 			.map((m) => m.id);
 		void setModelsStatus(disabledSelected, 'active');
-	}, [filteredModelOptions, selectedModelIds, setModelsStatus]);
+	}, [modelOptions, selectedModelIds, setModelsStatus]);
 
 	/* Send test to a single model */
 	const sendToModel = useCallback(
@@ -612,9 +616,18 @@ function TestConsolePageInner() {
 		[prompt]
 	);
 
+	/* 可发送的选中模型：仅包含有 active 路由的模型（禁用模型不参与测试） */
+	const sendableModelIds = useMemo(() => {
+		const activeRouteModelIds = new Set<string>();
+		for (const r of routes) {
+			if (r.status === 'active') activeRouteModelIds.add(r.model_id);
+		}
+		return [...selectedModelIds].filter((id) => activeRouteModelIds.has(id));
+	}, [selectedModelIds, routes]);
+
 	/* Send to all selected models */
 	const sendAll = useCallback(async () => {
-		if (selectedModelIds.size === 0 || !prompt.trim()) return;
+		if (sendableModelIds.length === 0 || !prompt.trim()) return;
 		setIsRunning(true);
 		setResults(new Map());
 
@@ -622,7 +635,7 @@ function TestConsolePageInner() {
 		abortControllersRef.current = controllers;
 
 		const promises: Promise<void>[] = [];
-		for (const modelId of selectedModelIds) {
+		for (const modelId of sendableModelIds) {
 			const route = pickBestRoute(modelId, routes);
 			if (!route) continue;
 			const model = models.find((m) => m.id === modelId);
@@ -634,7 +647,7 @@ function TestConsolePageInner() {
 
 		await Promise.allSettled(promises);
 		setIsRunning(false);
-	}, [selectedModelIds, prompt, routes, models, sendToModel]);
+	}, [sendableModelIds, prompt, routes, models, sendToModel]);
 
 	/* Stop all */
 	const stopAll = useCallback(() => {
@@ -663,15 +676,14 @@ function TestConsolePageInner() {
 		navigator.clipboard.writeText(lines.join('\n'));
 	}, [results]);
 
-	/* Results as sorted array */
+	/* Results as sorted array（展示所有已有结果的模型，卡片上的勾选框独立控制选中状态） */
 	const resultsList = useMemo(() => {
 		const list: TestResult[] = [];
-		for (const id of selectedModelIds) {
-			const r = results.get(id);
-			if (r) list.push(r);
+		for (const r of results.values()) {
+			list.push(r);
 		}
 		return list;
-	}, [selectedModelIds, results]);
+	}, [results]);
 
 	const hasResults = resultsList.length > 0;
 	const allDone = hasResults && resultsList.every((r) => r.status === 'done' || r.status === 'error');
@@ -687,10 +699,37 @@ function TestConsolePageInner() {
 	return (
 		<div className="flex h-full flex-col">
 			{/* Header */}
-			<div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
-				<h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-				<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
+		<div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
+			<div className="flex items-start justify-between gap-4">
+				<div>
+					<h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+					<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
+				</div>
+				<div className="flex shrink-0 items-center gap-2">
+					{statusError && (
+						<span className="max-w-56 truncate rounded bg-red-50 px-2 py-1 text-[11px] text-red-600" title={statusError}>
+							{statusError}
+						</span>
+					)}
+					<button
+						type="button"
+						onClick={disableSelected}
+						disabled={selectedModelIds.size === 0 || statusBusy}
+						className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+					>
+						{t('disableSelected')}
+					</button>
+					<button
+						type="button"
+						onClick={enableSelected}
+						disabled={statusBusy || !hasDisabledSelected}
+						className="rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
+					>
+						{t('enableSelected')}
+					</button>
+				</div>
 			</div>
+		</div>
 
 			{loadError ? (
 				<div className="m-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
@@ -722,55 +761,31 @@ function TestConsolePageInner() {
 									</button>
 								</div>
 							</div>
-							<div className="mb-2 flex items-center gap-1">
-								<button
-									type="button"
-									onClick={disableSelected}
-									disabled={selectedModelIds.size === 0 || statusBusy}
-									className="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
-								>
-									禁用选中
-								</button>
-								<button
-									type="button"
-									onClick={enableSelected}
-									disabled={statusBusy}
-									className="rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
-								>
-									启用已选禁用
-								</button>
-							</div>
-							{statusError && (
-								<div className="mb-2 rounded bg-red-50 px-2 py-1 text-[11px] text-red-600">
-									{statusError}
-								</div>
-							)}
-							<input
-								type="text"
-								value={filterText}
-								onChange={(e) => setFilterText(e.target.value)}
-								placeholder={t('filterModels')}
-								className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-							/>
-						</div>
-						<div className="flex-1 overflow-y-auto px-3 py-2">
-							{filteredModelOptions.length === 0 ? (
-								<p className="py-4 text-center text-xs text-gray-400">{t('noModelsAvailable')}</p>
-							) : (
-								<div className="space-y-1.5">
-									{filteredModelOptions.map((model) => (
-										<ModelChip
-											key={model.id}
-											model={model}
-											selected={selectedModelIds.has(model.id)}
-											onToggle={() => toggleModel(model.id)}
-											onDisableToggle={() => toggleModelStatus(model.id)}
-										/>
-									))}
-								</div>
-							)}
-						</div>
+						<input
+							type="text"
+							value={filterText}
+							onChange={(e) => setFilterText(e.target.value)}
+							placeholder={t('filterModels')}
+							className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
 					</div>
+					<div className="flex-1 overflow-y-auto px-3 py-2">
+						{filteredModelOptions.length === 0 ? (
+							<p className="py-4 text-center text-xs text-gray-400">{t('noModelsAvailable')}</p>
+						) : (
+							<div className="space-y-1.5">
+								{filteredModelOptions.map((model) => (
+									<ModelChip
+										key={model.id}
+										model={model}
+										selected={selectedModelIds.has(model.id)}
+										onToggle={() => toggleModel(model.id)}
+									/>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
 
 					{/* Right panel: Prompt + Results */}
 					<div className="flex flex-1 flex-col min-w-0 overflow-hidden">
@@ -801,11 +816,11 @@ function TestConsolePageInner() {
 										<button
 											type="button"
 											onClick={() => void sendAll()}
-											disabled={selectedModelIds.size === 0 || !prompt.trim()}
+											disabled={sendableModelIds.length === 0 || !prompt.trim()}
 											className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
 										>
 											<PaperAirplaneIcon className="h-4 w-4" />
-											{t('sendToAll', { count: selectedModelIds.size })}
+											{t('sendToAll', { count: sendableModelIds.length })}
 										</button>
 									)}
 									{allDone && hasResults && (
@@ -840,8 +855,14 @@ function TestConsolePageInner() {
 											: 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
 								}`}>
 									{resultsList.map((result) => (
-										<ResultCard key={result.modelId} result={result} t={t} />
-									))}
+									<ResultCard
+										key={result.modelId}
+										result={result}
+										selected={selectedModelIds.has(result.modelId)}
+										onToggleSelect={() => toggleModel(result.modelId)}
+										t={t}
+									/>
+								))}
 								</div>
 							)}
 						</div>

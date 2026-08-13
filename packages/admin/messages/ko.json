@@ -1018,7 +1018,11 @@
 		"waitingForResponse": "응답 대기 중...",
 		"noResponse": "응답 없음",
 		"thinking": "Thinking",
-		"usage": "사용량"
+		"usage": "사용량",
+		"disableSelected": "선택 비활성화",
+		"enableSelected": "선택 활성화",
+		"selectModel": "이 모델 선택",
+		"deselectModel": "선택 해제"
 	},
 	"simulator": {
 		"title": "Simulator",
