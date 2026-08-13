@@ -50,6 +50,56 @@ function extractOpenAiMessageContent(content: unknown): string {
 	return s;
 }
 
+/**
+ * 从文本中提取 <think>...</think> 包裹的推理内容。
+ * 部分上游（如某些开源模型/第三方）把推理放在 content 里用 <think> 标签包裹，
+ * 而非使用 reasoning_content 字段。此函数将其拆分到 reasoning 列。
+ * 支持流式增量：未闭合的 <think> 也会被正确识别为推理中。
+ */
+function extractThinkTagContent(text: string): { reasoning: string; body: string } {
+	if (!text.includes('<think')) {
+		return { reasoning: '', body: text };
+	}
+	let reasoning = '';
+	let body = '';
+	let remaining = text;
+	// 处理所有完整的 <think>...</think> 块
+	while (true) {
+		const openIdx = remaining.indexOf('<think>');
+		if (openIdx === -1) {
+			// 检查是否有未闭合的 <think（流式增量中）
+			const openTagIdx = remaining.indexOf('<think');
+			if (openTagIdx !== -1) {
+				// 找到 <think 起始位置，后面都是推理（未闭合）
+				body += remaining.slice(0, openTagIdx);
+				// 跳过整个 <think...> 标签（可能带属性），取标签后的内容
+				const closeTagIdx = remaining.indexOf('>', openTagIdx);
+				if (closeTagIdx !== -1) {
+					reasoning += remaining.slice(closeTagIdx + 1);
+				} else {
+					// 连标签都不完整，全部当作推理中
+					reasoning += remaining.slice(openTagIdx);
+				}
+			} else {
+				body += remaining;
+			}
+			break;
+		}
+		// 正文：<think> 之前的部分
+		body += remaining.slice(0, openIdx);
+		const afterOpen = remaining.slice(openIdx + 7); // len('<think>') = 7
+		const closeIdx = afterOpen.indexOf('</think>');
+		if (closeIdx === -1) {
+			// 未闭合的 <think>，剩余全是推理内容（流式增量中）
+			reasoning += afterOpen;
+			break;
+		}
+		reasoning += afterOpen.slice(0, closeIdx);
+		remaining = afterOpen.slice(closeIdx + 8); // len('</think>') = 8
+	}
+	return { reasoning, body };
+}
+
 function appendOpenAiDeltaToParts(delta: Record<string, unknown>, parts: MergedAssistantParts): void {
 	const rc = delta.reasoning_content;
 	if (typeof rc === 'string' && rc.length > 0) {
@@ -65,7 +115,10 @@ function appendOpenAiDeltaToParts(delta: Record<string, unknown>, parts: MergedA
 	}
 	const c = delta.content;
 	if (typeof c === 'string' && c.length > 0) {
-		parts.body += c;
+		// 检查 content 中是否包含 <think> 标签，若有则拆分到 reasoning/body
+		const { reasoning, body } = extractThinkTagContent(c);
+		if (reasoning) parts.reasoning += reasoning;
+		if (body) parts.body += body;
 	}
 }
 
@@ -242,7 +295,12 @@ function mergeFromJsonObjectParts(o: unknown, protocol: PlaygroundProtocol): Mer
 		if (typeof msg.thinking === 'string' && msg.thinking.length > 0) {
 			parts.reasoning += msg.thinking;
 		}
-		parts.body += extractOpenAiMessageContent(msg.content);
+		const contentText = extractOpenAiMessageContent(msg.content);
+		if (contentText) {
+			const { reasoning: thinkReasoning, body: thinkBody } = extractThinkTagContent(contentText);
+			parts.reasoning += thinkReasoning;
+			parts.body += thinkBody;
+		}
 		return parts;
 	}
 	if (protocol === 'anthropic') {

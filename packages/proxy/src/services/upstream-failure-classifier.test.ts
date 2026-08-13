@@ -31,9 +31,12 @@ describe('upstream-failure-classifier', () => {
 		});
 	});
 
-	it('fails immediately on client errors', () => {
+	it('fails immediately on client errors (400)', () => {
 		expect(classifyUpstreamHttpFailure(400).action).toBe('fail_immediately');
-		expect(classifyUpstreamHttpFailure(404).action).toBe('fail_immediately');
+	});
+
+	it('retries on 404 (route config issue, no provider circuit)', () => {
+		expect(classifyUpstreamHttpFailure(404)).toEqual({ action: 'retry_key' });
 	});
 
 	it('classifies fetch failures as retry_key without circuit kind', () => {

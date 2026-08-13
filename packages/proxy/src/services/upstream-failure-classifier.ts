@@ -17,7 +17,11 @@ export type UpstreamFailureClassification = {
 /**
  * 对上游 HTTP status 分类。
  * - `retry_key`：可尝试下一 provider（历史命名保留）。
- * - `fail_immediately`：请求本身错误（400/404 等），不重试其它 provider。
+ * - `fail_immediately`：请求本身错误（400 等客户端参数错误），不重试其它 provider。
+ *
+ * 说明：404 属于「该 provider 上不存在此模型/路径」，是路由配置问题而非客户端问题，
+ * 因此归类为 `retry_key`，允许 failover 到下一个 provider。404 不触发 provider 熔断，
+ * 仅记录 route 稳定性失败。
  */
 export function classifyUpstreamHttpFailure(status: number): UpstreamFailureClassification {
 	if (status === 429) {
@@ -32,6 +36,10 @@ export function classifyUpstreamHttpFailure(status: number): UpstreamFailureClas
 	}
 	if (status === 401 || status === 403) {
 		return { action: 'retry_key', alertOnKeySwitch: true, failureKind: 'auth' };
+	}
+	// 404：模型/路径不存在，视为路由配置问题，允许 failover 到下一个 provider
+	if (status === 404) {
+		return { action: 'retry_key' };
 	}
 	return { action: 'fail_immediately' };
 }

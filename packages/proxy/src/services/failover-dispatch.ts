@@ -438,6 +438,9 @@ export async function failoverDispatch(
 					openedOrExtended: true,
 				});
 			}
+		} else if (response.status === 404) {
+			// 404：路由配置问题（模型名/路径不对），只记录 route 稳定性失败，不触发 provider 熔断
+			recordRouteStabilityFailure(route.targetId, 'error');
 		}
 		if (hasNextAttempt) timing?.markAttemptFailover(timingAttempt);
 		console.warn(
