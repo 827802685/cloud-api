@@ -22,7 +22,7 @@
 		"@cloud-api/tool-engines": "*",
 		"@heroicons/react": "^2.2.0",
 		"@lobehub/icons-static-svg": "1.94.0",
-		"@opennextjs/cloudflare": "1.19.4",
+		"@opennextjs/cloudflare": "1.20.2",
 		"@swc/helpers": "^0.5.18",
 		"hono": "^4.13.1",
 		"next": "^16.3.0",
