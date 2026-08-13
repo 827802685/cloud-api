@@ -56,21 +56,24 @@ export async function saveProvider(
 }
 
 export async function deleteProvider(
-	id: string
+	id: string,
+	opts?: { cascade?: boolean }
 ): Promise<{ success: true } | { success: false; message: string }> {
-	const response = await fetch(`/api/admin/providers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+	const qs = opts?.cascade ? '?cascade=true' : '';
+	const response = await fetch(`/api/admin/providers/${encodeURIComponent(id)}${qs}`, { method: 'DELETE' });
 	const data = await readApiJson(response);
 	if (data.success) return { success: true };
 	return { success: false, message: data.message || 'Delete failed' };
 }
 
 export async function batchDeleteProviders(
-	ids: string[]
+	ids: string[],
+	opts?: { cascade?: boolean }
 ): Promise<{ success: true; data: { deleted: number; not_found: string[]; failed: Array<{ id: string; message: string }> } } | { success: false; message: string }> {
 	const response = await fetch('/api/admin/providers/batch-delete', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ ids }),
+		body: JSON.stringify({ ids, cascade: opts?.cascade === true }),
 	});
 	const data = await readApiJson<{ deleted: number; not_found: string[]; failed: Array<{ id: string; message: string }> }>(response);
 	if (data.success && data.data) return { success: true, data: data.data };

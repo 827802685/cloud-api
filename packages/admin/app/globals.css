@@ -55,3 +55,13 @@ textarea::placeholder {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Indeterminate progress bar slide */
+@keyframes progress-slide {
+  0% {
+    left: -33%;
+  }
+  100% {
+    left: 100%;
+  }
+}

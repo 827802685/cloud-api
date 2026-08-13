@@ -276,11 +276,8 @@ export async function getRssSyncDue(repos: GatewayRepositories): Promise<{
  * 匹配平台上已有的 provider（仅限带 API key 且 active 的）。
  * 匹配不到返回 null —— 说明该厂商的 key 尚未配置到平台，跳过该模型。
  */
-async function findProviderWithKey(
-	repos: GatewayRepositories,
-	entry: RssModelEntry
-): Promise<string | null> {
-	return repos.modelRouting.findProviderByVendor(entry.vendor);
+async function findProviderWithKey(repos: GatewayRepositories, vendor: string): Promise<string | null> {
+	return repos.modelRouting.findProviderByVendor(vendor);
 }
 
 /**
@@ -309,13 +306,23 @@ export async function syncFreeModelsFromRss(
 	// 本次同步内已处理过的模型 id，避免同一 id 在 feed 中重复出现时重复创建
 	const seenModelIds = new Set<string>();
 
-	for (const entry of entries) {
+	// 预填充 provider 缓存：一次性并行查询所有唯一厂商，避免逐条串行查询
+	const uniqueVendors = [...new Set(entries.map((e) => e.vendor))];
+	await Promise.all(
+		uniqueVendors.map(async (vendor) => {
+			if (providerCache.has(vendor)) return;
+			providerCache.set(vendor, await findProviderWithKey(repos, vendor));
+		})
+	);
+
+	// 单条处理逻辑（含去重、建模型、建路由）
+	const processEntry = async (entry: RssModelEntry): Promise<void> => {
 		try {
 			// 0. 本次同步内去重：同一 id 只处理一次
 			if (seenModelIds.has(entry.id)) {
 				result.models_skipped++;
 				result.routes_skipped++;
-				continue;
+				return;
 			}
 			seenModelIds.add(entry.id);
 
@@ -326,15 +333,11 @@ export async function syncFreeModelsFromRss(
 			const operation = resolveRssRouteOperation(kind);
 
 			// 1. provider：仅匹配平台上带 key 的已有 provider
-			let providerId = providerCache.get(entry.vendor);
-			if (providerId === undefined) {
-				providerId = await findProviderWithKey(repos, entry);
-				providerCache.set(entry.vendor, providerId);
-			}
+			const providerId = providerCache.get(entry.vendor) ?? null;
 			if (!providerId) {
 				// 该厂商 key 未配置到平台，跳过（不建模型/路由）
 				result.models_no_provider++;
-				continue;
+				return;
 			}
 
 			// 2. 模型（去重：同 id 已存在则跳过）
@@ -363,7 +366,7 @@ export async function syncFreeModelsFromRss(
 			const routeExists = existingRoutes.some((r) => r.provider_id === providerId);
 			if (routeExists) {
 				result.routes_skipped++;
-				continue;
+				return;
 			}
 
 			// weight 用四维评分推荐值
@@ -391,6 +394,13 @@ export async function syncFreeModelsFromRss(
 			const message = e instanceof Error ? e.message : String(e);
 			result.failed.push({ id: entry.id, message });
 		}
+	};
+
+	// 分批并行处理，控制并发避免压垮数据库
+	const CONCURRENCY = 10;
+	for (let i = 0; i < entries.length; i += CONCURRENCY) {
+		const batch = entries.slice(i, i + CONCURRENCY);
+		await Promise.all(batch.map((entry) => processEntry(entry)));
 	}
 
 	// 无论成功失败都记录本次同步时间，避免每次访问都重复触发

@@ -30,6 +30,7 @@ import longcatIcon from '@lobehub/icons-static-svg/icons/longcat.svg';
 import metaIcon from '@lobehub/icons-static-svg/icons/meta.svg';
 import minimaxIcon from '@lobehub/icons-static-svg/icons/minimax.svg';
 import mistralIcon from '@lobehub/icons-static-svg/icons/mistral.svg';
+import modelscopeIcon from '@lobehub/icons-static-svg/icons/modelscope.svg';
 import moonshotIcon from '@lobehub/icons-static-svg/icons/moonshot.svg';
 import nvidiaIcon from '@lobehub/icons-static-svg/icons/nvidia.svg';
 import ollamaIcon from '@lobehub/icons-static-svg/icons/ollama.svg';
@@ -83,6 +84,7 @@ export const vendorIconAssets: Readonly<Record<string, string>> = {
 	meta: assetUrl(metaIcon),
 	minimax: assetUrl(minimaxIcon),
 	mistral: assetUrl(mistralIcon),
+	modelscope: assetUrl(modelscopeIcon),
 	moonshot: assetUrl(moonshotIcon),
 	nvidia: assetUrl(nvidiaIcon),
 	ollama: assetUrl(ollamaIcon),

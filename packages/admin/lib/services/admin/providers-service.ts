@@ -15,7 +15,7 @@ import {
 	inferStaticProviderVendorKey,
 	listStaticProviderImportPresets,
 } from '@/lib/provider-import-preset';
-import { badRequest, conflict, notFound } from './errors';
+import { AdminServiceError, badRequest, conflict, notFound } from './errors';
 import type {
 	AdminCreatedIdOutput,
 	AdminProviderMutationInput,
@@ -164,13 +164,25 @@ export async function updateProviderService(
 /**
  * 删除供应商；不存在抛 `notFound`。
  * `model_routes.provider_id` 无 ON DELETE CASCADE，若仍有路由引用则抛 `conflict`（避免 D1/PG 外键失败变 500）。
+ * 传 `cascade: true` 时先删除该供应商的全部关联路由，再删除供应商。
  */
-export async function deleteProviderService(repos: GatewayRepositories, id: string): Promise<void> {
+export async function deleteProviderService(
+	repos: GatewayRepositories,
+	id: string,
+	opts?: { cascade?: boolean }
+): Promise<void> {
 	const referencingRoutes = await repos.routes.listModelRoutesWithJoins({ providerId: id });
 	if (referencingRoutes.length > 0) {
-		throw conflict(
-			`Cannot delete provider: ${referencingRoutes.length} model route(s) still reference it. Delete or reassign those routes first.`
-		);
+		if (!opts?.cascade) {
+			throw conflict(
+				`Cannot delete provider: ${referencingRoutes.length} model route(s) still reference it. Delete or reassign those routes first.`
+			);
+		}
+		// 级联删除：先删除该供应商的全部关联路由（含空 pool/surface GC）
+		const { deleteModelRouteService } = await import('./model-routes-service');
+		for (const route of referencingRoutes) {
+			await deleteModelRouteService(repos, route.id);
+		}
 	}
 
 	const changes = await repos.providers.deleteProviderById(id);
@@ -180,11 +192,13 @@ export async function deleteProviderService(repos: GatewayRepositories, id: stri
 /**
  * 批量删除供应商。逐条调用 `deleteProviderService` 的删除逻辑：
  * 仍被 model route 引用的供应商记入 `failed`（不删除），其余正常删除。
+ * 传 `cascade: true` 时，被引用的供应商会先删除其关联路由再删除（不再记入 failed）。
  * 不存在的 id 记入 `not_found`；异常记入 `failed`，不回滚已成功删除的条目。
  */
 export async function batchDeleteProvidersService(
 	repos: GatewayRepositories,
-	ids: string[]
+	ids: string[],
+	opts?: { cascade?: boolean }
 ): Promise<AdminProvidersBatchDeleteOutput> {
 	const uniqueIds = [...new Set(ids.map((x) => String(x).trim()).filter((x) => x.length > 0))];
 	if (uniqueIds.length === 0) {
@@ -197,21 +211,13 @@ export async function batchDeleteProvidersService(
 
 	for (const id of uniqueIds) {
 		try {
-			const referencingRoutes = await repos.routes.listModelRoutesWithJoins({ providerId: id });
-			if (referencingRoutes.length > 0) {
-				failed.push({
-					id,
-					message: `Cannot delete provider: ${referencingRoutes.length} model route(s) still reference it. Delete or reassign those routes first.`,
-				});
+			await deleteProviderService(repos, id, { cascade: opts?.cascade });
+			deleted++;
+		} catch (e) {
+			if (e instanceof AdminServiceError && e.status === 404) {
+				not_found.push(id);
 				continue;
 			}
-			const changes = await repos.providers.deleteProviderById(id);
-			if (changes) {
-				deleted++;
-			} else {
-				not_found.push(id);
-			}
-		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			failed.push({ id, message });
 		}

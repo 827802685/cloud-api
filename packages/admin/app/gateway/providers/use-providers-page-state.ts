@@ -178,11 +178,17 @@ export function useProvidersPageState() {
 
 	const handleDelete = useCallback(
 		async (id: string) => {
-			if (!confirm('Are you sure you want to delete this provider?')) return;
+			if (
+				!confirm(
+					'Are you sure you want to delete this provider? If it is still referenced by model routes, those routes will also be deleted (cascade).'
+				)
+			) {
+				return;
+			}
 
 			setIsDeleting(true);
 			try {
-				const result = await deleteProvider(id);
+				const result = await deleteProvider(id, { cascade: true });
 				if (result.success) {
 					setShowModal(false);
 					setEditingProvider(null);
@@ -226,16 +232,21 @@ export function useProvidersPageState() {
 
 	const handleBatchDelete = useCallback(async () => {
 		if (batchSelectedIds.size === 0) return;
+		const cascade = confirm(
+			`Delete ${batchSelectedIds.size} provider(s)?\n\nChoose OK to also delete their associated model routes (cascade).\nChoose Cancel to skip providers still referenced by routes.`
+		);
 		if (
 			!confirm(
-				`Are you sure you want to delete ${batchSelectedIds.size} provider(s)? Providers still referenced by model routes will be skipped. This action cannot be undone.`
+				`Are you sure you want to delete ${batchSelectedIds.size} provider(s)?${
+					cascade ? ' Their associated model routes will also be deleted.' : ' Providers still referenced by model routes will be skipped.'
+				} This action cannot be undone.`
 			)
 		) {
 			return;
 		}
 		setIsBatchDeleting(true);
 		try {
-			const result = await batchDeleteProviders([...batchSelectedIds]);
+			const result = await batchDeleteProviders([...batchSelectedIds], { cascade });
 			if (result.success) {
 				const { deleted, not_found, failed } = result.data;
 				const parts = [`Deleted: ${deleted}`];

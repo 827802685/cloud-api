@@ -41,6 +41,7 @@ const VENDOR_VISUALS: Record<string, IconVisual> = {
 	meta: { url: vendorIconAssets.meta, accent: '#0866ff' },
 	minimax: { url: vendorIconAssets.minimax, accent: '#f25c54' },
 	mistral: { url: vendorIconAssets.mistral, accent: '#ff7000' },
+	modelscope: { url: vendorIconAssets.modelscope, accent: '#6236ff' },
 	moonshot: { url: vendorIconAssets.moonshot, accent: '#7c8ca1' },
 	nvidia: { url: vendorIconAssets.nvidia, accent: '#76b900' },
 	ollama: { url: vendorIconAssets.ollama, accent: '#7c8ca1' },

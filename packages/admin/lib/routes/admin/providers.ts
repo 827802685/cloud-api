@@ -139,7 +139,7 @@ adminProvidersRoutes.patch('/:id', async (c) => {
 	}
 });
 
-/** 批量删除供应商（仍被路由引用的记入 failed，不删除）。 */
+/** 批量删除供应商（`cascade=true` 时先删除关联路由再删供应商）。 */
 adminProvidersRoutes.post('/batch-delete', async (c) => {
 	let body: AdminProvidersBatchDeleteBody;
 	try {
@@ -151,7 +151,8 @@ adminProvidersRoutes.post('/batch-delete', async (c) => {
 		const repos = c.get('repositories');
 		const data: AdminProvidersBatchDeleteOutput = await batchDeleteProvidersService(
 			repos,
-			Array.isArray(body.ids) ? body.ids : []
+			Array.isArray(body.ids) ? body.ids : [],
+			{ cascade: body.cascade === true }
 		);
 		const parts = [`deleted ${data.deleted}`];
 		if (data.not_found.length) {
@@ -172,12 +173,13 @@ adminProvidersRoutes.post('/batch-delete', async (c) => {
 	}
 });
 
-/** 删除供应商行。 */
+/** 删除供应商行；`?cascade=true` 时先删除关联路由再删供应商。 */
 adminProvidersRoutes.delete('/:id', async (c) => {
 	const id = c.req.param('id');
+	const cascade = c.req.query('cascade') === 'true';
 	try {
 		const repos = c.get('repositories');
-		await deleteProviderService(repos, id);
+		await deleteProviderService(repos, id, { cascade });
 		return c.json({ success: true, message: 'Provider deleted successfully' });
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to delete provider');

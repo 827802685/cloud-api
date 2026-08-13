@@ -250,6 +250,8 @@ export type AdminModelsBatchDeleteOutput = {
 /** `POST /admin/providers/batch-delete` 请求体 */
 export type AdminProvidersBatchDeleteBody = {
 	ids: string[];
+	/** 为 true 时，被模型路由引用的供应商会先删除其关联路由再删除。 */
+	cascade?: boolean;
 };
 
 /** `POST /admin/providers/batch-delete` 响应 */
