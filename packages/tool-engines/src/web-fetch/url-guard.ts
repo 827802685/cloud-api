@@ -27,7 +27,7 @@ export function assertFetchUrlSafe(raw: string): UrlGuardResult {
 		return { ok: false, error: 'url must use http or https' };
 	}
 
-	const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+	const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/, '');
 	if (!hostname) {
 		return { ok: false, error: 'url hostname is required' };
 	}
@@ -39,8 +39,25 @@ export function assertFetchUrlSafe(raw: string): UrlGuardResult {
 	return { ok: true, url: parsed.toString(), hostname };
 }
 
+/**
+ * 将 IPv4-mapped IPv6 尾部还原为点分 IPv4。
+ * WHATWG URL 解析器会把 `[::ffff:127.0.0.1]` 规范化为十六进制 `[::ffff:7f00:1]`，
+ * 因此需要同时兼容点分与十六进制两种写法。
+ */
+function ipv4MappedToIpv4(host: string): string | null {
+	const dotted = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(host);
+	if (dotted) return dotted[1];
+	const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(host);
+	if (hex) {
+		const hi = parseInt(hex[1], 16);
+		const lo = parseInt(hex[2], 16);
+		return `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+	}
+	return null;
+}
+
 function isBlockedHost(hostname: string): boolean {
-	const host = hostname.toLowerCase();
+	const host = hostname.toLowerCase().replace(/\.+$/, '');
 	if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) {
 		return true;
 	}
@@ -61,16 +78,14 @@ function isBlockedHost(hostname: string): boolean {
 			host === '::1' ||
 			host.startsWith('fc') ||
 			host.startsWith('fd') ||
-			host.startsWith('fe80:') ||
-			host.startsWith('::ffff:127.') ||
-			host.startsWith('::ffff:10.') ||
-			host.startsWith('::ffff:192.168.')
+			host.startsWith('fe80:')
 		) {
 			return true;
 		}
 	}
-	const ipv4Mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(host);
-	if (ipv4Mapped && isBlockedIpv4(ipv4Mapped[1])) {
+	// IPv4-mapped IPv6（`::ffff:a.b.c.d` 或规范化后的 `::ffff:xxxx:xxxx`）还原为 IPv4 后检查
+	const mappedIpv4 = ipv4MappedToIpv4(host);
+	if (mappedIpv4 && isBlockedIpv4(mappedIpv4)) {
 		return true;
 	}
 	if (isBlockedIpv4(host)) {

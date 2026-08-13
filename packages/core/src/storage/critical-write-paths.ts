@@ -125,6 +125,8 @@ export async function insertRequestUsageAndChargeTx(
 		userId: string;
 		beforeSpent: number;
 		chargedCost: number;
+		/** 读库时的 `users.budget_reset_at`；与之一致才扣费（防并发 lazy reset 把扣费落在错误预算周期） */
+		expectedBudgetResetAt: string | null;
 		audit: Omit<InsertUserBudgetAuditLogParams, 'id' | 'afterSpent' | 'deltaSpent'>;
 	}
 ): Promise<void> {

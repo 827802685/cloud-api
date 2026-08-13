@@ -177,11 +177,12 @@ export async function insertRequestUsageAndChargeTxMy(
 		userId: string;
 		beforeSpent: number;
 		chargedCost: number;
+		/** 读库时的 `users.budget_reset_at`；与之一致才扣费（防并发 lazy reset 把扣费落在错误预算周期） */
+		expectedBudgetResetAt: string | null;
 		audit: Omit<InsertUserBudgetAuditLogParams, 'id' | 'afterSpent' | 'deltaSpent'>;
 	}
 ): Promise<void> {
 	const charged = roundGatewayMoney(params.chargedCost);
-	const afterSpent = roundGatewayMoney(params.beforeSpent + charged);
 	const now = nowIso();
 	await client.drizzle.transaction(async (tx) => {
 		await tx.insert(myRequestLogsTable).values({
@@ -243,6 +244,21 @@ export async function insertRequestUsageAndChargeTxMy(
 		if (!params.shouldChargeBudget) {
 			return;
 		}
+		// 行锁读取当前预算，校验 budget_reset_at 未被并发 lazy reset 改变；变化则跳过扣费与审计
+		const locked = await tx
+			.select({
+				budgetSpent: myUsersTable.budgetSpent,
+				budgetResetAt: myUsersTable.budgetResetAt,
+			})
+			.from(myUsersTable)
+			.where(eq(myUsersTable.id, params.userId))
+			.for('update')
+			.limit(1);
+		const current = locked[0];
+		if (!current) return;
+		const currentResetAt = current.budgetResetAt ?? null;
+		if (currentResetAt !== params.expectedBudgetResetAt) return;
+		const realAfterSpent = roundGatewayMoney(parseMoney(current.budgetSpent) + charged);
 		await tx
 			.update(myUsersTable)
 			.set({
@@ -251,7 +267,7 @@ export async function insertRequestUsageAndChargeTxMy(
 			})
 			.where(eq(myUsersTable.id, params.userId));
 
-		const auditRow = userBudgetAuditToInsertRowForUsageCharge(params.userId, afterSpent, charged, params.audit);
+		const auditRow = userBudgetAuditToInsertRowForUsageCharge(params.userId, realAfterSpent, charged, params.audit);
 		await tx.insert(myUserAuditLogsTable).values(toUserAuditLogDrizzleInsert(auditRow, now));
 	});
 }

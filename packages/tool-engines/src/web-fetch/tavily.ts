@@ -2,6 +2,7 @@
  * Tavily Extract API（https://api.tavily.com/extract）。
  */
 
+import { fetchBoundedText } from './fetch-http';
 import { WebFetchProviderError, type WebFetchParams, type WebFetchResult } from './types';
 
 type TavilyExtractResult = {
@@ -39,18 +40,22 @@ function extractErrorMessage(json: TavilyRawResponse, fallback: string): string 
 
 export async function fetchTavilyUrl(params: WebFetchParams): Promise<WebFetchResult> {
 	const fetchImpl = params.fetchImpl ?? fetch;
-	const response = await fetchImpl(TAVILY_EXTRACT_ENDPOINT, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${params.apiKey}`,
-			'Content-Type': 'application/json',
+	const { response, text } = await fetchBoundedText(
+		fetchImpl,
+		TAVILY_EXTRACT_ENDPOINT,
+		{
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${params.apiKey}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				urls: [params.url],
+			}),
 		},
-		body: JSON.stringify({
-			urls: [params.url],
-		}),
-	});
+		{ provider: 'tavily' }
+	);
 
-	const text = await response.text();
 	let json: TavilyRawResponse;
 	try {
 		json = JSON.parse(text) as TavilyRawResponse;

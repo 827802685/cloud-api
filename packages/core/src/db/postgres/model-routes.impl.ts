@@ -11,6 +11,8 @@ import {
 	providersTable as pgProviders,
 	routePoolsTable as pgPools,
 } from '../../storage/drizzle/schema.pg';
+import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
+import { isPgDuplicateKeyError } from '../shared/duplicate-key';
 
 function snakeToCamel(key: string): string {
 	return key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
@@ -182,25 +184,44 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 				return { poolId: existing[0].route_pool_id, surfaceId: existing[0].id };
 			}
 
-			await pg.begin(async (tx) => {
-				await tx`
-					INSERT INTO route_pools
-						(id, model_id, route_group, name, strategy, status, created_at, updated_at)
-					VALUES (
-						${params.poolId}, ${params.modelId}, ${params.routeGroup}, ${params.poolName},
-						NULL, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-					)
-				`;
-				await tx`
-					INSERT INTO model_surfaces
-						(id, model_id, route_group, request_protocol, request_operation, route_pool_id, status, created_at, updated_at)
-					VALUES (
-						${params.surfaceId}, ${params.modelId}, ${params.routeGroup},
-						${params.requestProtocol}, ${params.requestOperation}, ${params.poolId},
-						'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-					)
-				`;
-			});
+			try {
+				await pg.begin(async (tx) => {
+					await tx`
+						INSERT INTO route_pools
+							(id, model_id, route_group, name, strategy, status, created_at, updated_at)
+						VALUES (
+							${params.poolId}, ${params.modelId}, ${params.routeGroup}, ${params.poolName},
+							NULL, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+						)
+					`;
+					await tx`
+						INSERT INTO model_surfaces
+							(id, model_id, route_group, request_protocol, request_operation, route_pool_id, status, created_at, updated_at)
+						VALUES (
+							${params.surfaceId}, ${params.modelId}, ${params.routeGroup},
+							${params.requestProtocol}, ${params.requestOperation}, ${params.poolId},
+							'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+						)
+					`;
+				});
+			} catch (err) {
+				// 并发下另一请求已插入相同 surface → 忽略重复键，重新读取权威行
+				if (!isPgDuplicateKeyError(err)) throw err;
+			}
+
+			// 并发竞态下以数据库中的权威行为准（可能由其他请求先插入）
+			const after = await pg<Array<{ id: string; route_pool_id: string }>>`
+				SELECT id, route_pool_id
+				FROM model_surfaces
+				WHERE model_id = ${params.modelId}
+				  AND lower(route_group) = lower(${params.routeGroup})
+				  AND lower(request_protocol) = lower(${params.requestProtocol})
+				  AND request_operation = ${params.requestOperation}
+				LIMIT 1
+			`;
+			if (after[0]) {
+				return { poolId: after[0].route_pool_id, surfaceId: after[0].id };
+			}
 			return { poolId: params.poolId, surfaceId: params.surfaceId };
 		},
 
@@ -253,6 +274,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 			const set: Record<string, unknown> = {};
 			for (const [key, value] of Object.entries(patch)) {
 				if (value === undefined) continue;
+				if (!MODEL_ROUTE_PATCH_COLS.has(key)) continue;
 				const camel = snakeToCamel(key);
 				set[camel] = value;
 			}

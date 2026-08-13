@@ -4,6 +4,7 @@
 import { createMiddleware } from 'hono/factory';
 import { getMasterKey } from '@/lib/services/admin/master-key-service';
 import type { AdminEnv } from '@/lib/admin-env';
+import { constantTimeEqual } from '@/lib/auth';
 
 export const requireMasterKey = createMiddleware<AdminEnv>(async (c, next) => {
 	const repos = c.get('repositories');
@@ -13,7 +14,7 @@ export const requireMasterKey = createMiddleware<AdminEnv>(async (c, next) => {
 	}
 	const auth = c.req.header('Authorization');
 	const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-	if (!token || token !== masterKey) {
+	if (!token || !constantTimeEqual(token, masterKey)) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 	await next();

@@ -6,6 +6,7 @@ import type { PostgresDatabaseClient } from '../../storage/database-client';
 import type { ModelsRepository } from '../../storage/gateway-repository-interfaces';
 import type { ModelWithRouteCountsRow } from '../../storage/repository-dtos';
 import { modelsTable as pgModelsTable } from '../../storage/drizzle/schema.pg';
+import { MODEL_PATCH_COLS } from '../patch-allowlists';
 
 function snakeToCamel(key: string): string {
 	return key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
@@ -87,6 +88,7 @@ export function createPostgresModelsRepository(db: PostgresDatabaseClient): Mode
 			const set: Record<string, unknown> = {};
 			for (const [key, value] of Object.entries(rest)) {
 				if (key === 'id' || value === undefined) continue;
+				if (!MODEL_PATCH_COLS.has(key)) continue;
 				const camel = snakeToCamel(key);
 				if (camel === 'pricingProfile' && value != null) {
 					set[camel] = String(value);

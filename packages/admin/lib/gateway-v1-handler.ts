@@ -114,10 +114,10 @@ async function handle(request: Request): Promise<Response> {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
+		// 不把内部 error.message / String(error) 透出给未认证的公共客户端，避免信息泄露
 		return Response.json(
 			{
 				error: 'Internal server error',
-				message: error instanceof Error ? error.message : String(error),
 			},
 			{ status: 500 }
 		);

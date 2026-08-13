@@ -4,6 +4,7 @@
 import type { D1DatabaseClient } from '../../storage/database-client';
 import type { ModelRoutesRepository } from '../../storage/gateway-repository-interfaces';
 import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repository-dtos';
+import { isD1DuplicateKeyError } from '../shared/duplicate-key';
 import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
@@ -106,29 +107,51 @@ export function createD1ModelRoutesRepository(db: D1DatabaseClient): ModelRoutes
 				.first<{ id: string; route_pool_id: string }>();
 			if (existing) return { poolId: existing.route_pool_id, surfaceId: existing.id };
 
-			await raw.batch([
-				raw
-					.prepare(
-						`INSERT INTO route_pools
-						 (id, model_id, route_group, name, strategy, status, created_at, updated_at)
-						 VALUES (?, ?, ?, ?, NULL, 'active', datetime('now'), datetime('now'))`
-					)
-					.bind(params.poolId, params.modelId, params.routeGroup, params.poolName),
-				raw
-					.prepare(
-						`INSERT INTO model_surfaces
-						 (id, model_id, route_group, request_protocol, request_operation, route_pool_id, status, created_at, updated_at)
-						 VALUES (?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`
-					)
-					.bind(
-						params.surfaceId,
-						params.modelId,
-						params.routeGroup,
-						params.requestProtocol,
-						params.requestOperation,
-						params.poolId
-					),
-			]);
+			try {
+				await raw.batch([
+					raw
+						.prepare(
+							`INSERT INTO route_pools
+							 (id, model_id, route_group, name, strategy, status, created_at, updated_at)
+							 VALUES (?, ?, ?, ?, NULL, 'active', datetime('now'), datetime('now'))`
+						)
+						.bind(params.poolId, params.modelId, params.routeGroup, params.poolName),
+					raw
+						.prepare(
+							`INSERT INTO model_surfaces
+							 (id, model_id, route_group, request_protocol, request_operation, route_pool_id, status, created_at, updated_at)
+							 VALUES (?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`
+						)
+						.bind(
+							params.surfaceId,
+							params.modelId,
+							params.routeGroup,
+							params.requestProtocol,
+							params.requestOperation,
+							params.poolId
+						),
+				]);
+			} catch (err) {
+				// 并发下另一请求已插入相同 surface → 忽略重复键，重新读取权威行
+				if (!isD1DuplicateKeyError(err)) throw err;
+			}
+
+			// 并发竞态下以数据库中的权威行为准（可能由其他请求先插入）
+			const after = await raw
+				.prepare(
+					`SELECT id, route_pool_id FROM model_surfaces
+					 WHERE model_id = ? AND lower(route_group) = lower(?)
+					   AND lower(request_protocol) = lower(?) AND request_operation = ?
+					 LIMIT 1`
+				)
+				.bind(
+					params.modelId,
+					params.routeGroup,
+					params.requestProtocol,
+					params.requestOperation
+				)
+				.first<{ id: string; route_pool_id: string }>();
+			if (after) return { poolId: after.route_pool_id, surfaceId: after.id };
 			return { poolId: params.poolId, surfaceId: params.surfaceId };
 		},
 

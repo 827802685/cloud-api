@@ -20,6 +20,7 @@ import {
 /** OpenAI / Anthropic / Gemini 出站 capability（可扩展）。 */
 export type ProviderEndpointCapability =
 	| 'chat'
+	| 'responses'
 	| 'images.generations'
 	| 'images.edits'
 	| 'audio.transcriptions'
@@ -30,6 +31,7 @@ export type ProviderEndpointCapability =
 
 export const OPENAI_ENDPOINT_CAPABILITIES = [
 	'chat',
+	'responses',
 	'images.generations',
 	'images.edits',
 	'audio.transcriptions',
@@ -376,6 +378,8 @@ export function resolveUpstreamEndpoint(
 		switch (resolvedCapability) {
 			case 'chat':
 				return `${root}/chat/completions`;
+			case 'responses':
+				return `${root}/responses`;
 			case 'images.generations':
 				return buildOpenAiCompatibleImagesUrl(root, 'generations');
 			case 'images.edits':

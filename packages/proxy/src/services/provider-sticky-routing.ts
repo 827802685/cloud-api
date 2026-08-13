@@ -139,14 +139,15 @@ export async function resolveStickySession(
 	}
 ): Promise<{ session: StickySession | null; stickyRoute: RouteResult | null }> {
 	const routePoolId = params.routePoolId?.trim() || '';
-	if (!routePoolId || !params.config.enabled || !params.affinityKey) {
+	const affinityKey = params.affinityKey?.trim() || '';
+	if (!routePoolId || !params.config.enabled || !affinityKey) {
 		return { session: null, stickyRoute: null };
 	}
 
 	const nowMs = params.nowMs ?? Date.now();
 	let affinityHash: string;
 	try {
-		affinityHash = await hashAffinityKey(params.affinityKey);
+		affinityHash = await hashAffinityKey(affinityKey);
 	} catch (err) {
 		console.warn('[Gateway Sticky] affinity hash failed; sticky disabled for request', err);
 		return {

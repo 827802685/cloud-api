@@ -10,6 +10,7 @@ import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';
 import { extractUpstreamRequestId, normalizeUpstreamId } from './upstream-request-id';
+import { sanitizeJsonResponseText, sanitizeSseDataLine } from '../response-sanitizer';
 import type { RequestTimingAttempt, RequestTimingCollector } from '../request-timing';
 
 const EMPTY_USAGE_LOCAL: UsageFromStream = {
@@ -24,6 +25,7 @@ const EMPTY_USAGE_LOCAL: UsageFromStream = {
 
 const POST_DISCONNECT_DRAIN_MS = 90_000;
 const decoder = new TextDecoder();
+const encoder = new TextEncoder();
 
 type GeminiUsageMetadata = {
   promptTokenCount?: number;
@@ -153,28 +155,39 @@ function parseSSEChunk(
   state: SSEState,
   usage: UsageFromStream,
   timing?: RequestTimingCollector | null
-): void {
+): string {
   state.lineBuffer += decoder.decode(chunk, { stream: true });
   const lines = state.lineBuffer.split('\n');
   state.lineBuffer = lines.pop() ?? '';
+  let forward = '';
   for (const line of lines) {
-    if (!line.startsWith('data: ')) continue;
+    if (!line.startsWith('data: ')) {
+      forward += line + '\n';
+      continue;
+    }
     const data = line.slice(6).trim();
-    if (!data || data === '[DONE]') continue;
+    if (!data || data === '[DONE]') {
+      forward += line + '\n';
+      continue;
+    }
     parseJsonUsage(data, usage, timing);
+    // 过滤内部元数据字段（extra_content 等）
+    forward += sanitizeSseDataLine(line) + '\n';
   }
+  return forward;
 }
 
 function processRemainingLineBuffer(
   state: SSEState,
   usage: UsageFromStream,
   timing?: RequestTimingCollector | null
-): void {
+): string {
   const line = state.lineBuffer.trim();
-  if (!line.startsWith('data: ')) return;
+  if (!line.startsWith('data: ')) return '';
   const data = line.slice(6).trim();
-  if (!data || data === '[DONE]') return;
+  if (!data || data === '[DONE]') return line + '\n';
   parseJsonUsage(data, usage, timing);
+  return sanitizeSseDataLine(line) + '\n';
 }
 
 async function pumpWithUsageTracking(
@@ -201,16 +214,25 @@ async function pumpWithUsageTracking(
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        processRemainingLineBuffer(state, usage, timing);
+        const forward = processRemainingLineBuffer(state, usage, timing);
+        if (forward && !clientDisconnected) {
+          try {
+            await writer.write(encoder.encode(forward));
+          } catch {
+            clientDisconnected = true;
+            disconnectTime = Date.now();
+            usage.cancelled = true;
+          }
+        }
         break;
       }
 
       if (value.byteLength > 0) timing?.markFirstByte();
-      parseSSEChunk(value, state, usage, timing);
+      const forward = parseSSEChunk(value, state, usage, timing);
 
-      if (!clientDisconnected) {
+      if (forward && !clientDisconnected) {
         try {
-          await writer.write(value);
+          await writer.write(encoder.encode(forward));
         } catch {
           clientDisconnected = true;
           disconnectTime = Date.now();
@@ -287,8 +309,10 @@ async function nonStreamResponseWithUsage(
     timing?.markStreamComplete();
     const usage: UsageFromStream = { ...EMPTY_USAGE_LOCAL };
     parseJsonUsage(text, usage);
+    // 过滤内部元数据字段（extra_content 等），只返回干净内容
+    const sanitizedText = sanitizeJsonResponseText(text);
     return {
-      response: new Response(text, {
+      response: new Response(sanitizedText, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,

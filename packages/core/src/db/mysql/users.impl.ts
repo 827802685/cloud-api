@@ -21,12 +21,14 @@ function userListOrderByClauses(sort: UserListSortField, order: UserListSortOrde
 	const tie = isAsc ? asc(myUsersTable.createdAt) : desc(myUsersTable.createdAt);
 	if (sort === 'budget_reset_at') {
 		const col = myUsersTable.budgetResetAt;
-		const primary = isAsc ? sql`${col} ASC NULLS LAST` : sql`${col} DESC NULLS FIRST`;
+		// MySQL 8 不支持 `NULLS FIRST/LAST`；用 `IS NULL` 排序表达式模拟：
+		// ASC 时 NULL 排最后（`col IS NULL, col ASC`），DESC 时 NULL 排最前（`col IS NULL DESC, col DESC`）。
+		const primary = isAsc ? sql`${col} IS NULL, ${col} ASC` : sql`${col} IS NULL DESC, ${col} DESC`;
 		return [primary, tie];
 	}
 	if (sort === 'budget_max') {
 		const col = myUsersTable.budgetMax;
-		const primary = isAsc ? sql`${col} ASC NULLS LAST` : sql`${col} DESC NULLS FIRST`;
+		const primary = isAsc ? sql`${col} IS NULL, ${col} ASC` : sql`${col} IS NULL DESC, ${col} DESC`;
 		return [primary, tie];
 	}
 	if (sort === 'budget_spent') {

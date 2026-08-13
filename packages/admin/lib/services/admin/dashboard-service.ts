@@ -52,7 +52,7 @@ import {
 } from '@cloud-api/core/db/model-route-policy';
 import { ROUTE_STRATEGY_KEY } from '@cloud-api/core/lib/route-strategy-system-config';
 import { badRequest } from './errors';
-import { clampAnalyticsRange, rangeToDates, resolveStatsDateRange } from './shared';
+import { clampAnalyticsRange, parsePaginationParam, rangeToDates, resolveStatsDateRange } from './shared';
 import { getBusinessDayWindow, getBusinessTimezone } from '@cloud-api/core/lib/business-timezone';
 import { normalizeUpstreamProtocol } from '@cloud-api/core/upstream-protocol';
 import type {
@@ -125,8 +125,8 @@ export async function listAdminGlobalRequestLogsService(
 			throw badRequest(e instanceof Error ? e.message : 'Invalid protocol');
 		}
 	}
-	const page = Math.max(1, Number.parseInt(String(input.page ?? '1'), 10));
-	const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(input.page_size ?? '20'), 10)));
+	const page = parsePaginationParam(input.page, 1);
+	const pageSize = parsePaginationParam(input.page_size, 20, 100);
 	const result = await repos.requestLogs.getRequestLogs({
 		page,
 		pageSize,
@@ -163,8 +163,8 @@ export async function listAdminGlobalBudgetAuditLogsService(
 		end_date?: string;
 	}
 ): Promise<AdminGlobalBudgetAuditLogsOutput> {
-	const page = Math.max(1, Number.parseInt(String(input.page ?? '1'), 10));
-	const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(input.page_size ?? '20'), 10)));
+	const page = parsePaginationParam(input.page, 1);
+	const pageSize = parsePaginationParam(input.page_size, 20, 100);
 	const eventTypes = (Array.isArray(input.event_type) ? input.event_type : input.event_type ? [input.event_type] : [])
 		.flatMap((value) => value.split(','))
 		.map((value) => value.trim())

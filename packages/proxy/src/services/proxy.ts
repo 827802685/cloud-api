@@ -5,6 +5,7 @@
 import type { GatewayRepositories } from '@cloud-api/core';
 import type { RouteResult } from './model-router';
 import { dispatchOpenAiRoute } from './egress/openai-driver';
+import { dispatchOpenAiResponsesRoute } from './egress/openai-responses-driver';
 import {
 	dispatchOpenAiImageEdits,
 	dispatchOpenAiImageGenerations,
@@ -125,6 +126,27 @@ export async function proxyAnthropicMessages(
 		'anthropic',
 		(route, signal, timing?: RequestTimingCollector | null, attempt?: RequestTimingAttempt) =>
 			dispatchAnthropicRoute(route, body, signal, timing, attempt),
+		requestSignal,
+		options
+	);
+}
+
+/**
+ * 代理 OpenAI Responses API（`/v1/responses`，供 codex++ / Codex CLI 接入）。
+ */
+export async function proxyResponses(
+	repos: GatewayRepositories,
+	routes: RouteResult[],
+	body: Record<string, unknown>,
+	requestSignal?: AbortSignal,
+	options?: FailoverDispatchOptions
+): Promise<ProxyResult> {
+	return failoverDispatch(
+		repos,
+		routes,
+		'openai',
+		(route, signal, timing?: RequestTimingCollector | null, attempt?: RequestTimingAttempt) =>
+			dispatchOpenAiResponsesRoute(route, body, signal, timing, attempt),
 		requestSignal,
 		options
 	);

@@ -30,7 +30,7 @@ import {
 } from '@cloud-api/core/db/user-audit-snapshot';
 import { buildMetadataAuditChange } from './admin-profile-audit-metadata';
 import { badRequest, conflict, notFound } from './errors';
-import { normalizeMetadataInput } from './shared';
+import { normalizeMetadataInput, parseBudgetPeriod } from './shared';
 import type { AdminUserCreateInput, AdminUserUpdateInput, AdminBudgetTransitionInput, JsonObject } from './types';
 
 const UUID_RE =
@@ -140,7 +140,7 @@ export async function createAdminUser(repos: GatewayRepositories, input: AdminUs
 	if (!emailTrim) {
 		throw badRequest('email is required');
 	}
-	const budget_period = (input.budget_period ?? 'none') as BudgetPeriod;
+	const budget_period = parseBudgetPeriod(input.budget_period, 'none');
 	const budget_max = input.budget_max === undefined ? 0 : input.budget_max;
 	const budget_base =
 		input.budget_base === undefined ? (budget_max == null ? 0 : roundGatewayMoney(Number(budget_max))) : roundGatewayMoney(Number(input.budget_base ?? 0));
@@ -202,7 +202,9 @@ export async function updateAdminUser(repos: GatewayRepositories, raw: string, i
 
 	const budget_max_in = input.budget_max;
 	const budget_base_in = input.budget_base;
-	const budget_period_in = input.budget_period;
+	// 仅在提供时校验；未提供保持 undefined（沿用行内现有值）
+	const budget_period_in =
+		input.budget_period === undefined ? undefined : parseBudgetPeriod(input.budget_period);
 	const budget_spent_in = input.budget_spent;
 	const hasBudgetField =
 		budget_max_in !== undefined ||

@@ -150,6 +150,7 @@ export async function chargeToolUsage(params: ChargeToolUsageParams): Promise<{ 
 		shouldChargeBudget,
 		beforeSpent,
 		chargedCost,
+		expectedBudgetResetAt: userSnapshot?.budgetResetAt ?? null,
 		audit: {
 			apiKeyId: params.apiKeyId,
 			eventType: 'usage_charge',

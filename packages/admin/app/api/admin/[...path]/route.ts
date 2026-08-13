@@ -4,7 +4,7 @@
  * - 外部（如 your-account-portal）：直接 `Authorization: Bearer`，须与存储中的 `system_config.MASTER_KEY` 一致。
  */
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { checkAuth } from '@/lib/auth';
+import { getSessionCookieValue, verifySessionCookieValue, constantTimeEqual } from '@/lib/auth';
 import type { AdminBindings } from '@/lib/admin-env';
 import { getAdminApp } from '@/lib/admin-app';
 import { getCloudflareEnv } from '@/lib/cloudflare';
@@ -97,7 +97,9 @@ async function handle(request: Request): Promise<Response> {
 		}
 
 		let outbound: Request;
-		if (checkAuth(request)) {
+		const sessionCookie = getSessionCookieValue(request);
+		const sessionValid = await verifySessionCookieValue(sessionCookie, masterKey);
+		if (sessionValid) {
 			const h = new Headers(request.headers);
 			h.set('Authorization', `Bearer ${masterKey}`);
 			outbound = new Request(request.url, {
@@ -109,7 +111,7 @@ async function handle(request: Request): Promise<Response> {
 		} else {
 			const auth = request.headers.get('Authorization');
 			const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-			if (!token || token !== masterKey) {
+			if (!token || !constantTimeEqual(token, masterKey)) {
 				return Response.json({ success: false, message: 'Unauthorized' }, { status: 401 });
 			}
 			outbound = request;

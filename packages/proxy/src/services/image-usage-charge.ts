@@ -512,7 +512,13 @@ export async function recordImageUsage(params: RecordImageUsageParams): Promise<
 
 	let costs: ImageCostBreakdown;
 	if (isUncertainCharge) {
-		if (mode === 'per_image' && profile && profileHasImagePerImagePricing(profile)) {
+		if (params.clientAbortPrecheck && params.clientAbortPrecheck.chargedCost > 0) {
+			// clientAbortPrecheck 优先：当预算预检已扣费时，直接使用预检结果，避免 per_image 路径重算导致双重扣费
+			costs = withUncertainResultAudit(
+				params.clientAbortPrecheck,
+				resolveUncertainUsageSource(imageAbortReason)
+			);
+		} else if (mode === 'per_image' && profile && profileHasImagePerImagePricing(profile)) {
 			const policy = profile.image?.uncertain_result_policy ?? 'requested';
 			if (policy === 'zero') {
 				const factors = await resolveRouteFactors(
@@ -544,11 +550,6 @@ export async function recordImageUsage(params: RecordImageUsageParams): Promise<
 					resolveUncertainUsageSource(imageAbortReason)
 				);
 			}
-		} else if (params.clientAbortPrecheck && params.clientAbortPrecheck.chargedCost > 0) {
-			costs = withUncertainResultAudit(
-				params.clientAbortPrecheck,
-				resolveUncertainUsageSource(imageAbortReason)
-			);
 		} else {
 			const factors = await resolveRouteFactors(
 				params.repos,
@@ -730,6 +731,7 @@ export async function recordImageUsage(params: RecordImageUsageParams): Promise<
 		shouldChargeBudget,
 		beforeSpent,
 		chargedCost,
+		expectedBudgetResetAt: userSnapshot?.budgetResetAt ?? null,
 		audit: {
 			apiKeyId: params.apiKeyId,
 			eventType: 'usage_charge',

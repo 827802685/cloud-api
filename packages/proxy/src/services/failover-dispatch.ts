@@ -237,12 +237,17 @@ export async function failoverDispatch(
 	const routePoolId =
 		options?.routePoolId ?? protocolRoutes.find((r) => r.routePoolId)?.routePoolId ?? null;
 
+	// 统一时间戳：粘性会话解析与尝试计划共享同一 nowMs，
+	// 避免两者各自取 Date.now() 导致绑定有效期/熔断判断漂移（竞态）。
+	const nowMs = Date.now();
+
 	const { session: stickySession, stickyRoute } = stickyConfig?.enabled
 		? await resolveStickySession(repos, {
 				routePoolId,
 				affinityKey,
 				config: stickyConfig,
 				candidates: protocolRoutes,
+				nowMs,
 			})
 		: { session: null, stickyRoute: null };
 
@@ -255,7 +260,7 @@ export async function failoverDispatch(
 		protocolRoutes,
 		{ affinityKey, tierKeyPrefix },
 		strategy,
-		Date.now(),
+		nowMs,
 		tierStrategies
 	);
 	const attempts = mergeStickyIntoAttempts(plan.attempts, stickyRoute);

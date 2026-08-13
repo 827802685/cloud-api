@@ -317,6 +317,7 @@ export async function recordUsage(
 		shouldChargeBudget,
 		beforeSpent,
 		chargedCost,
+		expectedBudgetResetAt: userSnapshot?.budgetResetAt ?? null,
 		audit: {
 			apiKeyId: params.api_key_id,
 			eventType: 'usage_charge',

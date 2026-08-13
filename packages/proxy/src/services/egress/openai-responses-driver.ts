@@ -1,5 +1,12 @@
 /**
- * Anthropic Messages 协议出站：组装 URL、合并路由默认参数、流式 SSE 解析 usage，并在断连后限时 drain。
+ * OpenAI Responses API（`/v1/responses`）出站驱动。
+ *
+ * 供 codex++ / Codex CLI 等客户端接入：把请求转发到上游 `{base}/responses`，
+ * 解析流式/非流式响应中的 `usage` 用于记账，并在转发前过滤内部元数据字段
+ * （`extra_content` 等，见 `response-sanitizer`）。
+ *
+ * 流式响应是带 `event:` 行的 SSE（`response.created` / `response.output_text.delta` /
+ * `response.completed` 等），`data:` 行是 JSON 对象；`response.completed` 事件携带完整 `usage`。
  */
 import { resolveUpstreamEndpoint } from '@cloud-api/core';
 import type { RouteResult } from '../model-router';
@@ -19,38 +26,43 @@ const EMPTY_USAGE_LOCAL: UsageFromStream = {
   raw_usage: null,
 };
 
+/** Client disconnected后继续从上游读取以争取拿到末尾 usage 的最大时长。 */
 const POST_DISCONNECT_DRAIN_MS = 90_000;
+
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
-type AnthropicUsage = {
+type ResponsesUsage = {
   input_tokens?: number;
   output_tokens?: number;
-  cache_read_input_tokens?: number;
-  cache_creation_input_tokens?: number;
+  total_tokens?: number;
+  input_tokens_details?: {
+    cached_tokens?: number;
+    text_tokens?: number;
+    audio_tokens?: number;
+  };
+  output_tokens_details?: {
+    reasoning_tokens?: number;
+    text_tokens?: number;
+    audio_tokens?: number;
+  };
 };
 
 type SSEState = { lineBuffer: string };
 
-function usageFromAnthropic(u: AnthropicUsage): UsageFromStream {
-  const netInputAfterBreakpoint = u.input_tokens ?? 0;
+function usageFromResponses(u: ResponsesUsage): UsageFromStream {
+  const inputTokens = u.input_tokens ?? 0;
   const outputTokens = u.output_tokens ?? 0;
-  const cacheRead = u.cache_read_input_tokens ?? 0;
-  const cacheWrite = u.cache_creation_input_tokens ?? 0;
-  // Anthropic: `input_tokens` is only tokens after the last cache breakpoint; cache_* are separate additive buckets.
-  // Total input = net + cache_read + cache_creation (see Anthropic prompt caching docs).
-  // `computeMeteredCost` expects OpenAI-like semantics: `input_tokens` = total prompt, then
-  // regular = input_tokens - cache_read - cache_write.
-  const inputTokensTotal = netInputAfterBreakpoint + cacheRead + cacheWrite;
-  const rawJson = JSON.stringify(u);
+  const cacheRead = u.input_tokens_details?.cached_tokens ?? 0;
+  const reasoning = u.output_tokens_details?.reasoning_tokens ?? 0;
   return {
-    input_tokens: inputTokensTotal,
+    input_tokens: inputTokens,
     output_tokens: outputTokens,
     cache_read_tokens: cacheRead,
-    cache_write_tokens: cacheWrite,
-    reasoning_tokens: 0,
-    total_tokens: inputTokensTotal + outputTokens,
-    raw_usage: rawJson,
+    cache_write_tokens: 0,
+    reasoning_tokens: reasoning,
+    total_tokens: u.total_tokens ?? inputTokens + outputTokens,
+    raw_usage: JSON.stringify(u),
   };
 }
 
@@ -64,54 +76,25 @@ function applyUsage(target: UsageFromStream, next: UsageFromStream): void {
   target.raw_usage = next.raw_usage;
 }
 
-export function hasAnthropicReasoningDelta(parsed: {
-  type?: string;
-  delta?: { type?: unknown; thinking?: unknown };
-}): boolean {
-  if (parsed.type !== 'content_block_delta') return false;
-  const delta = parsed.delta;
-  if (!delta) return false;
-  if (delta.type === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking.length > 0) {
-    return true;
-  }
-  return false;
-}
-
-export function hasAnthropicContentDelta(parsed: {
-  type?: string;
-  delta?: { type?: unknown; text?: unknown; partial_json?: unknown };
-}): boolean {
-  if (parsed.type !== 'content_block_delta' && parsed.type !== 'message_delta') return false;
-  const delta = parsed.delta;
-  if (!delta) return false;
-  if (delta.type === 'text_delta' && typeof delta.text === 'string' && delta.text.length > 0) return true;
-  if (typeof delta.text === 'string' && delta.text.length > 0) return true;
-  if (typeof delta.partial_json === 'string' && delta.partial_json.length > 0) return true;
-  return false;
-}
-
-function parseEventData(data: string, usage: UsageFromStream, timing?: RequestTimingCollector | null): void {
+/** 从单条 `data:` JSON 解析 usage / message id（`response.completed` 事件携带完整 usage）。 */
+function processDataLine(data: string, usage: UsageFromStream, timing?: RequestTimingCollector | null): void {
   if (!data || data === '[DONE]') return;
   try {
     const parsed = JSON.parse(data) as {
+      id?: string;
       type?: string;
-      delta?: { type?: unknown; text?: unknown; partial_json?: unknown; thinking?: unknown };
-      usage?: AnthropicUsage;
-      message?: { id?: string };
+      usage?: ResponsesUsage;
     };
     timing?.markFirstEvent();
-    if (hasAnthropicReasoningDelta(parsed)) timing?.markFirstReasoningToken();
-    if (hasAnthropicContentDelta(parsed)) timing?.markFirstToken();
-    // message id 来自 `message_start` 事件的 `message.id`（如 msg_* / msg_bdrk_*）；只取首个。
     if (!usage.upstreamMessageId) {
-      const msgId = normalizeUpstreamId(parsed.message?.id);
+      const msgId = normalizeUpstreamId(parsed.id);
       if (msgId) usage.upstreamMessageId = msgId;
     }
     if (parsed.usage) {
-      applyUsage(usage, usageFromAnthropic(parsed.usage));
+      applyUsage(usage, usageFromResponses(parsed.usage));
     }
   } catch {
-    // ignore
+    // ignore parse failures
   }
 }
 
@@ -126,17 +109,13 @@ function parseSSEChunk(
   state.lineBuffer = lines.pop() ?? '';
   let forward = '';
   for (const line of lines) {
-    if (!line.startsWith('data: ')) {
-      forward += line + '\n';
-      continue;
+    if (line.startsWith('data: ')) {
+      const data = line.slice(6).trim();
+      if (data && data !== '[DONE]') {
+        processDataLine(data, usage, timing);
+      }
     }
-    const data = line.slice(6).trim();
-    if (!data || data === '[DONE]') {
-      forward += line + '\n';
-      continue;
-    }
-    parseEventData(data, usage, timing);
-    // 过滤内部元数据字段（extra_content 等）
+    // 过滤内部元数据字段（extra_content 等）；非 data 行原样保留
     forward += sanitizeSseDataLine(line) + '\n';
   }
   return forward;
@@ -148,10 +127,13 @@ function processRemainingLineBuffer(
   timing?: RequestTimingCollector | null
 ): string {
   const line = state.lineBuffer.trim();
-  if (!line.startsWith('data: ')) return '';
-  const data = line.slice(6).trim();
-  if (!data || data === '[DONE]') return line + '\n';
-  parseEventData(data, usage, timing);
+  if (!line) return '';
+  if (line.startsWith('data: ')) {
+    const data = line.slice(6).trim();
+    if (data && data !== '[DONE]') {
+      processDataLine(data, usage, timing);
+    }
+  }
   return sanitizeSseDataLine(line) + '\n';
 }
 
@@ -214,6 +196,8 @@ async function pumpWithUsageTracking(
         break;
       }
     }
+  } catch (err) {
+    console.warn('[Gateway Responses] pump error', err instanceof Error ? err.message : String(err));
   } finally {
     requestSignal?.removeEventListener('abort', onAbort);
     timing?.markStreamComplete();
@@ -222,7 +206,7 @@ async function pumpWithUsageTracking(
       await writer.close();
     } catch (err) {
       console.warn(
-        '[Gateway Proxy] anthropic pump writer.close (non-fatal)',
+        '[Gateway Responses] pump writer.close (non-fatal)',
         err instanceof Error ? err.message : String(err),
         { clientDisconnected, usageCancelled: usage.cancelled }
       );
@@ -244,7 +228,7 @@ function streamResponseWithUsage(
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
 
   pumpWithUsageTracking(response.body!, writable, usage, resolveUsage, requestSignal, timing).catch(() => {
-    // resolveUsage in finally
+    // resolveUsage already called in finally
   });
 
   return {
@@ -271,13 +255,16 @@ async function nonStreamResponseWithUsage(
       usagePromise: Promise.resolve(EMPTY_USAGE_LOCAL),
     };
   }
+  let usage: UsageFromStream = EMPTY_USAGE_LOCAL;
   try {
     const text = await response.text();
     timing?.markStreamComplete();
-    const parsed = JSON.parse(text) as { id?: string; usage?: AnthropicUsage };
-    const usage = parsed.usage ? usageFromAnthropic(parsed.usage) : { ...EMPTY_USAGE_LOCAL };
+    const parsed = JSON.parse(text) as { id?: string; usage?: ResponsesUsage };
+    if (parsed.usage) {
+      usage = usageFromResponses(parsed.usage);
+    }
     const msgId = normalizeUpstreamId(parsed.id);
-    if (msgId) usage.upstreamMessageId = msgId;
+    if (msgId) usage = { ...usage, upstreamMessageId: msgId };
     // 过滤内部元数据字段（extra_content 等），只返回干净内容
     const sanitizedText = sanitizeJsonResponseText(text);
     return {
@@ -298,30 +285,29 @@ async function nonStreamResponseWithUsage(
 }
 
 /**
- * 调用 Anthropic Messages API（`x-api-key` + `anthropic-version`），请求体合并路由默认参数并替换 `model`。
- * 流式为 SSE，`usagePromise` 在流结束或断连 drain 后解析；非流 JSON 从根对象 `usage` 取数。
- * @param requestSignal 断连检测与 POST_DISCONNECT_DRAIN_MS 内继续读上游
+ * 向供应商发起 OpenAI 兼容 `POST …/responses`：合并路由默认参数、`model` 换为上游名。
+ * 流式响应解析 SSE 中的 usage；非 JSON 200 走流处理分支。
  */
-export async function dispatchAnthropicRoute(
+export async function dispatchOpenAiResponsesRoute(
   route: RouteResult,
   body: Record<string, unknown>,
   requestSignal?: AbortSignal,
   timing?: RequestTimingCollector | null,
   attempt?: RequestTimingAttempt
 ): Promise<{ response: Response; usagePromise: Promise<UsageFromStream>; upstreamRequestId: string | null }> {
-  const url = resolveUpstreamEndpoint('anthropic', 'messages', route.providerEndpoints, {
+  const url = resolveUpstreamEndpoint('openai', 'responses', route.providerEndpoints, {
     providerId: route.providerId,
   });
   const requestBody = {
     ...buildRouteRequestBody(route, body),
     model: route.providerModelName,
   };
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': route.providerApiKey,
-      'anthropic-version': '2023-06-01',
+      Authorization: `Bearer ${route.providerApiKey}`,
     },
     body: JSON.stringify(requestBody),
   });

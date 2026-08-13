@@ -4,6 +4,32 @@
  * 算法对齐 soloent-web `lib/tencent/tc3-sign.ts`（原 node:crypto 版）。
  */
 
+/**
+ * 解析 WebCrypto 实例：Cloudflare Workers / Node 19+ 直接使用全局 `crypto.subtle`；
+ * Node 18 的 `globalThis.crypto` 需 `--experimental-global-webcrypto`，故回退到 `node:crypto` 的 `webcrypto`。
+ * 惰性解析并缓存，避免每次签名重复 import。
+ */
+let webcryptoPromise: Promise<Crypto> | null = null;
+
+function getWebCrypto(): Promise<Crypto> {
+	if (!webcryptoPromise) {
+		webcryptoPromise = (async () => {
+			const g = globalThis as { crypto?: { subtle?: SubtleCrypto } };
+			if (typeof g !== 'undefined' && g.crypto?.subtle) {
+				return g.crypto as Crypto;
+			}
+			const nodeCrypto = (await import('node:crypto')) as unknown as {
+				webcrypto?: { subtle?: SubtleCrypto };
+			};
+			if (nodeCrypto?.webcrypto?.subtle) {
+				return nodeCrypto.webcrypto as Crypto;
+			}
+			throw new Error('WebCrypto (crypto.subtle) is not available in this runtime');
+		})();
+	}
+	return webcryptoPromise;
+}
+
 export type Tc3SignResult = {
 	authorization: string;
 	timestamp: string;
@@ -19,8 +45,9 @@ function toHex(buffer: ArrayBuffer): string {
 }
 
 async function sha256Hex(message: string): Promise<string> {
+	const webcrypto = await getWebCrypto();
 	const data = new TextEncoder().encode(message);
-	const digest = await crypto.subtle.digest('SHA-256', data);
+	const digest = await webcrypto.subtle.digest('SHA-256', data);
 	return toHex(digest);
 }
 
@@ -28,16 +55,17 @@ async function hmacSha256(
 	key: ArrayBuffer | Uint8Array | string,
 	message: string
 ): Promise<ArrayBuffer> {
+	const webcrypto = await getWebCrypto();
 	const keyBytes =
 		typeof key === 'string' ? new TextEncoder().encode(key) : key instanceof Uint8Array ? key : new Uint8Array(key);
-	const cryptoKey = await crypto.subtle.importKey(
+	const cryptoKey = await webcrypto.subtle.importKey(
 		'raw',
 		keyBytes as BufferSource,
 		{ name: 'HMAC', hash: 'SHA-256' },
 		false,
 		['sign']
 	);
-	return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+	return webcrypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
 }
 
 /** Tencent Cloud API 3.0 TC3-HMAC-SHA256 signature (POST JSON) */

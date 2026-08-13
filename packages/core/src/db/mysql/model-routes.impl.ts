@@ -6,6 +6,7 @@ import type { MySqlDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutesRepository } from '../../storage/gateway-repository-interfaces';
 import type { ModelRouteDetailRow, ModelRouteJoinRow } from '../../storage/repository-dtos';
 import { MODEL_ROUTE_PATCH_COLS } from '../patch-allowlists';
+import { isMysqlDuplicateKeyError } from '../shared/duplicate-key';
 import { asMySqlPool } from './mysql2-compat';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
@@ -138,9 +139,28 @@ export function createMySqlModelRoutesRepository(db: MySqlDatabaseClient): Model
 				await conn.commit();
 			} catch (error) {
 				await conn.rollback();
-				throw error;
+				// 并发下另一请求已插入相同 surface → 忽略重复键，重新读取权威行
+				if (!isMysqlDuplicateKeyError(error)) throw error;
 			} finally {
 				conn.release();
+			}
+
+			// 并发竞态下以数据库中的权威行为准（可能由其他请求先插入）
+			const [after] = await pool.query<Array<{ id: string; route_pool_id: string }>>(
+				`SELECT id, route_pool_id
+				 FROM model_surfaces
+				 WHERE model_id = ? AND lower(route_group) = lower(?)
+				   AND lower(request_protocol) = lower(?) AND request_operation = ?
+				 LIMIT 1`,
+				[
+					params.modelId,
+					params.routeGroup,
+					params.requestProtocol,
+					params.requestOperation,
+				]
+			);
+			if (after[0]) {
+				return { poolId: after[0].route_pool_id, surfaceId: after[0].id };
 			}
 			return { poolId: params.poolId, surfaceId: params.surfaceId };
 		},

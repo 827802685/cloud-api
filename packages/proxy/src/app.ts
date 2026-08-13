@@ -8,6 +8,7 @@ import { chatRoutes } from './routes/v1/chat';
 import { geminiRoutes } from './routes/v1/gemini';
 import { meRoutes } from './routes/v1/me';
 import { messagesRoutes } from './routes/v1/messages';
+import { responsesRoutes } from './routes/v1/responses';
 import { catalogRoutes } from './routes/catalog';
 import { modelsRoutes } from './routes/v1/models';
 import { webSearchRoutes } from './routes/v1/tools/web-search';
@@ -108,6 +109,7 @@ export function createProxyApp(resolveStorage: StorageResolver, options?: ProxyA
 	app.route('/v1/images', imageRoutes);
 	app.route('/v1/audio', audioRoutes);
 	app.route('/v1/messages', messagesRoutes);
+	app.route('/v1/responses', responsesRoutes);
 	app.route('/v1beta', geminiRoutes);
 	app.route('/v1/me', meRoutes);
 	app.route('/v1/models', modelsRoutes);

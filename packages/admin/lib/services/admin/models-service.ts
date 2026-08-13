@@ -45,7 +45,7 @@ function applyModelMutationCoercion(rest: Record<string, unknown>): Record<strin
 
 function formatPriceForPreview(value: unknown): string | null {
 	if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-	return Number.isInteger(value) ? String(value) : String(value);
+	return String(value);
 }
 
 type CatalogPricingPreview = {

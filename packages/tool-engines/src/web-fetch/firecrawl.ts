@@ -2,6 +2,7 @@
  * Firecrawl Scrape API（https://api.firecrawl.dev/v1/scrape）。
  */
 
+import { fetchBoundedText } from './fetch-http';
 import { WebFetchProviderError, type WebFetchParams, type WebFetchResult } from './types';
 
 type FirecrawlRawResponse = {
@@ -32,19 +33,23 @@ function extractErrorMessage(json: FirecrawlRawResponse, fallback: string): stri
 
 export async function fetchFirecrawlUrl(params: WebFetchParams): Promise<WebFetchResult> {
 	const fetchImpl = params.fetchImpl ?? fetch;
-	const response = await fetchImpl(FIRECRAWL_ENDPOINT, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${params.apiKey}`,
-			'Content-Type': 'application/json',
+	const { response, text } = await fetchBoundedText(
+		fetchImpl,
+		FIRECRAWL_ENDPOINT,
+		{
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${params.apiKey}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				url: params.url,
+				formats: ['markdown'],
+			}),
 		},
-		body: JSON.stringify({
-			url: params.url,
-			formats: ['markdown'],
-		}),
-	});
+		{ provider: 'firecrawl' }
+	);
 
-	const text = await response.text();
 	let json: FirecrawlRawResponse;
 	try {
 		json = JSON.parse(text) as FirecrawlRawResponse;

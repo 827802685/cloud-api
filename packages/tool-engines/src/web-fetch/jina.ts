@@ -2,6 +2,7 @@
  * Jina Reader（https://r.jina.ai/）— Bearer 为 Admin 配置的 API Key。
  */
 
+import { fetchBoundedText } from './fetch-http';
 import { WebFetchProviderError, type WebFetchParams, type WebFetchResult } from './types';
 
 type JinaRawResponse = {
@@ -30,18 +31,22 @@ function extractErrorMessage(json: JinaRawResponse, fallback: string): string {
 
 export async function fetchJinaUrl(params: WebFetchParams): Promise<WebFetchResult> {
 	const fetchImpl = params.fetchImpl ?? fetch;
-	const response = await fetchImpl(JINA_ENDPOINT, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${params.apiKey}`,
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			'X-Return-Format': 'markdown',
+	const { response, text } = await fetchBoundedText(
+		fetchImpl,
+		JINA_ENDPOINT,
+		{
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${params.apiKey}`,
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+				'X-Return-Format': 'markdown',
+			},
+			body: JSON.stringify({ url: params.url }),
 		},
-		body: JSON.stringify({ url: params.url }),
-	});
+		{ provider: 'jina' }
+	);
 
-	const text = await response.text();
 	let json: JinaRawResponse;
 	try {
 		json = JSON.parse(text) as JinaRawResponse;

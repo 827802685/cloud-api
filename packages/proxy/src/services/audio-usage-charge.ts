@@ -552,6 +552,7 @@ export async function recordAudioUsage(params: RecordAudioUsageParams): Promise<
 		shouldChargeBudget,
 		beforeSpent,
 		chargedCost,
+		expectedBudgetResetAt: userSnapshot?.budgetResetAt ?? null,
 		audit: {
 			apiKeyId: params.apiKeyId,
 			eventType: 'usage_charge',

@@ -164,20 +164,30 @@ export async function insertRequestUsageAndChargeTxD1(
 		userId: string;
 		beforeSpent: number;
 		chargedCost: number;
+		/** 读库时的 `users.budget_reset_at`；与之一致才扣费（防并发 lazy reset 把扣费落在错误预算周期） */
+		expectedBudgetResetAt: string | null;
 		audit: Omit<InsertUserBudgetAuditLogParams, 'id' | 'afterSpent' | 'deltaSpent'>;
 	}
 ): Promise<void> {
 	const charged = roundGatewayMoney(params.chargedCost);
 	const afterSpent = roundGatewayMoney(params.beforeSpent + charged);
 	const statements: D1PreparedStatement[] = [buildInsertRequestLogStatement(client.raw, params.requestLog)];
+	let budgetUpdateStmt: D1PreparedStatement | null = null;
 	if (params.shouldChargeBudget) {
-		statements.push(
-			client.raw
-				.prepare(`UPDATE users SET budget_spent = budget_spent + ?, updated_at = datetime('now') WHERE id = ?`)
-				.bind(charged, params.userId)
-		);
-		const auditRow = userBudgetAuditToInsertRowForUsageCharge(params.userId, afterSpent, charged, params.audit);
-		statements.push(buildInsertUserAuditLogStatement(client.raw, auditRow));
+		budgetUpdateStmt = client.raw
+			.prepare(
+				`UPDATE users SET budget_spent = budget_spent + ?, updated_at = datetime('now') WHERE id = ? AND budget_reset_at IS NOT DISTINCT FROM ?`
+			)
+			.bind(charged, params.userId, params.expectedBudgetResetAt);
+		statements.push(budgetUpdateStmt);
 	}
-	await ensureD1Batch(client, statements);
+	const results = await client.raw.batch(statements);
+	if (params.shouldChargeBudget && budgetUpdateStmt) {
+		// 并发 lazy reset 已提交（budget_reset_at 变化）→ 跳过扣费与审计，避免落在错误预算周期
+		const changes = results[1]?.meta?.changes ?? 0;
+		if (changes > 0) {
+			const auditRow = userBudgetAuditToInsertRowForUsageCharge(params.userId, afterSpent, charged, params.audit);
+			await buildInsertUserAuditLogStatement(client.raw, auditRow).run();
+		}
+	}
 }

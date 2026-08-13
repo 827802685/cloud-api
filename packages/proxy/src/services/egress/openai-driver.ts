@@ -3,6 +3,7 @@ import type { RouteResult } from '../model-router';
 import type { UsageFromStream } from '../proxy';
 import { buildRouteRequestBody } from '../route-default-params';
 import { extractUpstreamRequestId, normalizeUpstreamId } from './upstream-request-id';
+import { sanitizeJsonResponseText, stripInternalFields } from '../response-sanitizer';
 import type { RequestTimingAttempt, RequestTimingCollector } from '../request-timing';
 
 /**
@@ -199,37 +200,40 @@ function processUsageFromDataLine(line: string, usage: UsageFromStream, timing?:
  * 策略（与 OpenAI 官方流式常见形态对齐）：
  * - 若 `choices.length > 0` 且**没有任何** choice 带 `finish_reason` → 视为「仍在流式 delta」，**删除** `usage` 再转发。
  * - 若 `choices` 为空，或已有 `finish_reason`（收尾）→ **保留** `usage`，让客户端只收到少量含 usage 的 chunk。
+ * - 同时递归删除内部元数据字段（`extra_content` 等），避免供应商内部数据透传给客户端。
  *
  * 非 `data:` 行、解析失败、`[DONE]` 原样返回。
  */
 function transformStreamUsageForClient(line: string): string {
-  if (!line.startsWith('data: ')) return line;
-  const data = line.slice(6).trim();
-  if (data === '[DONE]') return line;
-  try {
-    const o = JSON.parse(data) as {
-      choices?: { finish_reason?: string | null }[];
-      usage?: unknown;
-    };
-    if (!o || typeof o !== 'object' || o.usage == null) return line;
-    const choices = Array.isArray(o.choices) ? o.choices : [];
-    const hasTerminalFinish = choices.some(
-      (c) =>
-        c != null &&
-        typeof c === 'object' &&
-        c.finish_reason != null &&
-        String(c.finish_reason) !== ''
-    );
-    // 仅在「有 delta 且尚未结束」时剥掉 usage，避免误伤仅含 choices:[] 的最终统计块
-    if (choices.length > 0 && !hasTerminalFinish) {
-      const copy = { ...o } as Record<string, unknown>;
-      delete copy.usage;
-      return 'data: ' + JSON.stringify(copy);
-    }
-  } catch {
-    return line;
-  }
-  return line;
+	if (!line.startsWith('data: ')) return line;
+	const data = line.slice(6).trim();
+	if (data === '[DONE]') return line;
+	try {
+		const o = JSON.parse(data) as Record<string, unknown>;
+		if (!o || typeof o !== 'object') return line;
+		let changed = false;
+		// 1) 递归删除内部元数据字段
+		const stripped = stripInternalFields(o);
+		if (stripped !== o) changed = true;
+		const copy = (stripped as Record<string, unknown>);
+		// 2) 仍在流式 delta 时剥掉 usage，避免客户端重复累加
+		const choices = Array.isArray(copy.choices) ? copy.choices : [];
+		const hasTerminalFinish = choices.some(
+			(c) =>
+				c != null &&
+				typeof c === 'object' &&
+				(c as { finish_reason?: string | null }).finish_reason != null &&
+				String((c as { finish_reason?: string | null }).finish_reason) !== ''
+		);
+		if (copy.usage != null && choices.length > 0 && !hasTerminalFinish) {
+			delete copy.usage;
+			changed = true;
+		}
+		if (!changed) return line;
+		return 'data: ' + JSON.stringify(copy);
+	} catch {
+		return line;
+	}
 }
 
 /**
@@ -390,8 +394,10 @@ async function nonStreamResponseWithUsage(
     const msgId = normalizeUpstreamId(parsed.id);
     // 新对象，避免污染共享的 EMPTY_USAGE_LOCAL 常量。
     if (msgId) usage = { ...usage, upstreamMessageId: msgId };
+    // 过滤内部元数据字段（extra_content 等），只返回干净的 content
+    const sanitizedText = sanitizeJsonResponseText(text);
     return {
-      response: new Response(text, {
+      response: new Response(sanitizedText, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,

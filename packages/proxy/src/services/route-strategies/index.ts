@@ -43,8 +43,12 @@ export async function resolveRouteStrategy(params: {
 	routeGroup: string;
 	repos: GatewayRepositories;
 }): Promise<RouteStrategyName> {
-	if (params.poolStrategy && isRouteStrategyName(params.poolStrategy)) {
-		return params.poolStrategy;
+	// 防御：poolStrategy 空值/空白/非法值均跳过，避免把无效策略名带入计划
+	if (typeof params.poolStrategy === 'string') {
+		const trimmed = params.poolStrategy.trim();
+		if (trimmed !== '' && isRouteStrategyName(trimmed)) {
+			return trimmed;
+		}
 	}
 	const fromModel = resolveModelRoutePolicyStrategy(
 		params.routePolicyRaw,
@@ -71,7 +75,9 @@ export async function resolveRouteStrategyPlan(params: {
 }): Promise<RouteStrategyPlan> {
 	const base = await resolveRouteStrategy(params);
 	const tierOverrides = parseRoutePoolTierStrategies(params.poolTierStrategies);
-	return { base, tierOverrides };
+	// 防御：base 必须为合法策略名，否则回退默认（避免空值/未定义/非法值流入调度）
+	const safeBase = isRouteStrategyName(base) ? base : DEFAULT_ROUTE_STRATEGY;
+	return { base: safeBase, tierOverrides };
 }
 
 /** affinityKey = userId|baseModelId|routeGroup|protocol */

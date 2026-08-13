@@ -36,6 +36,7 @@ async function mapWithConcurrency<T, R>(
 	concurrency: number,
 	fn: (item: T, index: number) => Promise<R>
 ): Promise<R[]> {
+	if (concurrency < 1) concurrency = 1;
 	const results: R[] = new Array(items.length);
 	let nextIndex = 0;
 
@@ -64,7 +65,13 @@ export async function detectAiRate(
 		throw new Error('EMPTY_CONTENT');
 	}
 
-	const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
+	// 防御：concurrency 必须为正整数；0/负数/NaN/非整数均回退默认，
+	// 避免 `Promise.all([])` 静默返回稀疏数组（overallScore:0、segments 含 undefined）
+	const requested = options?.concurrency;
+	const concurrency =
+		typeof requested === 'number' && Number.isInteger(requested) && requested > 0
+			? requested
+			: DEFAULT_CONCURRENCY;
 	const detectionResults = await mapWithConcurrency(segments, concurrency, async (seg) => {
 		const result = await driver.detectSegment(seg.text, cfg, { fetchImpl: options?.fetchImpl });
 		return {

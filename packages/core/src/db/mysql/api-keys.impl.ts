@@ -21,7 +21,8 @@ function apiKeyListOrderBy(sort: ApiKeyListSortField, order: ApiKeyListSortOrder
 	const isAsc = order === 'asc';
 	if (sort === 'budget_reset_at') {
 		const col = myUsersTable.budgetResetAt;
-		return isAsc ? sql`${col} ASC NULLS LAST` : sql`${col} DESC NULLS FIRST`;
+		// MySQL 8 不支持 `NULLS FIRST/LAST`；用 `IS NULL` 排序表达式模拟。
+		return isAsc ? sql`${col} IS NULL, ${col} ASC` : sql`${col} IS NULL DESC, ${col} DESC`;
 	}
 	if (sort === 'budget_spent') {
 		return isAsc ? asc(myUsersTable.budgetSpent) : desc(myUsersTable.budgetSpent);

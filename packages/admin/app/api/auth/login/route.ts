@@ -2,7 +2,9 @@
  * 后台登录：`POST` 校验 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 后写入 `admin_session`（httpOnly）。
  * `DELETE` 与 `/api/auth/logout` 类似，用于清除会话（兼容旧客户端可一并保留）。
  */
-import { generateSessionToken, resolveCookieSecure } from '@/lib/auth';
+import { createSessionCookieValue, resolveCookieSecure } from '@/lib/auth';
+import { getMasterKey } from '@/lib/services/admin/master-key-service';
+import { resolveAdminStorageContext } from '@/lib/storage-context';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -46,12 +48,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const sessionToken = generateSessionToken();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    // 读取 MASTER_KEY 用于签名会话 cookie（无状态验证，防止伪造 cookie 绕过）
+    let masterKey: string | null = null;
+    try {
+      const storage = await resolveAdminStorageContext(undefined, 'auto');
+      masterKey = await getMasterKey(storage.repositories);
+    } catch (error) {
+      console.error('Failed to load MASTER_KEY for session signing:', error);
+    }
+    if (!masterKey) {
+      return Response.json(
+        { success: false, message: 'Server configuration error: MASTER_KEY not set' },
+        { status: 500 }
+      );
+    }
+
+    const sessionCookieValue = await createSessionCookieValue(masterKey);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const cookieStore = await cookies();
-    cookieStore.set('admin_session', sessionToken, {
+    cookieStore.set('admin_session', sessionCookieValue, {
       httpOnly: true,
       secure: resolveCookieSecure(),
       sameSite: 'strict',

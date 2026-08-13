@@ -67,6 +67,40 @@ export const IMAGE_MAX_BYTES_PER_FILE = 20 * 1024 * 1024;
 export const IMAGE_MAX_TOTAL_UPLOAD_BYTES = IMAGE_MAX_REFERENCE_COUNT * IMAGE_MAX_BYTES_PER_FILE;
 export const IMAGE_ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
 
+/**
+ * 根据请求复杂度计算图像生成/编辑超时（毫秒）：
+ * - 基础 60s（简单 1024x1024 中等质量）
+ * - 大尺寸（>1MP）按面积累加
+ * - `high`/`hd` 质量 +60s
+ * - 编辑带参考图每张 +30s（上限 5 张）
+ * - 上限 10min：避免简单请求空等、复杂请求过早超时
+ */
+export function resolveImageTimeoutMs(opts: {
+	size?: string;
+	quality?: string;
+	referenceCount?: number;
+}): number {
+	const base = 60_000;
+	let extra = 0;
+	const size = (opts.size ?? '1024x1024').toLowerCase();
+	const m = /^(\d{2,4})x(\d{2,4})$/.exec(size);
+	if (m) {
+		const megapixels = (Number(m[1]) * Number(m[2])) / 1_000_000;
+		if (megapixels > 1) {
+			extra += Math.min(60_000, Math.round((megapixels - 1) * 30_000));
+		}
+	}
+	const quality = opts.quality?.toLowerCase();
+	if (quality === 'high' || quality === 'hd') {
+		extra += 60_000;
+	}
+	const refs = Math.max(0, Number(opts.referenceCount) || 0);
+	if (refs > 0) {
+		extra += Math.min(refs, IMAGE_MAX_REFERENCE_COUNT) * 30_000;
+	}
+	return Math.min(base + extra, 600_000);
+}
+
 export type ImageEditUpload = {
 	filename: string;
 	mimeType: string;
@@ -309,9 +343,13 @@ export async function dispatchOpenAiImageGenerations(
 		`[Gateway Images] upstream generations POST ${url} providerModel=${route.providerModelName} providerId=${route.providerId}`
 	);
 	const startedAt = Date.now();
+	const timeoutMs = resolveImageTimeoutMs({
+		size: typeof body.size === 'string' ? body.size : undefined,
+		quality: typeof body.quality === 'string' ? body.quality : undefined,
+	});
 	const { signal, clear, getAbortReason } = withTimeoutSignal(
 		requestSignal,
-		IMAGE_GENERATION_TIMEOUT_MS
+		timeoutMs
 	);
 	try {
 		const response = await fetch(url, {
@@ -346,7 +384,7 @@ export async function dispatchOpenAiImageGenerations(
 		const resolvedAbort =
 			abortReason === 'none' && requestSignal?.aborted ? 'client_abort' : abortReason;
 		const error = aborted
-			? imageAbortErrorPayload('generation', url, resolvedAbort, IMAGE_GENERATION_TIMEOUT_MS)
+			? imageAbortErrorPayload('generation', url, resolvedAbort, timeoutMs)
 			: {
 					message: 'Image generation upstream failed',
 					upstream_url: url,
@@ -422,9 +460,14 @@ export async function dispatchOpenAiImageEdits(
 	}
 
 	const startedAt = Date.now();
+	const timeoutMs = resolveImageTimeoutMs({
+		size: edit.size,
+		quality: edit.quality,
+		referenceCount: edit.images.length,
+	});
 	const { signal, clear, getAbortReason } = withTimeoutSignal(
 		requestSignal,
-		IMAGE_GENERATION_TIMEOUT_MS
+		timeoutMs
 	);
 	try {
 		const response = await fetch(url, {
@@ -458,7 +501,7 @@ export async function dispatchOpenAiImageEdits(
 		const resolvedAbort =
 			abortReason === 'none' && requestSignal?.aborted ? 'client_abort' : abortReason;
 		const error = aborted
-			? imageAbortErrorPayload('edit', url, resolvedAbort, IMAGE_GENERATION_TIMEOUT_MS)
+			? imageAbortErrorPayload('edit', url, resolvedAbort, timeoutMs)
 			: {
 					message: 'Image edit upstream failed',
 					upstream_url: url,

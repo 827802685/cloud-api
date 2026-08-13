@@ -5,6 +5,34 @@ export { nullIfEmpty } from '@cloud-api/core/lib/string-utils';
 
 export { normalizeModelVendorInput } from '../../model-vendor';
 
+import { badRequest } from './errors';
+import type { BudgetPeriod } from './types';
+
+const BUDGET_PERIODS = new Set<string>(['none', 'daily', 'weekly', 'monthly']);
+
+/**
+ * 校验 budget_period：仅允许 none/daily/weekly/monthly；非法值抛 400。
+ * 避免任意输入被强转为 BudgetPeriod 写入 D1，破坏下游预算重置逻辑。
+ */
+export function parseBudgetPeriod(raw: unknown, fallback: BudgetPeriod = 'none'): BudgetPeriod {
+	if (raw === undefined || raw === null) return fallback;
+	const s = String(raw);
+	if (BUDGET_PERIODS.has(s)) return s as BudgetPeriod;
+	throw badRequest('budget_period must be one of: none, daily, weekly, monthly');
+}
+
+/**
+ * 解析分页参数：非数字 / NaN / <=0 回退默认值，避免 `?page=abc` 产生 NaN 流入分页。
+ * @param max 可选上限（如 page_size 上限 100）
+ */
+export function parsePaginationParam(raw: unknown, fallback: number, max?: number): number {
+	const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? ''), 10);
+	if (!Number.isFinite(n) || n < 1) return fallback;
+	const floored = Math.floor(n);
+	if (max != null && floored > max) return max;
+	return floored;
+}
+
 /** 将 D1 中 `json_group_array` 得到的 JSON 字符串解析为 string[]；非法则 []。 */
 export function parseTagsJson(tagsJson: string | null): string[] {
 	if (tagsJson == null || tagsJson === '') return [];

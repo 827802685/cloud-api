@@ -7,7 +7,9 @@ import { listStaticModelPresetCatalogForAdmin } from './models-service';
 const EXPECTED_IMAGE_IDS = [
 	'doubao-seedream-5-0',
 	'doubao-seedream-5-0-pro',
+	'gemini-2.5-flash-image',
 	'gemini-3.1-flash-image',
+	'gemini-3.1-flash-lite-image',
 	'gemini-3-pro-image-preview',
 	'glm-image',
 	'gpt-image-2',
@@ -32,7 +34,9 @@ describe('static image model presets (*-image.json)', () => {
 		);
 		for (const row of imageRows) {
 			assert.ok(row.vendor, `vendor required for ${row.id}`);
-			assert.equal((row.modalities?.output ?? []).includes('text'), false);
+			// 图片模型必须能输出 image；部分多模态图片模型（如 Gemini 2.5/3.1 Flash Image）同时支持 text 输出，
+			// 因此不强制 `output` 不含 text，仅要求 image 存在。
+			assert.ok((row.modalities?.output ?? []).includes('image'), `image output required for ${row.id}`);
 		}
 	});
 
