@@ -8,6 +8,10 @@ on:
       - 'packages/core/migrations-d1/**'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-migrations-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   migrate:
     runs-on: ubuntu-latest

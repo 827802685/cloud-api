@@ -14,6 +14,13 @@
 		"packages/proxy",
 		"packages/admin"
 	],
+	"overrides": {
+		"esbuild": "^0.28.1",
+		"undici": "^7.28.0",
+		"@opennextjs/aws": {
+			"esbuild": "^0.28.1"
+		}
+	},
 	"scripts": {
 		"postinstall": "npm run gen:wrangler",
 		"build": "npm run build -w @cloud-api/core && npm run build -w @cloud-api/proxy && npm run build:cf -w @cloud-api/admin",

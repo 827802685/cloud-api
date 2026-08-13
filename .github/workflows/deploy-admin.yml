@@ -14,6 +14,10 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-admin-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy-admin:
     runs-on: ubuntu-latest
