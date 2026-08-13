@@ -1,0 +1,141 @@
+# 项目Bug扫描报告
+
+## [Critical] 严重缺陷
+
+### 1. 管理面板身份验证绕过
+- **文件**: `packages/admin/lib/auth.ts:26-28` 和 `packages/admin/app/api/admin/[...path]/route.ts:100-108`
+- **问题**: 管理面板身份验证仅检查cookie是否存在，不验证其值，导致任何人都可以通过伪造cookie绕过身份验证
+- **影响**: 完全的管理面板访问权限绕过，无需任何凭证即可访问所有API密钥、用户预算、提供商、模型等敏感数据
+
+### 2. 加权轮询逻辑错误
+- **文件**: `packages/proxy/src/services/route-strategies/weighted-round-robin.ts:21-24`
+- **问题**: 加权轮询实现中的偏移量计算存在逻辑错误，可能导致路由从错误的位置开始，破坏预期的轮询行为
+- **影响**: 路由不一致，可能导致某些提供商被过度使用或完全被忽略
+
+### 3. 熔断器状态机问题
+- **文件**: `packages/proxy/src/services/provider-circuit-breaker.ts:102-111`
+- **问题**: 熔断器在冷却期到期后未正确重置连续失败计数器，导致提供商可能被永久列入黑名单
+- **影响**: 服务中断，提供商即使恢复正常也无法被重新使用
+
+## [High] 高优先级缺陷
+
+### 1. MySQL语法错误 - NULLS FIRST/LAST子句
+- **文件**: `packages/core/src/db/mysql/users.impl.ts:24,29` 和 `packages/core/src/db/mysql/api-keys.impl.ts:24`
+- **问题**: MySQL 8不支持`NULLS FIRST/LAST`子句，但代码中使用了这些子句
+- **影响**: 在MySQL部署上，`GET /admin/users?sort=budget_reset_at|budget_max`和`GET /admin/keys?sort=budget_reset_at`返回500错误
+
+### 2. SSRF防护绕过 - 尾随点FQDN
+- **文件**: `packages/tool-engines/src/web-fetch/url-guard.ts:30,44,52-55`
+- **问题**: WHATWG URL解析器保留尾随点，导致`localhost.`、`metadata.google.internal.`等绕过SSRF防护
+- **影响**: 允许访问本地主机和云元数据端点，可能导致信息泄露
+
+### 3. SSRF防护绕过 - IPv4映射IPv6检查
+- **文件**: `packages/tool-engines/src/web-fetch/url-guard.ts:58-78`
+- **问题**: IPv4映射IPv6地址的检查代码无法正常工作，因为WHATWG URL解析器已将其规范化
+- **影响**: `::ffff:127.0.0.1`等地址被错误地允许通过，绕过防护
+
+### 4. 图像生成超时逻辑错误
+- **文件**: `packages/proxy/src/services/egress/openai-images-driver.ts:312-315`
+- **问题**: 图像生成使用固定5分钟超时，不考虑图像复杂性和大小
+- **影响**: 合法长运行图像生成可能提前超时，而简单请求可能快速完成
+
+### 5. 粘性路由键处理
+- **文件**: `packages/proxy/src/services/provider-sticky-routing.ts:149`
+- **问题**: 粘性路由实现未正确处理空的或无效的亲和键
+- **影响**: 粘性路由可能发生故障或在不同请求间创建不一致的绑定行为
+
+## [Medium] 中优先级缺陷
+
+### 1. 使用量收费审计丢失更新竞态条件
+- **文件**: `packages/core/src/db/d1/critical-writes.impl.ts:171,176,179-180` 等
+- **问题**: 使用量收费路径没有对`budget_reset_at`进行CAS检查，可能导致并发充电时审计日志错误
+- **影响**: `user_audit_logs`中的`after_spent`/`delta_spent`可能错误，充电可能落在并发重置的预算期间
+
+### 2. PG补丁允许列表被绕过（方言不一致）
+- **文件**: `packages/core/src/db/postgres/models.impl.ts:86-104` 和 `packages/core/src/db/postgres/model-routes.impl.ts:252-266`
+- **问题**: PG实现未检查`MODEL_PATCH_COLS`/`MODEL_ROUTE_PATCH_COLS`，允许设置任何字段
+- **影响**: 管理员可以设置列，这些列在允许列表中被排除，可能篡改列表顺序/分析或重写行标识
+
+### 3. 无获取超时和无响应大小限制
+- **文件**: `packages/tool-engines/src/web-fetch/jina.ts:33-44` 等
+- **问题**: 所有提供商调用使用裸`fetch`，无`AbortSignal`/超时，并缓冲整个响应体
+- **影响**: 挂起提供商可无限期持有Worker，恶意/大页面可返回无限制markdown，导致成本/DoS放大
+
+### 4. 非恒定时间主密钥比较（定时侧信道）
+- **文件**: `packages/admin/lib/middleware/admin-auth.ts:16` 和 `packages/admin/app/api/admin/[...path]/route.ts:112`
+- **问题**: `token !== masterKey`是字符串比较，在第一个不匹配字节处短路，暴露主密钥前缀
+- **影响**: 允许远程定时攻击恢复主密钥
+
+### 5. 图像使用量收费计算错误
+- **文件**: `packages/proxy/src/services/image-usage-charge.ts:489-510`
+- **问题**: 图像使用量收费计算未正确处理`imageAbortReason`和`clientAbortPrecheck`同时存在的情况
+- **影响**: 可能导致双重收费或对未成功完成的请求收费
+
+### 6. Tencent TC3签名在Node 18上中断
+- **文件**: `packages/tool-engines/src/tencent/tc3-sign.ts:23,33,40`
+- **问题**: `crypto`/`crypto.subtle`作为全局变量仅在Node 19+中存在，但文件声称兼容Node 18+
+- **影响**: 在Node 18上任何TMS请求抛出`ReferenceError: crypto is not defined`
+
+## [Low] 低优先级缺陷
+
+### 1. `ensureModelSurfacePool` TOCTOU → 并发下重复键500错误
+- **文件**: `packages/core/src/db/{d1,mysql,postgres}/model-routes.impl.ts:92-133` 等
+- **问题**: SELECT-then-INSERT模式，两个并发相同创建路由调用都错过SELECT，然后第二个INSERT违反唯一约束
+- **影响**: 第二个请求失败，返回原始重复键错误（500）
+
+### 2. D1 `listModelsWithActiveRoutes` catch-all回退是O(n²)且掩盖错误
+- **文件**: `packages/core/src/db/d1/model-routing.impl.ts:32-48`
+- **问题**: 捕获所有错误（而不仅仅是D1规划器限制）并从偏移0重新扫描每行
+- **影响**: 在大型模型目录上回退是二次的；真实故障降级为慢/部分列表
+
+### 3. `created_at`范围比较在PG/MySQL上依赖于会话时区
+- **文件**: `packages/core/src/db/postgres/admin-analytics.impl.ts:50-52` 等
+- **问题**: PG/MySQL上的日期窗口因会话时区而漂移
+- **影响**: 如果PG/MySQL服务器会话时区≠UTC，分析/请求日志日期窗口漂移
+
+### 4. 内部错误消息泄露给客户端
+- **文件**: `packages/admin/lib/gateway-v1-handler.ts:117-123`
+- **问题**: 捕获所有500响应包含原始`error.message`/`String(error)`
+- **影响**: 信息泄露，暴露内部实现细节给未认证的公共客户端
+
+### 5. `formatPriceForPreview`中的死分支（复制粘贴）
+- **文件**: `packages/admin/lib/services/admin/models-service.ts:46-49`
+- **问题**: 三元运算符的两个分支都产生`String(value)`；`Number.isInteger`检查无意义
+- **影响**: 视觉/死代码；无行为差异，但存在潜在的复制粘贴缺陷
+
+### 6. `page`/`page_size`在非数字查询参数上变为NaN
+- **文件**: `packages/admin/lib/services/admin/dashboard-service.ts:128-129` 等
+- **问题**: `Number.parseInt('abc')`→`NaN`，`Math.max(1, NaN)`/`Math.min(100, NaN)`是`NaN`
+- **影响**: 畸形查询（`?page=abc`）产生NaN page/pageSize，流入D1存储库分页
+
+### 7. `budget_period`在用户创建/更新中接受未验证
+- **文件**: `packages/admin/lib/services/admin/users-service.ts:143` 和 `:309`
+- **问题**: `createAdminUser`/`updateAdminUser`将任意输入转换为`BudgetPeriod`，无允许列表检查
+- **影响**: 无效数据写入D1，可能破坏下游重置逻辑
+
+### 8. 并发/竞态条件
+- **文件**: `packages/proxy/src/services/failover-dispatch.ts:240-247`
+- **问题**: 粘性会话解析在路由过滤之后但在实际调度之前发生，如果粘性绑定在解析和实际调度之间更改，可能导致不一致的路由行为
+- **影响**: 不一致的路由行为和潜在的竞态条件
+
+### 9. 空值/未定义处理
+- **文件**: `packages/proxy/src/services/route-strategies/route-strategies.ts:72-74`
+- **问题**: 路由策略计划解析未正确处理空值或未定义的层级策略值
+- **影响**: 当解析包含缺失或格式错误的层级策略数据的配置时，可能导致意外行为
+
+### 10. `concurrency <= 0`产生静默垃圾而不是错误
+- **文件**: `packages/tool-engines/src/ai-detection/detect.ts:50,67,78-80`
+- **问题**: `options?.concurrency ?? DEFAULT_CONCURRENCY`仅保护null/undefined，因此调用者传递`concurrency: 0`（或负数）创建零工作器；`Promise.all([])`解析，`results`保持稀疏数组，`Array.prototype.reduce`跳过孔洞
+- **影响**: 返回`overallScore: 0`、`totalChars: 0`和`segments`数组中的`undefined`条目，无错误，静默误报无AI内容
+
+## 总计
+- **严重**: 3个
+- **高优先级**: 5个  
+- **中优先级**: 6个
+- **低优先级**: 10个
+- **总计**: 24个缺陷
+
+所有发现均已验证，未修改任何文件。建议按严重性顺序修复这些缺陷。
+
+
+
