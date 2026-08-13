@@ -310,7 +310,10 @@ export function ModelCard(props: {
 	onToggleBatchSelection?: (id: string) => void;
 }) {
 	const { model, billingCurrency, onEdit, onViewMetadata, batchMode, batchSelected, onToggleBatchSelection } = props;
+	const t = useTranslations('models.card');
 	const pricingColumns = buildPricingMetricColumns(model.pricing_profile);
+	// 禁用 = 没有任何活跃路由（在测试台禁用后 auto 模式不会使用该模型）
+	const disabled = model.active_routes_count === 0;
 
 	return (
 		<article
@@ -319,8 +322,11 @@ export function ModelCard(props: {
 			className={`relative cursor-pointer rounded-xl border bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg focus:outline-none focus-visible:ring-2 active:translate-y-0 ${
 				batchMode && batchSelected
 					? 'border-red-400 bg-red-50/40 ring-2 ring-red-300 hover:border-red-400 hover:ring-red-400'
-					: 'border-gray-200/80 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-blue-100/70 hover:ring-1 hover:ring-blue-200 focus-visible:border-blue-400 focus-visible:bg-blue-50/30 focus-visible:shadow-lg focus-visible:ring-blue-500'
+					: disabled
+						? 'border-gray-200/60 bg-gray-50/60 opacity-70 hover:border-gray-300 hover:bg-gray-100/70 hover:shadow-md'
+						: 'border-gray-200/80 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-blue-100/70 hover:ring-1 hover:ring-blue-200 focus-visible:border-blue-400 focus-visible:bg-blue-50/30 focus-visible:shadow-lg focus-visible:ring-blue-500'
 			}`}
+			title={disabled ? t('disabledTitle') : undefined}
 			onClick={(e) => {
 				if (batchMode) {
 					e.stopPropagation();
@@ -355,6 +361,13 @@ export function ModelCard(props: {
 							</svg>
 						)}
 					</div>
+				</div>
+			)}
+			{disabled && !batchMode && (
+				<div className="absolute right-3 top-3 z-10">
+					<span className="rounded-md bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+						{t('disabled')}
+					</span>
 				</div>
 			)}
 			<ModelIdentityHeader model={model} />

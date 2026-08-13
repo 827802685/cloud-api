@@ -546,7 +546,9 @@
 			"description": "Description",
 			"metadata": "Metadata",
 			"viewMetadataJson": "View metadata JSON",
-			"kindAudio": "Audio"
+			"kindAudio": "Audio",
+			"disabled": "Disabled",
+			"disabledTitle": "This model has no active routes (disabled in Test Console, auto mode won't use it)"
 		}
 	},
 	"routes": {

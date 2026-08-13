@@ -546,7 +546,9 @@
 			"description": "설명",
 			"metadata": "Metadata",
 			"viewMetadataJson": "Metadata JSON 보기",
-			"kindAudio": "오디오"
+			"kindAudio": "오디오",
+			"disabled": "비활성화됨",
+			"disabledTitle": "이 모델에는 활성 Route가 없습니다(테스트 콘솔에서 비활성화하면 auto 모드에서 사용되지 않습니다)"
 		}
 	},
 	"routes": {

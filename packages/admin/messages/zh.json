@@ -546,7 +546,9 @@
 			"description": "描述",
 			"metadata": "Metadata",
 			"viewMetadataJson": "查看 Metadata JSON",
-			"kindAudio": "音频"
+			"kindAudio": "音频",
+			"disabled": "已禁用",
+			"disabledTitle": "该模型没有活跃路由（在测试台禁用后 auto 模式不会使用）"
 		}
 	},
 	"routes": {

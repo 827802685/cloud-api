@@ -546,7 +546,9 @@
 			"description": "説明",
 			"metadata": "Metadata",
 			"viewMetadataJson": "Metadata JSON を表示",
-			"kindAudio": "音声"
+			"kindAudio": "音声",
+			"disabled": "無効",
+			"disabledTitle": "このモデルには有効な Route がありません（テスト台で無効化すると auto モードでは使用されません）"
 		}
 	},
 	"routes": {

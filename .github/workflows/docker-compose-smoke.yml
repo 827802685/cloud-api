@@ -1,24 +1,11 @@
 # 本地 compose 冒烟：构建 proxy + admin，起 Postgres，等 HEALTHCHECK。
 # 拦住 Dockerfile / esbuild 打包契约类启动失败（如 ERR_MODULE_NOT_FOUND）。
+# 仅在 PR 与手动触发时运行，避免每次 push main 都重复跑。
 
 name: Docker Compose Smoke (node-pg)
 
 on:
   pull_request:
-    paths:
-      - "Dockerfile.proxy"
-      - "Dockerfile.admin"
-      - "Dockerfile.migrate"
-      - "docker/**"
-      - "packages/core/**"
-      - "packages/tool-engines/**"
-      - "packages/proxy/**"
-      - "packages/admin/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/docker-compose-smoke.yml"
-  push:
-    branches: [main, develop]
     paths:
       - "Dockerfile.proxy"
       - "Dockerfile.admin"
