@@ -450,6 +450,36 @@ export default function GatewayKeysPage() {
         </div>
       )}
 
+      {/* 统一 API 连接信息卡片（不显示密钥本身） */}
+      <div className="mb-6 bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">您的统一 API 连接信息</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          使用您的个人 API 密钥作为 OpenAI api_key，用于对发往本代理的请求进行身份验证。
+        </p>
+        <div className="mt-2 space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">Base URL</span>
+            <code className="font-mono text-gray-900">https://api.zjkl.dpdns.org/v1</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">对话</span>
+            <code className="font-mono text-gray-900">/v1/chat/completions</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">响应</span>
+            <code className="font-mono text-gray-900">/v1/responses</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">Messages</span>
+            <code className="font-mono text-gray-900">/v1/messages (兼容 Anthropic (Claude))</code>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 w-20 shrink-0">嵌入</span>
+            <code className="font-mono text-gray-900 text-xs">/v1/embeddings (model: &quot;auto&quot; 或「嵌入模型」标签中的系列)</code>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="mb-4 flex justify-between items-center">
         <div className="flex gap-4">
