@@ -44,12 +44,36 @@ function resolveNames() {
 	};
 }
 
-/** Strip // and block comments so JSONC base templates parse. */
+/** Strip // and block comments so JSONC base templates parse. Ignores `//` inside string literals (e.g. URLs). */
 function parseJsonc(text) {
 	const withoutBlock = text.replace(/\/\*[\s\S]*?\*\//g, "");
 	const lines = withoutBlock.split("\n").map((line) => {
-		const idx = line.indexOf("//");
-		return idx >= 0 ? line.slice(0, idx) : line;
+		// 逐字符扫描，跳过字符串字面量内部的 `//`，仅剥离真正的行注释
+		let inString = false;
+		let quote = "";
+		for (let i = 0; i < line.length - 1; i++) {
+			const ch = line[i];
+			const next = line[i + 1];
+			if (inString) {
+				if (ch === "\\") {
+					i++; // 跳过转义字符
+					continue;
+				}
+				if (ch === quote) {
+					inString = false;
+				}
+				continue;
+			}
+			if (ch === '"' || ch === "'") {
+				inString = true;
+				quote = ch;
+				continue;
+			}
+			if (ch === "/" && next === "/") {
+				return line.slice(0, i);
+			}
+		}
+		return line;
 	});
 	return JSON.parse(lines.join("\n"));
 }

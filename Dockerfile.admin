@@ -44,6 +44,7 @@ RUN set -eux; \
 
 COPY packages/core ./packages/core
 COPY packages/tool-engines ./packages/tool-engines
+COPY packages/proxy ./packages/proxy
 COPY packages/admin ./packages/admin
 
 ENV NODE_ENV=production

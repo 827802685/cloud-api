@@ -16,7 +16,7 @@ function providerWithEndpoints(endpoints: unknown): GatewayProvider {
 		endpoints: JSON.stringify(endpoints),
 		description: null,
 		created_at: null,
-	} as GatewayProvider;
+	} as unknown as GatewayProvider;
 }
 
 describe('tryCollapseGeminiLegacyEndpoints', () => {
