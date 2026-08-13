@@ -3,7 +3,7 @@
  * 支持 `auto` 和 `auto:vendor` 语法，自动选择最佳可用模型。
  */
 import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
-import { selectAutoModel } from './auto-model-selector';
+import { selectAutoModelCandidates } from './auto-model-selector';
 
 export interface ResolvedModelRouting {
   model: ModelRow;
@@ -13,6 +13,8 @@ export interface ResolvedModelRouting {
   explicitGroup: string | null;
   /** 是否为 auto 选择（用于日志和响应头） */
   isAutoSelected?: boolean;
+  /** 仅 auto：排序后的候选模型列表，供 failover 跨模型切换（首选在首位） */
+  autoCandidates?: ModelRow[];
 }
 
 /**
@@ -35,16 +37,18 @@ export async function resolveModelRouting(
   // 处理 auto 模型选择
   if (t === 'auto' || t.startsWith('auto:')) {
     const preferredVendor = t.includes(':') ? t.slice(5).trim() : undefined;
-    const selected = await selectAutoModel(repos, preferredVendor || undefined);
-    if (!selected) {
+    const candidates = await selectAutoModelCandidates(repos, preferredVendor || undefined);
+    if (candidates.length === 0) {
       console.warn('[AutoModel] no available models found');
       return null;
     }
+    const selected = candidates[0]!;
     return {
-      model: selected.model,
-      baseModelId: selected.modelId,
+      model: selected,
+      baseModelId: selected.id,
       explicitGroup: null,
       isAutoSelected: true,
+      autoCandidates: candidates,
     };
   }
 

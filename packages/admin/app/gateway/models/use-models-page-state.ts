@@ -35,7 +35,9 @@ import {
 	fetchImportCatalog,
 	fetchModelDetail,
 	fetchModelsList,
+	fetchRssSyncStatus,
 	importModelPresets,
+	runRssSync,
 	saveModel,
 } from './model-api';
 import {
@@ -98,6 +100,11 @@ export function useModelsPageState() {
 	const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
 	const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 	const [isAutoAddingRoutes, setIsAutoAddingRoutes] = useState(false);
+	const [rssSyncState, setRssSyncState] = useState<{
+		source: string;
+		lastSyncAt: string | null;
+		syncing: boolean;
+	}>({ source: '', lastSyncAt: null, syncing: false });
 	const { currency: billingCurrency } = useBillingCurrency();
 
 	const openMetadataPreview = useCallback((model: ModelListItem) => {
@@ -789,6 +796,71 @@ export function useModelsPageState() {
 		}
 	}, [refreshModels]);
 
+	const handleRssSync = useCallback(
+		async (opts?: { silent?: boolean }) => {
+			if (rssSyncState.syncing) return;
+			setRssSyncState((prev) => ({ ...prev, syncing: true }));
+			try {
+				const result = await runRssSync();
+				if (!result.success) {
+					if (!opts?.silent) alert(result.message || 'RSS 同步失败');
+					return;
+				}
+				const d = result.data;
+				setRssSyncState((prev) => ({
+					...prev,
+					lastSyncAt: new Date().toISOString(),
+				}));
+				if (!opts?.silent) {
+					const parts = [
+						`RSS 同步完成`,
+						`解析: ${d.parsed}`,
+						`新建模型: ${d.models_created}`,
+						`跳过(已存在): ${d.models_skipped}`,
+						`跳过(无厂商 key): ${d.models_no_provider}`,
+						`新建路由: ${d.routes_created}`,
+					];
+					if (d.failed.length > 0) {
+						parts.push(`失败: ${d.failed.length}`);
+						parts.push(d.failed.slice(0, 10).map((f) => `  ${f.id}: ${f.message}`).join('\n'));
+					}
+					alert(parts.join('\n'));
+				}
+				await refreshModels();
+			} catch (error) {
+				console.error('RSS sync error:', error);
+				if (!opts?.silent) {
+					alert(error instanceof Error ? error.message : 'RSS 同步失败');
+				}
+			} finally {
+				setRssSyncState((prev) => ({ ...prev, syncing: false }));
+			}
+		},
+		[refreshModels, rssSyncState.syncing]
+	);
+
+	// 自动同步：进入模型页时检查上次同步是否到期（>15 天），到期则静默自动拉取一次
+	const autoSyncCheckedRef = useRef(false);
+	useEffect(() => {
+		if (autoSyncCheckedRef.current) return;
+		autoSyncCheckedRef.current = true;
+		(async () => {
+			try {
+				const status = await fetchRssSyncStatus();
+				setRssSyncState((prev) => ({
+					...prev,
+					source: status.source,
+					lastSyncAt: status.last_sync_at,
+				}));
+				if (status.due) {
+					await handleRssSync({ silent: true });
+				}
+			} catch (error) {
+				console.error('RSS auto-sync check error:', error);
+			}
+		})();
+	}, [handleRssSync]);
+
 	const isAllVendors = selectedVendor === ALL_VENDORS_KEY;
 	const activeVendorKey = isAllVendors ? (vendorKeys[0] ?? 'other') : selectedVendor || vendorKeys[0] || 'other';
 	const activeVendorTitle = isAllVendors ? tCatalog('allVendors') : getModelVendorLabel(activeVendorKey);
@@ -874,5 +946,7 @@ export function useModelsPageState() {
 		handleBatchDelete,
 		isAutoAddingRoutes,
 		handleAutoAddRoutes,
+		rssSyncState,
+		handleRssSync,
 	};
 }

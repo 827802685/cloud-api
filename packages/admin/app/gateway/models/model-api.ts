@@ -2,7 +2,7 @@ import {
 	isAudioTranscriptionModel,
 	isImageGenerationModel,
 } from '@cloud-api/core/db/model-modalities';
-import { readApiJson } from '@/lib/api-json';
+import { readApiJson, readJson } from '@/lib/api-json';
 import { normalizeModelVendorInput } from '@/lib/model-vendor';
 import {
 	serializeAudioPricingDraft,
@@ -171,4 +171,36 @@ export async function autoAddRoutes(
 	const data = await readApiJson<AutoAddRouteResult>(response);
 	if (data.success && data.data) return { success: true, data: data.data };
 	return { success: false, message: data.message || 'Auto-add routes failed' };
+}
+
+export type RssSyncStatus = {
+	success: boolean;
+	source: string;
+	last_sync_at: string | null;
+	due: boolean;
+};
+
+export type RssSyncRunData = {
+	source: string;
+	parsed: number;
+	models_created: number;
+	models_skipped: number;
+	models_no_provider: number;
+	routes_created: number;
+	routes_skipped: number;
+	failed: Array<{ id: string; message: string }>;
+};
+
+export async function fetchRssSyncStatus(): Promise<RssSyncStatus> {
+	const response = await fetch('/api/admin/rss-sync/status');
+	const data = await readJson<RssSyncStatus>(response);
+	if (data.success) return data;
+	throw new Error('Failed to load RSS sync status');
+}
+
+export async function runRssSync(): Promise<{ success: true; data: RssSyncRunData } | { success: false; message: string }> {
+	const response = await fetch('/api/admin/rss-sync/run', { method: 'POST' });
+	const data = await readApiJson<RssSyncRunData>(response);
+	if (data.success && data.data) return { success: true, data: data.data };
+	return { success: false, message: data.message || 'RSS sync failed' };
 }

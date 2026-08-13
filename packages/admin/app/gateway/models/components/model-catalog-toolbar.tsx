@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 
 type Props = {
@@ -20,6 +20,9 @@ type Props = {
 	isBatchDeleting: boolean;
 	onAutoAddRoutes: () => void;
 	isAutoAddingRoutes: boolean;
+	onRssSync: () => void;
+	isRssSyncing: boolean;
+	rssLastSyncAt: string | null;
 };
 
 export function ModelCatalogToolbar(props: Props) {
@@ -40,6 +43,9 @@ export function ModelCatalogToolbar(props: Props) {
 		isBatchDeleting,
 		onAutoAddRoutes,
 		isAutoAddingRoutes,
+		onRssSync,
+		isRssSyncing,
+		rssLastSyncAt,
 	} = props;
 
 	const t = useTranslations('models.catalog');
@@ -118,6 +124,20 @@ export function ModelCatalogToolbar(props: Props) {
 						>
 							<BoltIcon className="h-4 w-4" />
 							{isAutoAddingRoutes ? 'Adding...' : 'Auto Routes'}
+						</button>
+						<button
+							type="button"
+							onClick={onRssSync}
+							disabled={isRssSyncing}
+							className="flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 py-2 text-sm text-sky-700 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50"
+							title={
+								rssLastSyncAt
+									? `Last RSS sync: ${new Date(rssLastSyncAt).toLocaleString()}`
+									: 'Sync free models from RSS'
+							}
+						>
+							<ArrowPathIcon className={`h-4 w-4 ${isRssSyncing ? 'animate-spin' : ''}`} />
+							{isRssSyncing ? 'Syncing...' : 'RSS Sync'}
 						</button>
 						<button
 							type="button"

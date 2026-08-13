@@ -10,6 +10,7 @@
 | 先了解 Gateway 能解决什么问题（含图片生成、语音转写、智能体工具、Catalog） | [features.md](./features.md) |
 | 部署后配置供应商、模型路由、智能体工具、用户 Key | [configuration.md](./configuration.md) |
 | 将客户端或工具指向 Gateway（Chat / Images / Audio / Tools） | [connect-clients.md](./connect-clients.md) |
+| 接入 Trae / Codex / CC Switch / CodeBuddy / WorkBuddy / AstrBot | [tool-integrations.md](./tool-integrations.md) |
 
 ## 不在这里展开的内容
 

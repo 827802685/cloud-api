@@ -23,6 +23,7 @@ export {
 	classifyWithWorkersAI,
 } from './services/model-quality-scorer';
 export type {
+	FreeQuotaTier,
 	ModelQualityInput,
 	ModelQualityScore,
 	WorkersAiClassification,

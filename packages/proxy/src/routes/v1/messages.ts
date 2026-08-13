@@ -115,7 +115,7 @@ messagesRoutes.post('/', async (c) => {
       message: 'Model not found',
     });
   }
-  const { model, baseModelId, explicitGroup } = resolved;
+  const { model, baseModelId, explicitGroup, isAutoSelected, autoCandidates } = resolved;
   const effectiveRouteGroup = explicitGroup?.trim() || 'default';
 
   if (apiKey.budgetMax != null && apiKey.budgetSpent >= apiKey.budgetMax) {
@@ -131,16 +131,26 @@ messagesRoutes.post('/', async (c) => {
   let poolTierStrategies: string | null = null;
   let stickySurface: import('@cloud-api/core').ResolvedModelSurfaceRow | null = null;
   try {
-    const resolvedSurface = await resolveRoutesForSurface(repos, {
-      modelId: baseModelId,
-      routeGroup: effectiveRouteGroup,
-      requestProtocol: 'anthropic',
-      requestOperation: 'messages',
-    });
-    routes = resolvedSurface.routes;
-    poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
-    poolTierStrategies = resolvedSurface.surface?.pool_tier_strategies ?? null;
-    stickySurface = resolvedSurface.surface;
+    // auto 模式：合并所有候选模型的路由，使 failover 能跨模型切换（首选在首位）
+    const candidateIds = isAutoSelected && autoCandidates?.length
+      ? autoCandidates.map((m) => m.id)
+      : [baseModelId];
+    const mergedRoutes: RouteResult[] = [];
+    for (const candId of candidateIds) {
+      const resolvedSurface = await resolveRoutesForSurface(repos, {
+        modelId: candId,
+        routeGroup: effectiveRouteGroup,
+        requestProtocol: 'anthropic',
+        requestOperation: 'messages',
+      });
+      if (poolStrategy == null) {
+        poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
+        poolTierStrategies = resolvedSurface.surface?.pool_tier_strategies ?? null;
+        stickySurface = resolvedSurface.surface;
+      }
+      mergedRoutes.push(...resolvedSurface.routes);
+    }
+    routes = mergedRoutes;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Model route resolution failed';
     return gatewayErrorJson(c, {

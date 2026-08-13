@@ -68,7 +68,7 @@ type TestResult = {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const DEFAULT_PROMPT = 'Hello, please introduce yourself briefly.';
+const DEFAULT_PROMPT = 'hi';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */

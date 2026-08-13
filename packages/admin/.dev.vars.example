@@ -3,3 +3,5 @@
 # Cloudflare 运行时仅支持 D1（由 wrangler 绑定 DB），不要在这里配置 DATABASE_URL。
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
+# 免费模型 RSS 同步源（可改域名；留空则用代码内置默认值）。
+RSS_SYNC_URL=https://rss.zjkl.dpdns.org/rss.xml

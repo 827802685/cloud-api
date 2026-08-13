@@ -18,6 +18,7 @@ import { adminModelsRoutes } from '@/lib/routes/admin/models';
 import { adminPlaygroundRoutes } from '@/lib/routes/admin/playground';
 import { adminProvidersRoutes } from '@/lib/routes/admin/providers';
 import { adminRequestLogsRoutes } from '@/lib/routes/admin/request-logs';
+import { adminRssSyncRoutes } from '@/lib/routes/admin/rss-sync';
 import { adminStatsRoutes } from '@/lib/routes/admin/stats';
 
 export function createAdminApp(): Hono<AdminEnv> {
@@ -48,6 +49,7 @@ export function createAdminApp(): Hono<AdminEnv> {
 	app.route('/admin/stats', adminStatsRoutes);
 	app.route('/admin/config', adminConfigRoutes);
 	app.route('/admin/request-logs', adminRequestLogsRoutes);
+	app.route('/admin/rss-sync', adminRssSyncRoutes);
 	app.route('/admin/budget-audit-logs', adminBudgetAuditLogsRoutes);
 	app.route('/admin/business-timezone', adminBusinessTimezoneRoutes);
 	app.route('/admin/analytics', adminAnalyticsRoutes);

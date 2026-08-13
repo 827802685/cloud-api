@@ -26,6 +26,8 @@ export type GatewayBindings = {
 	DATABASE_URL?: string;
 	DATABASE_DRIVER?: string;
 	STORAGE_CONTEXT?: StorageContext;
+	/** 免费模型 RSS 同步源地址（可配置，便于后续改域名）。 */
+	RSS_SYNC_URL?: string;
 };
 
 /**

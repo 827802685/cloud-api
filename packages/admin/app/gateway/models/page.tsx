@@ -87,6 +87,9 @@ function ModelsContent() {
 							isBatchDeleting={state.isBatchDeleting}
 							onAutoAddRoutes={() => void state.handleAutoAddRoutes()}
 							isAutoAddingRoutes={state.isAutoAddingRoutes}
+							onRssSync={() => void state.handleRssSync()}
+							isRssSyncing={state.rssSyncState.syncing}
+							rssLastSyncAt={state.rssSyncState.lastSyncAt}
 						/>
 
 						<div className="bg-slate-100/70 p-4 sm:p-6">
