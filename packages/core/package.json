@@ -76,7 +76,7 @@
 		"postgres": "^3.4.9"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250427.0",
+		"@cloudflare/workers-types": "^5.20260810.1",
 		"@types/node": "^25.5.0",
 		"esbuild": "^0.28.1",
 		"tsx": "^4.21.0",
