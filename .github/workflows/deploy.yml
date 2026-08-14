@@ -1,0 +1,114 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**'
+      - 'scripts/deploy/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      admin: ${{ steps.filter.outputs.admin }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            admin:
+              - 'packages/admin/**'
+              - 'packages/proxy/**'
+              - 'packages/core/**'
+              - 'packages/tool-engines/**'
+              - 'scripts/deploy/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/deploy.yml'
+            migrations:
+              - 'packages/core/migrations-d1/**'
+
+  deploy-admin:
+    needs: changes
+    if: ${{ needs.changes.outputs.admin == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build core package
+        run: npm run build -w @cloud-api/core
+
+      - name: Generate wrangler config
+        env:
+          PROXY_WORKER_NAME: ${{ vars.PROXY_WORKER_NAME }}
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          D1_MIGRATIONS_WORKER_NAME: ${{ vars.D1_MIGRATIONS_WORKER_NAME }}
+          PROXY_CUSTOM_DOMAIN: ${{ vars.PROXY_CUSTOM_DOMAIN }}
+          ADMIN_CUSTOM_DOMAIN: ${{ vars.ADMIN_CUSTOM_DOMAIN }}
+        run: npm run gen:wrangler -- --remote
+
+      - name: Build Admin Worker for Cloudflare
+        run: npm run build:cf -w @cloud-api/admin
+
+      - name: Deploy Admin Worker to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'packages/admin'
+          command: 'deploy'
+
+  deploy-migrations:
+    needs: changes
+    if: ${{ needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run D1 migrations
+        env:
+          PROXY_WORKER_NAME: ${{ vars.PROXY_WORKER_NAME }}
+          ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+          D1_MIGRATIONS_WORKER_NAME: ${{ vars.D1_MIGRATIONS_WORKER_NAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run db:migrate:remote
