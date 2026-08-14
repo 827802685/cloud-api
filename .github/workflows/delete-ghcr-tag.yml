@@ -1,5 +1,5 @@
 # 一次性运维：按 tag 删除 GHCR 三镜像对应 package version（含 multi-arch manifest）。
-# 用法：gh workflow run delete-ghcr-tag.yml -f version_tag=v2.2.0
+# 用法：gh workflow run delete-ghcr-tag.yml -f version_tag=v2.3.0
 
 name: Delete GHCR tag
 
@@ -28,9 +28,9 @@ jobs:
             const want = new Set([tag, bare, `v${bare}`]);
             const org = context.repo.owner;
             const pkgs = [
-              'octafuse-gateway-proxy',
-              'octafuse-gateway-admin',
-              'octafuse-gateway-migrate',
+              'cloud-api-proxy',
+              'cloud-api-admin',
+              'cloud-api-migrate',
             ];
             for (const name of pkgs) {
               core.info(`Scanning ${org}/${name} for tags ${[...want].join(', ')}`);

@@ -78,16 +78,16 @@ flowchart LR
   DOCKER --> REL
 ```
 
-**并发**：`octafuse-docker-images.yml` 已配置 `concurrency`（`group: octafuse-docker-images-${{ github.ref }}`，`cancel-in-progress: false`）。同一 ref（如同一 `v*` tag）的重复触发会**串行**执行，避免并行推送互相覆盖 digest。
+**并发**：`docker-images.yml` 已配置 `concurrency`（`group: docker-images-${{ github.ref }}`，`cancel-in-progress: false`）。同一 ref（如同一 `v*` tag）的重复触发会**串行**执行，避免并行推送互相覆盖 digest。
 
 1. **`.github/workflows/release.yml`**（`push` → `main`）
 
    - 若有未消费的 `.changeset/*.md`：打开 **「chore: version packages」** PR（更新版本、`CHANGELOG.md`）。
    - 若无待处理 changeset 且版本已更新：`changesets/action` 的 **`publish`** 步骤执行 **`npm run ci:changeset-tag-push`**（`changeset tag` + 推送 **`vX.Y.Z`**）。
    - **不在此 workflow 创建 GitHub Release**（避免与 digest 说明重复）。
-   - **Docker 触发**：若使用 **`CHANGESETS_GITHUB_TOKEN`（PAT）** 打 tag，GitHub 会把 **`push` tags** 交给下游，**`octafuse-docker-images`** 会按 tag 自动跑。若仅用默认 **`GITHUB_TOKEN`** 打 tag，**不会**自动触发其它 workflow（[官方说明](https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow)）；此时 **Release** 会在检测到 **`GITHUB_SHA` 上有 `v*` tag** 后，用 **`gh workflow run`** 主动触发 **Octafuse Docker Images**（需 workflow 已授予 **`actions: write`**，本仓已加）。
+   - **Docker 触发**：若使用 **`CHANGESETS_GITHUB_TOKEN`（PAT）** 打 tag，GitHub 会把 **`push` tags** 交给下游，**`docker-images`** 会按 tag 自动跑。若仅用默认 **`GITHUB_TOKEN`** 打 tag，**不会**自动触发其它 workflow（[官方说明](https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow)）；此时 **Release** 会在检测到 **`GITHUB_SHA` 上有 `v*` tag** 后，用 **`gh workflow run`** 主动触发 **Docker Images**（需 workflow 已授予 **`actions: write`**，本仓已加）。
 
-2. **`.github/workflows/octafuse-docker-images.yml`**（**`push` → `tags/v*`**，或由 Release **dispatch**；或 **`workflow_dispatch`**）
+2. **`.github/workflows/docker-images.yml`**（**`push` → `tags/v*`**，或由 Release **dispatch**；或 **`workflow_dispatch`**）
 
    - 构建并推送 **GHCR** 三镜像。
    - 在 **tag 发版**路径下创建/更新 **GitHub Release**：正文由 **`npm run release:notes`**（`scripts/release/render-release-notes.mjs`）生成——**本次更新 / 变更内容 / 升级说明** + 折叠区 **镜像 digest** + 相关链接；优先读取可选覆盖文件 **`docs/releases/X.Y.Z.md`**，否则从 **`CHANGELOG.md`** 对应段落规范化（去掉 `Patch Changes` 与 commit/`Thanks @` 前缀）。

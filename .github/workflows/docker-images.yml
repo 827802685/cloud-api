@@ -39,7 +39,7 @@ on:
         default: true
 
 concurrency:
-  group: octafuse-docker-images-${{ github.ref }}
+  group: docker-images-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -154,9 +154,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.imgs.outputs.images }}
-          # 覆盖默认从 GitHub 仓库 About 拉取的 description（历史描述可能仍为 SoloEnt 文案）
+          # 覆盖默认从 GitHub 仓库 About 拉取的 description
           labels: |
-            org.opencontainers.image.description=Octafuse gateway monorepo: AI Gateway (D1, Postgres, MySQL), Cloudflare Workers, and Node. https://github.com/OctaFuse/octafuse-gateway
+            org.opencontainers.image.description=Cloud API: AI Gateway (D1, Postgres, MySQL), Cloudflare Workers, and Node. https://github.com/827802685/cloud-api
           tags: |
             type=sha,prefix=
             type=ref,event=branch
@@ -193,7 +193,7 @@ jobs:
         if: ${{ needs.prepare.outputs.is_tag_release == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: octafuse-image-digest-${{ matrix.image_suffix }}
+          name: cloud-api-image-digest-${{ matrix.image_suffix }}
           path: ${{ matrix.image_suffix }}.digest
 
       - name: Image digest (log)
@@ -222,7 +222,7 @@ jobs:
       - name: Download digest artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: octafuse-image-digest-*
+          pattern: cloud-api-image-digest-*
           path: digest-artifacts
           merge-multiple: true
 
@@ -262,5 +262,5 @@ jobs:
           if gh release view "$TAG" --repo "${{ github.repository }}" 2>/dev/null; then
             gh release edit "$TAG" --repo "${{ github.repository }}" --notes-file release-notes.md
           else
-            gh release create "$TAG" --repo "${{ github.repository }}" --title "OctaFuse ${TAG}" --notes-file release-notes.md
+            gh release create "$TAG" --repo "${{ github.repository }}" --title "cloud-api ${TAG}" --notes-file release-notes.md
           fi

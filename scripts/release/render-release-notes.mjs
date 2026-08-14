@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
-const DEFAULT_REPO = "OctaFuse/octafuse-gateway";
+const DEFAULT_REPO = "827802685/cloud-api";
 
 function parseArgs(argv) {
 	const out = {
@@ -151,7 +151,7 @@ function defaultUpgradeNotes() {
 }
 
 function defaultSummary(version) {
-	return `OctaFuse Gateway **v${version}**。`;
+	return `cloud-api **v${version}**。`;
 }
 
 /**

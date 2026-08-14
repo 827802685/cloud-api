@@ -66,7 +66,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/db?options=-c%20timezone%3DUTC
 
 ```bash
 # 仓库根目录；镜像 tag 与 proxy/admin 保持一致
-export GATEWAY_MIGRATE_IMAGE=ghcr.io/octafuse/octafuse-gateway-migrate:latest
+export GATEWAY_MIGRATE_IMAGE=ghcr.io/827802685/cloud-api-migrate:latest
 export DATABASE_URL='postgresql://user:pass@host:5432/db?options=-c%20timezone%3DUTC'
 export DATABASE_DRIVER=postgres
 
@@ -149,9 +149,9 @@ DATABASE_URL=postgresql://user:pass@host:5432/db?options=-c%20timezone%3DUTC
 
 | Service | 镜像示例 |
 |---------|----------|
-| proxy | `ghcr.io/octafuse/octafuse-gateway-proxy:v2.0.0` |
-| admin | `ghcr.io/octafuse/octafuse-gateway-admin:v2.0.0` |
-| migrate | `ghcr.io/octafuse/octafuse-gateway-migrate:v2.0.0` |
+| proxy | `ghcr.io/827802685/cloud-api-proxy:v2.0.0` |
+| admin | `ghcr.io/827802685/cloud-api-admin:v2.0.0` |
+| migrate | `ghcr.io/827802685/cloud-api-migrate:v2.0.0` |
 
 在 Zeabur 选择 **Docker Images** 创建代理服务 / 管理后台常驻 Service；migrate 按 §3 方式 A 或 B 处理。
 
