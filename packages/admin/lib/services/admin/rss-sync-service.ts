@@ -23,8 +23,10 @@ export const RSS_LAST_SYNC_KEY = 'rss_last_sync_at';
 
 /** 解析后的 RSS 模型条目 */
 export type RssModelEntry = {
-	/** 平台模型 id（如 `openrouter/openai/gpt-oss-20b:free`） */
+	/** 平台模型 id（RSS title 去掉 `:free` 后缀） */
 	id: string;
+	/** 原始 RSS title（含 `:free` 后缀等） */
+	rawTitle: string;
 	/** 厂商（如 `openrouter`、`nvidia`） */
 	vendor: string;
 	/** 上游模型名（如 `openai/gpt-oss-20b:free`） */
@@ -59,6 +61,14 @@ export function inferParamsB(modelName: string): number | null {
 	if (!m) return null;
 	const v = Number(m[1]);
 	return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * 去掉模型 ID 末尾的 `:free` 后缀（如 `openrouter/openai/gpt-oss-20b:free` → `openrouter/openai/gpt-oss-20b`）。
+ * 平台 `models.id` 统一不带 `:free`，避免与静态目录导入的同一模型重复；`:free` 仅保留在上游模型名中。
+ */
+export function stripFreeSuffix(id: string): string {
+	return id.replace(/:free$/i, '');
 }
 
 /** RSS 模型能力分类：文生图 / 音频转写 / 视频 / 文本聊天。 */
@@ -220,7 +230,8 @@ export function parseRssXml(xml: string): RssModelEntry[] {
 			.filter((s) => s.length > 0 && s !== '未知');
 
 		items.push({
-			id: title,
+			id: stripFreeSuffix(title),
+			rawTitle: title,
 			vendor: vendor || 'unknown',
 			providerModelName: providerModelName || title,
 			baseUrl,
@@ -351,7 +362,6 @@ export async function syncFreeModelsFromRss(
 					// 文生图/音频转写模型不适用 LLM 默认 max_tokens
 					max_tokens: kind === 'chat' || kind === 'video' ? 8192 : null,
 					pricing_profile: pricingProfile,
-					tags: ['Free'],
 					input_modalities: modalities.input,
 					output_modalities: modalities.output,
 					description: `Free model via RSS sync (${entry.vendor}).`,
