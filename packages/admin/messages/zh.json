@@ -1006,7 +1006,7 @@
 	},
 	"testConsole": {
 		"title": "测试台",
-		"subtitle": "选择一个或多个模型，发送相同的提示词，并排对比响应结果。",
+		"subtitle": "选择一个或多个模型，发送相同的提示词，并排对比响应结果。支持大语言模型、文生图与音频转写。",
 		"selectModels": "模型",
 		"filterModels": "筛选模型...",
 		"noModelsAvailable": "没有可用路由的模型。",
@@ -1024,7 +1024,23 @@
 		"disableSelected": "禁用选中",
 		"enableSelected": "启用选中",
 		"selectModel": "选中该模型",
-		"deselectModel": "取消选中"
+		"deselectModel": "取消选中",
+		"kindAll": "全部",
+		"kindLlm": "大语言模型",
+		"kindImage": "文生图",
+		"kindAudio": "音频",
+		"kind_llm": "LLM",
+		"kind_image": "文生图",
+		"kind_audio": "音频",
+		"imageOperation": "图像操作",
+		"imagePreview": "生成图片",
+		"referenceImagesSelected": "张参考图",
+		"referenceImagesHint": "最多 {max} 张参考图",
+		"audioFileHint": "选择音频文件",
+		"readyNeedModel": "请先选择至少一个模型。",
+		"readyNeedPrompt": "请输入提示词。",
+		"readyNeedEditImages": "请选择至少一张参考图。",
+		"readyNeedAudioFile": "请选择音频文件。"
 	},
 	"simulator": {
 		"title": "模拟器",

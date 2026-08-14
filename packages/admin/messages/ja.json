@@ -1006,7 +1006,7 @@
 	},
 	"testConsole": {
 		"title": "Test Console",
-		"subtitle": "1 つ以上のモデルを選択し、同じプロンプトを送信してレスポンスを並べて比較します。",
+		"subtitle": "1 つ以上のモデルを選択し、同じプロンプトを送信してレスポンスを並べて比較します。LLM、画像生成、音声文字起こしに対応しています。",
 		"selectModels": "モデル",
 		"filterModels": "モデルを絞り込み...",
 		"noModelsAvailable": "Active な Route を持つモデルがありません。",
@@ -1024,7 +1024,23 @@
 		"disableSelected": "選択を無効化",
 		"enableSelected": "選択を有効化",
 		"selectModel": "このモデルを選択",
-		"deselectModel": "選択解除"
+		"deselectModel": "選択解除",
+		"kindAll": "すべて",
+		"kindLlm": "LLM",
+		"kindImage": "画像",
+		"kindAudio": "音声",
+		"kind_llm": "LLM",
+		"kind_image": "画像",
+		"kind_audio": "音声",
+		"imageOperation": "画像操作",
+		"imagePreview": "生成画像",
+		"referenceImagesSelected": "枚の参照画像",
+		"referenceImagesHint": "最大 {max} 枚の参照画像",
+		"audioFileHint": "音声ファイルを選択",
+		"readyNeedModel": "モデルを 1 つ以上選択してください。",
+		"readyNeedPrompt": "プロンプトを入力してください。",
+		"readyNeedEditImages": "参照画像を 1 枚以上選択してください。",
+		"readyNeedAudioFile": "音声ファイルを選択してください。"
 	},
 	"simulator": {
 		"title": "Simulator",

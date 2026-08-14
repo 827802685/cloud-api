@@ -186,6 +186,7 @@ export type RssSyncRunData = {
 	models_created: number;
 	models_skipped: number;
 	models_no_provider: number;
+	models_skipped_unsupported: number;
 	routes_created: number;
 	routes_skipped: number;
 	failed: Array<{ id: string; message: string }>;

@@ -812,20 +812,21 @@ export function useModelsPageState() {
 					lastSyncAt: new Date().toISOString(),
 				}));
 				if (!opts?.silent) {
-					const parts = [
-						`RSS 同步完成`,
-						`解析: ${d.parsed}`,
-						`新建模型: ${d.models_created}`,
-						`跳过(已存在): ${d.models_skipped}`,
-						`跳过(无厂商 key): ${d.models_no_provider}`,
-						`新建路由: ${d.routes_created}`,
-					];
-					if (d.failed.length > 0) {
-						parts.push(`失败: ${d.failed.length}`);
-						parts.push(d.failed.slice(0, 10).map((f) => `  ${f.id}: ${f.message}`).join('\n'));
-					}
-					alert(parts.join('\n'));
+				const parts = [
+					`RSS 同步完成`,
+					`解析: ${d.parsed}`,
+					`新建模型: ${d.models_created}`,
+					`跳过(已存在): ${d.models_skipped}`,
+					`跳过(无厂商 key): ${d.models_no_provider}`,
+					`跳过(不支持类型): ${d.models_skipped_unsupported ?? 0}`,
+					`新建路由: ${d.routes_created}`,
+				];
+				if (d.failed.length > 0) {
+					parts.push(`失败: ${d.failed.length}`);
+					parts.push(d.failed.slice(0, 10).map((f) => `  ${f.id}: ${f.message}`).join('\n'));
 				}
+				alert(parts.join('\n'));
+			}
 				await refreshModels();
 			} catch (error) {
 				console.error('RSS sync error:', error);

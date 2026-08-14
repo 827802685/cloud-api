@@ -50,6 +50,8 @@ export type RssSyncResult = {
 	models_created: number;
 	models_skipped: number;
 	models_no_provider: number;
+	/** 网关不支持的模型种类（嵌入/TTS/视频等），跳过导入 */
+	models_skipped_unsupported: number;
 	routes_created: number;
 	routes_skipped: number;
 	failed: Array<{ id: string; message: string }>;
@@ -71,19 +73,121 @@ export function stripFreeSuffix(id: string): string {
 	return id.replace(/:free$/i, '');
 }
 
-/** RSS 模型能力分类：文生图 / 音频转写 / 视频 / 文本聊天。 */
-export type RssModelKind = 'chat' | 'image' | 'audio' | 'video';
+/**
+ * RSS 模型能力分类：按实际功能细分，而非一刀切 LLM。
+ * 注意：google / nvidia / modelscope 等厂商在 RSS 中「能力」恒为 chat，
+ * 需结合模型名推断真实功能（文生图 / 嵌入 / TTS / 多模态等）。
+ */
+export type RssModelKind =
+	| 'chat' // 文本 LLM
+	| 'vision' // 多模态 LLM（图像/音频输入，文本输出）
+	| 'image' // 文生图
+	| 'audio-asr' // 语音转文字
+	| 'audio-tts' // 文字转语音（网关暂不支持，跳过）
+	| 'embedding' // 向量嵌入（网关暂不支持，跳过）
+	| 'video' // 视频生成（网关暂不支持，跳过）
+	| 'rerank' // 重排序（网关暂不支持，跳过）
+	| 'special'; // 专用模型（内容安全/奖励/解析/评测等，走 chat API）
 
-/** 根据能力标签推断模型种类。优先级：image > audio > video > chat。 */
-export function resolveRssModelKind(capabilities: string[]): RssModelKind {
-	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
-	if (caps.has('image')) return 'image';
-	if (caps.has('audio')) return 'audio';
-	if (caps.has('video')) return 'video';
+/** 模型名 → 种类 的模式表（能力标签不可靠时兜底）。按优先级从高到低匹配。 */
+const RSS_KIND_NAME_PATTERNS: ReadonlyArray<{ kind: RssModelKind; patterns: readonly RegExp[] }> = [
+	{
+		kind: 'image',
+		patterns: [
+			/(^|[^a-z])image([^a-z]|$)/,
+			/qwen-image|sdxl|stable-diffusion|dall-?e|flux|imagen|sana|kolors|cogview|seedream|wanx|pixart|midjourney|playground-v|firefly|aura-flow|wuerstchen|deepfloyd|sd3|hunyuan-image|taiyi/,
+		],
+	},
+	{
+		kind: 'audio-tts',
+		patterns: [
+			/(^|[^a-z])tts([^a-z]|$)/,
+			/text-to-speech|texttospeech|(^|[^a-z])speech([^a-z]|$)|(^|[^a-z])voice([^a-z]|$)/,
+		],
+	},
+	{
+		kind: 'audio-asr',
+		patterns: [
+			/whisper|(^|[^a-z])asr([^a-z]|$)|transcrib|speech-to-text|(^|[^a-z])stt([^a-z]|$)|parakeet|canary|conformer/,
+		],
+	},
+	{
+		kind: 'embedding',
+		patterns: [
+			/embed|text-embedding|(^|[^a-z])bge([^a-z]|$)|(^|[^a-z])gte([^a-z]|$)|(^|[^a-z])e5([^a-z]|$)|mxbai|nomic-embed|jina-embeddings/,
+		],
+	},
+	{
+		kind: 'video',
+		patterns: [
+			/(^|[^a-z])video([^a-z]|$)/,
+			/veo|sora|wan-|hunyuan-video|cogvideo|kling|pixverse|runway|mochi|ltx-video|gen-3|gen-2/,
+		],
+	},
+	{
+		kind: 'rerank',
+		patterns: [/rerank/],
+	},
+	{
+		kind: 'vision',
+		patterns: [
+			/(^|[^a-z])vl([^a-z]|$)/,
+			/(^|[^a-z])vlm([^a-z]|$)/,
+			/(^|[^a-z])vision([^a-z]|$)/,
+			/(^|[^a-z])omni([^a-z]|$)/,
+			/(^|[^a-z])mimo([^a-z]|$)/,
+			/internvl|qwen3-vl|qwen2\.5?-vl|glm-[0-9.]+v([^a-z]|$)|ernie-[0-9.]+-vl|multimodal/,
+		],
+	},
+	{
+		kind: 'special',
+		patterns: [
+			/content-safety|safety-guard|(^|[^a-z])guard([^a-z]|$)|(^|[^a-z])reward([^a-z]|$)|(^|[^a-z])parse([^a-z]|$)|classifier|moderation|judg|critic|evaluator|(^|[^a-z])detect([^a-z]|$)/,
+		],
+	},
+];
+
+/** 仅凭模型名推断种类；无匹配返回 `chat`。 */
+export function inferRssModelKindFromName(modelName: string): RssModelKind {
+	const n = modelName.toLowerCase();
+	for (const { kind, patterns } of RSS_KIND_NAME_PATTERNS) {
+		for (const re of patterns) {
+			if (re.test(n)) return kind;
+		}
+	}
 	return 'chat';
 }
 
-/** 按能力生成 input/output modalities（vision 追加 image 输入）。 */
+/**
+ * 根据能力标签 + 模型名推断模型种类。
+ * 能力标签（openrouter/agnes/zhipu 等可靠厂商）优先；google/nvidia/modelscope 等厂商标签恒为 chat，
+ * 此时用模型名兜底，避免把文生图 / 嵌入 / TTS / 多模态等误判为大语言模型。
+ */
+export function resolveRssModelKind(capabilities: string[], modelName: string): RssModelKind {
+	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
+	const fromName = inferRssModelKindFromName(modelName);
+	if (caps.has('image')) return 'image';
+	if (caps.has('video')) return 'video';
+	if (caps.has('audio')) {
+		// audio 标签可能是 ASR / TTS / 多模态输入，用模型名细分
+		if (fromName === 'audio-asr' || fromName === 'audio-tts') return fromName;
+		return 'vision';
+	}
+	return fromName;
+}
+
+/** 网关能否直接服务该种类（否则跳过导入，避免建出无法请求的模型）。 */
+export function isRssModelKindSupported(kind: RssModelKind): boolean {
+	return (
+		kind === 'chat' ||
+		kind === 'vision' ||
+		kind === 'image' ||
+		kind === 'audio-asr' ||
+		kind === 'special'
+	);
+}
+
+/** 按能力生成 input/output modalities（vision 追加 image 输入，audio/video 标签追加对应输入）。 */
 export function resolveRssModalities(
 	kind: RssModelKind,
 	capabilities: string[]
@@ -92,17 +196,24 @@ export function resolveRssModalities(
 	switch (kind) {
 		case 'image':
 			return { input: ['text'], output: ['image'] };
-		case 'audio':
+		case 'audio-asr':
 			return { input: ['audio'], output: ['text'] };
-		case 'video':
-			// 网关暂不支持 video 输出，按文本聊天模型导入
+		case 'vision': {
+			const input = ['text', 'image'];
+			if (caps.has('audio')) input.push('audio');
+			if (caps.has('video')) input.push('video');
+			return { input, output: ['text'] };
+		}
+		case 'audio-tts':
+			return { input: ['text'], output: ['audio'] };
+		case 'embedding':
 			return { input: ['text'], output: ['text'] };
+		case 'video':
+		case 'rerank':
+		case 'special':
 		case 'chat':
 		default:
-			return {
-				input: caps.has('vision') ? ['text', 'image'] : ['text'],
-				output: ['text'],
-			};
+			return { input: ['text'], output: ['text'] };
 	}
 }
 
@@ -122,12 +233,17 @@ export function resolveRssPricingProfile(kind: RssModelKind): Record<string, unk
 					},
 				],
 			};
-		case 'audio':
+		case 'audio-asr':
 			return {
 				audio_billing_mode: 'per_second',
 				audio: { price_per_second: 0, minimum_seconds: 1 },
 			};
+		case 'audio-tts':
+		case 'embedding':
 		case 'video':
+		case 'rerank':
+		case 'vision':
+		case 'special':
 		case 'chat':
 		default:
 			return {
@@ -149,9 +265,14 @@ export function resolveRssRouteOperation(kind: RssModelKind): string {
 	switch (kind) {
 		case 'image':
 			return 'images.generations';
-		case 'audio':
+		case 'audio-asr':
 			return 'audio.transcriptions';
+		case 'audio-tts':
+		case 'embedding':
 		case 'video':
+		case 'rerank':
+		case 'vision':
+		case 'special':
 		case 'chat':
 		default:
 			return 'chat';
@@ -307,6 +428,7 @@ export async function syncFreeModelsFromRss(
 		models_created: 0,
 		models_skipped: 0,
 		models_no_provider: 0,
+		models_skipped_unsupported: 0,
 		routes_created: 0,
 		routes_skipped: 0,
 		failed: [],
@@ -338,7 +460,12 @@ export async function syncFreeModelsFromRss(
 			seenModelIds.add(entry.id);
 
 			// 能力 → 模型种类 / modalities / pricing / operation
-			const kind = resolveRssModelKind(entry.capabilities);
+			const kind = resolveRssModelKind(entry.capabilities, entry.providerModelName);
+			// 网关不支持的种类（嵌入/TTS/视频/重排）直接跳过，避免建出无法请求的模型
+			if (!isRssModelKindSupported(kind)) {
+				result.models_skipped_unsupported++;
+				return;
+			}
 			const modalities = resolveRssModalities(kind, entry.capabilities);
 			const pricingProfile = resolveRssPricingProfile(kind);
 			const operation = resolveRssRouteOperation(kind);
@@ -360,10 +487,11 @@ export async function syncFreeModelsFromRss(
 					vendor: entry.vendor,
 					context_window: entry.contextWindow,
 					// 文生图/音频转写模型不适用 LLM 默认 max_tokens
-					max_tokens: kind === 'chat' || kind === 'video' ? 8192 : null,
+					max_tokens: kind === 'chat' || kind === 'vision' || kind === 'special' ? 8192 : null,
 					pricing_profile: pricingProfile,
 					input_modalities: modalities.input,
 					output_modalities: modalities.output,
+					tags: kind === 'special' ? ['special-purpose'] : [],
 					description: `Free model via RSS sync (${entry.vendor}).`,
 				});
 				result.models_created++;

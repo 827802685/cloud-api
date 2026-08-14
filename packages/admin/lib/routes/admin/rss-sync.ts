@@ -45,7 +45,7 @@ adminRssSyncRoutes.post('/run', async (c) => {
 		const data = await syncFreeModelsFromRss(repos, url);
 		return c.json({
 			success: true,
-			message: `RSS sync finished: ${data.models_created} created, ${data.routes_created} routes, ${data.models_no_provider} skipped (no provider key), ${data.failed.length} failed.`,
+			message: `RSS sync finished: ${data.models_created} created, ${data.routes_created} routes, ${data.models_no_provider} skipped (no provider key), ${data.models_skipped_unsupported} skipped (unsupported type), ${data.failed.length} failed.`,
 			data,
 		});
 	} catch (error) {

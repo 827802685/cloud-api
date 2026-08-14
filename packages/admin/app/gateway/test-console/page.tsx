@@ -2,6 +2,10 @@
 
 /**
  * Test Console：以模型为中心的快速测试页面，支持多模型同时测试与对比。
+ * 支持三类模型：
+ * - LLM：流式文本聊天（openai / anthropic / gemini）
+ * - 文生图：images.generations（JSON）/ images.edits（multipart 参考图）
+ * - 音频转写：audio.transcriptions（multipart 音频文件）
  * 复用现有 playground 后端 API（不计费、不写日志），前端自动解析 model → route。
  */
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
@@ -18,11 +22,22 @@ import {
 	type PlaygroundProtocol,
 	type PlaygroundResponseParseMode,
 } from '@/lib/playground/merge-assistant-text';
-import { parseLastStreamUsage } from '@/lib/playground/usage-parsing';
+import { parseLastStreamUsage, tryParseUsageSummary } from '@/lib/playground/usage-parsing';
 import type { AdminModelRow } from '@/lib/services/admin/types';
 import type { GatewayProvider } from '@/lib/types';
 import { isImageGenerationModel, isAudioTranscriptionModel } from '@cloud-api/core/db/model-modalities';
 import { ModelVendorIcon } from '@/components/model-vendor-icon';
+import { ImageGenerationsPreview } from '@/components/image-generations-preview';
+import {
+	IMAGE_MAX_REFERENCE_COUNT,
+	imageRequestMetaFromBody,
+	parseImagesGenerationsResponse,
+	readFileAsDataUrl,
+	validateEditImageFiles,
+	type ImageOperation,
+	type ImagePreviewItem,
+} from '@/lib/image-generations';
+import { validateAudioTranscriptionFile } from '@/lib/audio-transcriptions';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -41,11 +56,15 @@ type RouteRow = {
 	provider_name: string | null;
 };
 
+/** 模型能力类型：LLM / 文生图 / 音频转写 */
+type ModelKind = 'llm' | 'image' | 'audio';
+type KindFilter = 'all' | ModelKind;
+
 type ModelOption = {
 	id: string;
 	display_name: string | null;
 	vendor: string;
-	is_llm: boolean;
+	kind: ModelKind;
 	/** 模型是否被禁用（没有任何 active 路由）。禁用后 auto 模式不会使用。 */
 	disabled: boolean;
 };
@@ -56,6 +75,7 @@ type TestResult = {
 	providerName: string;
 	routeId: string;
 	protocol: PlaygroundProtocol;
+	kind: ModelKind;
 	status: 'pending' | 'streaming' | 'done' | 'error';
 	responseText: string;
 	reasoningText: string;
@@ -64,6 +84,7 @@ type TestResult = {
 	latencyMs: number | null;
 	usageHint: string | null;
 	errorMessage: string | null;
+	imagePreviews: ImagePreviewItem[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -72,14 +93,24 @@ type TestResult = {
 
 const DEFAULT_PROMPT = 'hi';
 
+const KIND_FILTERS: Array<{ id: KindFilter; labelKey: string }> = [
+	{ id: 'all', labelKey: 'kindAll' },
+	{ id: 'llm', labelKey: 'kindLlm' },
+	{ id: 'image', labelKey: 'kindImage' },
+	{ id: 'audio', labelKey: 'kindAudio' },
+];
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function pickBestRoute(
-	modelId: string,
-	routes: RouteRow[]
-): RouteRow | null {
+function modelKindOf(m: AdminModelRow): ModelKind {
+	if (isAudioTranscriptionModel(m)) return 'audio';
+	if (isImageGenerationModel(m)) return 'image';
+	return 'llm';
+}
+
+function pickBestRoute(modelId: string, routes: RouteRow[]): RouteRow | null {
 	const modelRoutes = routes
 		.filter((r) => r.model_id === modelId && r.status === 'active')
 		.sort((a, b) => b.priority - a.priority);
@@ -108,6 +139,34 @@ function buildChatBody(prompt: string, protocol: PlaygroundProtocol): Record<str
 	};
 }
 
+function buildImageBody(
+	prompt: string,
+	imageOperation: ImageOperation,
+	editImageDataUrls: string[]
+): Record<string, unknown> {
+	if (imageOperation === 'edits') {
+		return { prompt, image: editImageDataUrls };
+	}
+	return { prompt, n: 1, size: '1024x1024', quality: 'low' };
+}
+
+function buildAudioBody(audioFileDataUrl: string): Record<string, unknown> {
+	return { file: audioFileDataUrl, language: '', response_format: 'json' };
+}
+
+/** 从音频转写 JSON 响应中提取 `text` 字段（无则返回 null）。 */
+function extractAudioTranscriptionText(jsonText: string): string | null {
+	try {
+		const j = JSON.parse(jsonText) as Record<string, unknown>;
+		if (j && typeof j === 'object' && typeof j.text === 'string' && j.text.trim()) {
+			return j.text;
+		}
+	} catch {
+		// ignore
+	}
+	return null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Components                                                         */
 /* ------------------------------------------------------------------ */
@@ -116,9 +175,11 @@ function ModelChip(props: {
 	model: ModelOption;
 	selected: boolean;
 	onToggle: () => void;
+	t: (key: string) => string;
 }) {
-	const { model, selected, onToggle } = props;
+	const { model, selected, onToggle, t } = props;
 	const displayName = model.display_name || model.id;
+	const kindLabel = t(`kind_${model.kind}`);
 	return (
 		<button
 			type="button"
@@ -149,7 +210,20 @@ function ModelChip(props: {
 			</span>
 			<ModelVendorIcon vendor={model.vendor} size="compact" />
 			<div className="min-w-0 flex-1">
-				<div className="truncate font-medium">{displayName}</div>
+				<div className="flex items-center gap-1.5">
+					<span className="truncate font-medium">{displayName}</span>
+					<span
+						className={`shrink-0 rounded px-1 py-px text-[10px] font-medium ${
+							model.kind === 'image'
+								? 'bg-purple-100 text-purple-700'
+								: model.kind === 'audio'
+									? 'bg-teal-100 text-teal-700'
+									: 'bg-blue-100 text-blue-700'
+						}`}
+					>
+						{kindLabel}
+					</span>
+				</div>
 				<div className="truncate font-mono text-[11px] text-gray-500">{model.id}</div>
 			</div>
 		</button>
@@ -164,6 +238,7 @@ function ResultCard(props: {
 }) {
 	const { result, selected, onToggleSelect, t } = props;
 	const isPending = result.status === 'pending' || result.status === 'streaming';
+	const hasImagePreviews = result.imagePreviews.length > 0;
 
 	return (
 		<div className={`flex flex-col rounded-lg border ${
@@ -192,7 +267,20 @@ function ResultCard(props: {
 					)}
 				</button>
 				<div className="min-w-0 flex-1">
-					<div className="truncate text-sm font-semibold text-gray-900">{result.modelName}</div>
+					<div className="flex items-center gap-1.5">
+						<span className="truncate text-sm font-semibold text-gray-900">{result.modelName}</span>
+						<span
+							className={`shrink-0 rounded px-1 py-px text-[10px] font-medium ${
+								result.kind === 'image'
+									? 'bg-purple-100 text-purple-700'
+									: result.kind === 'audio'
+										? 'bg-teal-100 text-teal-700'
+										: 'bg-blue-100 text-blue-700'
+							}`}
+						>
+							{t(`kind_${result.kind}`)}
+						</span>
+					</div>
 					<div className="truncate text-[11px] text-gray-500">
 						{result.providerName} · {result.protocol}
 					</div>
@@ -225,6 +313,8 @@ function ResultCard(props: {
 			<div className="flex-1 overflow-auto px-4 py-3">
 				{result.status === 'error' ? (
 					<div className="text-sm text-red-600">{result.errorMessage}</div>
+				) : hasImagePreviews ? (
+					<ImageGenerationsPreview images={result.imagePreviews} label={t('imagePreview')} />
 				) : result.responseText || result.reasoningText ? (
 					<div className="space-y-2">
 						{result.reasoningText && (
@@ -284,10 +374,16 @@ function TestConsolePageInner() {
 	const [results, setResults] = useState<Map<string, TestResult>>(new Map());
 	const [isRunning, setIsRunning] = useState(false);
 	const [filterText, setFilterText] = useState('');
+	const [kindFilter, setKindFilter] = useState<KindFilter>('all');
+
+	/* Image / audio request state */
+	const [imageOperation, setImageOperation] = useState<ImageOperation>('generations');
+	const [editFiles, setEditFiles] = useState<File[]>([]);
+	const [audioFile, setAudioFile] = useState<File | null>(null);
 
 	const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
-	/* Build model options (LLM models with routes; disabled models shown grayed out) */
+	/* Build model options (all kinds with routes; disabled models shown grayed out) */
 	const modelOptions = useMemo<ModelOption[]>(() => {
 		const modelsWithRoutes = new Set<string>();
 		for (const r of routes) {
@@ -302,27 +398,36 @@ function TestConsolePageInner() {
 		}
 		return models
 			.filter((m) => modelsWithAnyRoute.has(m.id))
-			.filter((m) => !isImageGenerationModel(m) && !isAudioTranscriptionModel(m))
 			.map((m) => ({
 				id: m.id,
 				display_name: m.display_name,
 				vendor: m.vendor,
-				is_llm: true,
+				kind: modelKindOf(m),
 				disabled: !modelsWithRoutes.has(m.id),
 			}))
 			.sort((a, b) => (a.display_name || a.id).localeCompare(b.display_name || b.id));
 	}, [models, routes]);
 
+	const kindCounts = useMemo(() => {
+		const counts: Record<ModelKind, number> = { llm: 0, image: 0, audio: 0 };
+		for (const m of modelOptions) {
+			counts[m.kind] += 1;
+		}
+		return counts;
+	}, [modelOptions]);
+
 	const filteredModelOptions = useMemo(() => {
-		if (!filterText.trim()) return modelOptions;
 		const q = filterText.trim().toLowerCase();
-		return modelOptions.filter(
-			(m) =>
+		return modelOptions.filter((m) => {
+			if (kindFilter !== 'all' && m.kind !== kindFilter) return false;
+			if (!q) return true;
+			return (
 				m.id.toLowerCase().includes(q) ||
 				(m.display_name ?? '').toLowerCase().includes(q) ||
 				m.vendor.toLowerCase().includes(q)
-		);
-	}, [modelOptions, filterText]);
+			);
+		});
+	}, [modelOptions, filterText, kindFilter]);
 
 	/* Load data */
 	useEffect(() => {
@@ -447,10 +552,109 @@ function TestConsolePageInner() {
 
 	/* Send test to a single model */
 	const sendToModel = useCallback(
-		async (modelId: string, modelName: string, route: RouteRow, signal: AbortSignal) => {
+		async (
+			modelId: string,
+			modelName: string,
+			route: RouteRow,
+			kind: ModelKind,
+			signal: AbortSignal
+		) => {
 			const protocol = (route.upstream_protocol || 'openai') as PlaygroundProtocol;
-			const body = buildChatBody(prompt, protocol);
 			const providerName = route.provider_name || route.provider_id;
+
+			// Build kind-specific request body
+			let body: Record<string, unknown>;
+			let imageOperationForRequest: ImageOperation | undefined;
+			try {
+				if (kind === 'audio') {
+					if (!audioFile) return;
+					const validated = validateAudioTranscriptionFile(audioFile);
+					if (!validated.ok) {
+						setResults((prev) => {
+							const next = new Map(prev);
+							next.set(modelId, {
+								modelId,
+								modelName,
+								providerName,
+								routeId: route.id,
+								protocol,
+								kind,
+								status: 'error',
+								responseText: '',
+								reasoningText: '',
+								bodyText: '',
+								httpStatus: null,
+								latencyMs: null,
+								usageHint: null,
+								errorMessage: validated.error,
+								imagePreviews: [],
+							});
+							return next;
+						});
+						return;
+					}
+					const dataUrl = await readFileAsDataUrl(audioFile);
+					body = buildAudioBody(dataUrl);
+				} else if (kind === 'image') {
+					if (imageOperation === 'edits') {
+						const validated = validateEditImageFiles(editFiles);
+						if (!validated.ok) {
+							setResults((prev) => {
+								const next = new Map(prev);
+								next.set(modelId, {
+									modelId,
+									modelName,
+									providerName,
+									routeId: route.id,
+									protocol,
+									kind,
+									status: 'error',
+									responseText: '',
+									reasoningText: '',
+									bodyText: '',
+									httpStatus: null,
+									latencyMs: null,
+									usageHint: null,
+									errorMessage: validated.error,
+									imagePreviews: [],
+								});
+								return next;
+							});
+							return;
+						}
+						const dataUrls = await Promise.all(editFiles.map((f) => readFileAsDataUrl(f)));
+						body = buildImageBody(prompt, 'edits', dataUrls);
+					} else {
+						body = buildImageBody(prompt, 'generations', []);
+					}
+					imageOperationForRequest = imageOperation;
+				} else {
+					body = buildChatBody(prompt, protocol);
+				}
+			} catch (e) {
+				setResults((prev) => {
+					const next = new Map(prev);
+					next.set(modelId, {
+						modelId,
+						modelName,
+						providerName,
+						routeId: route.id,
+						protocol,
+						kind,
+						status: 'error',
+						responseText: '',
+						reasoningText: '',
+						bodyText: '',
+						httpStatus: null,
+						latencyMs: null,
+						usageHint: null,
+						errorMessage: e instanceof Error ? e.message : String(e),
+						imagePreviews: [],
+					});
+					return next;
+				});
+				return;
+			}
 
 			// Initialize result
 			const initResult: TestResult = {
@@ -459,6 +663,7 @@ function TestConsolePageInner() {
 				providerName,
 				routeId: route.id,
 				protocol,
+				kind,
 				status: 'pending',
 				responseText: '',
 				reasoningText: '',
@@ -467,6 +672,7 @@ function TestConsolePageInner() {
 				latencyMs: null,
 				usageHint: null,
 				errorMessage: null,
+				imagePreviews: [],
 			};
 
 			setResults((prev) => {
@@ -475,11 +681,14 @@ function TestConsolePageInner() {
 				return next;
 			});
 
+			const payload: Record<string, unknown> = { routeId: route.id, body };
+			if (imageOperationForRequest) payload.imageOperation = imageOperationForRequest;
+
 			try {
 				const res = await fetch('/api/admin/playground', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ routeId: route.id, body }),
+					body: JSON.stringify(payload),
 					signal,
 				});
 
@@ -498,25 +707,74 @@ function TestConsolePageInner() {
 					return next;
 				});
 
-				// Handle JSON error response
+				// Handle JSON response (success or error)
 				if (ct.includes('application/json') && !ct.includes('text/event-stream')) {
 					const j = (await res.json()) as Record<string, unknown>;
-					const errObj = j.error;
-					let errMsg = String(j.message ?? '');
-					if (!errMsg && typeof errObj === 'string') errMsg = errObj;
-					if (!errMsg && errObj && typeof errObj === 'object' && 'message' in errObj) {
-						errMsg = String((errObj as Record<string, unknown>).message ?? '');
-					}
-					setResults((prev) => {
-						const next = new Map(prev);
-						const existing = next.get(modelId);
-						if (existing) {
-							existing.status = 'error';
-							existing.responseText = JSON.stringify(j, null, 2);
-							existing.errorMessage = errMsg || 'Request failed';
+					const jsonText = JSON.stringify(j, null, 2);
+					if (!res.ok) {
+						const errObj = j.error;
+						let errMsg = String(j.message ?? '');
+						if (!errMsg && typeof errObj === 'string') errMsg = errObj;
+						if (!errMsg && errObj && typeof errObj === 'object' && 'message' in errObj) {
+							errMsg = String((errObj as Record<string, unknown>).message ?? '');
 						}
-						return next;
-					});
+						setResults((prev) => {
+							const next = new Map(prev);
+							const existing = next.get(modelId);
+							if (existing) {
+								existing.status = 'error';
+								existing.responseText = jsonText;
+								existing.errorMessage = errMsg || 'Request failed';
+							}
+							return next;
+						});
+						return;
+					}
+					// Success JSON
+					if (kind === 'image') {
+						const parsedImg = parseImagesGenerationsResponse(
+							jsonText,
+							imageRequestMetaFromBody(body)
+						);
+						setResults((prev) => {
+							const next = new Map(prev);
+							const existing = next.get(modelId);
+							if (existing) {
+								existing.status = 'done';
+								existing.responseText = jsonText;
+								existing.imagePreviews = parsedImg.images;
+								existing.usageHint = parsedImg.usageHint;
+							}
+							return next;
+						});
+					} else if (kind === 'audio') {
+						const transcript = extractAudioTranscriptionText(jsonText);
+						setResults((prev) => {
+							const next = new Map(prev);
+							const existing = next.get(modelId);
+							if (existing) {
+								existing.status = 'done';
+								existing.responseText = jsonText;
+								existing.bodyText = transcript ?? jsonText;
+							}
+							return next;
+						});
+					} else {
+						const parts = mergeAssistantTextParts(jsonText, protocol, 'json');
+						const usageHint = tryParseUsageSummary(jsonText, protocol);
+						setResults((prev) => {
+							const next = new Map(prev);
+							const existing = next.get(modelId);
+							if (existing) {
+								existing.status = 'done';
+								existing.responseText = jsonText;
+								existing.reasoningText = parts.reasoning;
+								existing.bodyText = parts.body;
+								existing.usageHint = usageHint;
+							}
+							return next;
+						});
+					}
 					return;
 				}
 
@@ -613,7 +871,7 @@ function TestConsolePageInner() {
 				});
 			}
 		},
-		[prompt]
+		[prompt, audioFile, editFiles, imageOperation]
 	);
 
 	/* 可发送的选中模型：仅包含有 active 路由的模型（禁用模型不参与测试） */
@@ -625,9 +883,41 @@ function TestConsolePageInner() {
 		return [...selectedModelIds].filter((id) => activeRouteModelIds.has(id));
 	}, [selectedModelIds, routes]);
 
+	/* 发送前校验：按选中模型的类型检查必要输入 */
+	const sendBlockReason = useMemo((): string | null => {
+		if (sendableModelIds.length === 0) return 'noModels';
+		const selectedKinds = new Set<ModelKind>();
+		for (const id of sendableModelIds) {
+			const m = modelOptions.find((o) => o.id === id);
+			if (m) selectedKinds.add(m.kind);
+		}
+		const needsPrompt = selectedKinds.has('llm') || selectedKinds.has('image');
+		if (needsPrompt && !prompt.trim()) return 'noPrompt';
+		if (selectedKinds.has('image') && imageOperation === 'edits' && editFiles.length === 0) {
+			return 'noEditImages';
+		}
+		if (selectedKinds.has('audio') && !audioFile) return 'noAudioFile';
+		return null;
+	}, [sendableModelIds, modelOptions, prompt, imageOperation, editFiles, audioFile]);
+
+	const sendBlockedHint = useMemo(() => {
+		switch (sendBlockReason) {
+			case 'noModels':
+				return t('readyNeedModel');
+			case 'noPrompt':
+				return t('readyNeedPrompt');
+			case 'noEditImages':
+				return t('readyNeedEditImages');
+			case 'noAudioFile':
+				return t('readyNeedAudioFile');
+			default:
+				return null;
+		}
+	}, [sendBlockReason, t]);
+
 	/* Send to all selected models */
 	const sendAll = useCallback(async () => {
-		if (sendableModelIds.length === 0 || !prompt.trim()) return;
+		if (sendableModelIds.length === 0 || sendBlockReason) return;
 		setIsRunning(true);
 		setResults(new Map());
 
@@ -640,14 +930,15 @@ function TestConsolePageInner() {
 			if (!route) continue;
 			const model = models.find((m) => m.id === modelId);
 			const modelName = model?.display_name || modelId;
+			const kind = model ? modelKindOf(model) : 'llm';
 			const controller = new AbortController();
 			controllers.set(modelId, controller);
-			promises.push(sendToModel(modelId, modelName, route, controller.signal));
+			promises.push(sendToModel(modelId, modelName, route, kind, controller.signal));
 		}
 
 		await Promise.allSettled(promises);
 		setIsRunning(false);
-	}, [sendableModelIds, prompt, routes, models, sendToModel]);
+	}, [sendableModelIds, sendBlockReason, prompt, routes, models, sendToModel]);
 
 	/* Stop all */
 	const stopAll = useCallback(() => {
@@ -666,6 +957,10 @@ function TestConsolePageInner() {
 			lines.push('');
 			if (result.reasoningText) {
 				lines.push(`[Thinking]: ${result.reasoningText}`);
+				lines.push('');
+			}
+			if (result.imagePreviews.length > 0) {
+				lines.push(`[Images]: ${result.imagePreviews.length} generated`);
 				lines.push('');
 			}
 			lines.push(result.bodyText || result.responseText || result.errorMessage || '(no response)');
@@ -699,37 +994,37 @@ function TestConsolePageInner() {
 	return (
 		<div className="flex h-full flex-col">
 			{/* Header */}
-		<div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
-			<div className="flex items-start justify-between gap-4">
-				<div>
-					<h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-					<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
-				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					{statusError && (
-						<span className="max-w-56 truncate rounded bg-red-50 px-2 py-1 text-[11px] text-red-600" title={statusError}>
-							{statusError}
-						</span>
-					)}
-					<button
-						type="button"
-						onClick={disableSelected}
-						disabled={selectedModelIds.size === 0 || statusBusy}
-						className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
-					>
-						{t('disableSelected')}
-					</button>
-					<button
-						type="button"
-						onClick={enableSelected}
-						disabled={statusBusy || !hasDisabledSelected}
-						className="rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
-					>
-						{t('enableSelected')}
-					</button>
+			<div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4">
+				<div className="flex items-start justify-between gap-4">
+					<div>
+						<h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+						<p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
+					</div>
+					<div className="flex shrink-0 items-center gap-2">
+						{statusError && (
+							<span className="max-w-56 truncate rounded bg-red-50 px-2 py-1 text-[11px] text-red-600" title={statusError}>
+								{statusError}
+							</span>
+						)}
+						<button
+							type="button"
+							onClick={disableSelected}
+							disabled={selectedModelIds.size === 0 || statusBusy}
+							className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+						>
+							{t('disableSelected')}
+						</button>
+						<button
+							type="button"
+							onClick={enableSelected}
+							disabled={statusBusy || !hasDisabledSelected}
+							className="rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed"
+						>
+							{t('enableSelected')}
+						</button>
+					</div>
 				</div>
 			</div>
-		</div>
 
 			{loadError ? (
 				<div className="m-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
@@ -761,31 +1056,50 @@ function TestConsolePageInner() {
 									</button>
 								</div>
 							</div>
-						<input
-							type="text"
-							value={filterText}
-							onChange={(e) => setFilterText(e.target.value)}
-							placeholder={t('filterModels')}
-							className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-					</div>
-					<div className="flex-1 overflow-y-auto px-3 py-2">
-						{filteredModelOptions.length === 0 ? (
-							<p className="py-4 text-center text-xs text-gray-400">{t('noModelsAvailable')}</p>
-						) : (
-							<div className="space-y-1.5">
-								{filteredModelOptions.map((model) => (
-									<ModelChip
-										key={model.id}
-										model={model}
-										selected={selectedModelIds.has(model.id)}
-										onToggle={() => toggleModel(model.id)}
-									/>
+							{/* Kind filter tabs */}
+							<div className="mb-2 flex gap-1">
+								{KIND_FILTERS.map((k) => (
+									<button
+										key={k.id}
+										type="button"
+										onClick={() => setKindFilter(k.id)}
+										className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+											kindFilter === k.id
+												? 'bg-slate-800 text-white'
+												: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+										}`}
+									>
+										{t(k.labelKey)}
+										{k.id !== 'all' ? ` (${kindCounts[k.id]})` : ''}
+									</button>
 								))}
 							</div>
-						)}
+							<input
+								type="text"
+								value={filterText}
+								onChange={(e) => setFilterText(e.target.value)}
+								placeholder={t('filterModels')}
+								className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+						<div className="flex-1 overflow-y-auto px-3 py-2">
+							{filteredModelOptions.length === 0 ? (
+								<p className="py-4 text-center text-xs text-gray-400">{t('noModelsAvailable')}</p>
+							) : (
+								<div className="space-y-1.5">
+									{filteredModelOptions.map((model) => (
+										<ModelChip
+											key={model.id}
+											model={model}
+											selected={selectedModelIds.has(model.id)}
+											onToggle={() => toggleModel(model.id)}
+											t={t}
+										/>
+									))}
+								</div>
+							)}
+						</div>
 					</div>
-				</div>
 
 					{/* Right panel: Prompt + Results */}
 					<div className="flex flex-1 flex-col min-w-0 overflow-hidden">
@@ -801,6 +1115,73 @@ function TestConsolePageInner() {
 										className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 										disabled={isRunning}
 									/>
+									{/* Image operation + reference images */}
+									{modelOptions.some((m) => m.kind === 'image') && (
+										<div className="mt-2 flex flex-wrap items-center gap-3">
+											<fieldset className="flex items-center gap-3 rounded-md border border-gray-200 px-3 py-1.5 text-sm">
+												<span className="text-xs font-medium text-gray-600">{t('imageOperation')}</span>
+												<label className="inline-flex items-center gap-1.5 cursor-pointer">
+													<input
+														type="radio"
+														name="testConsoleImageOperation"
+														className="text-blue-600 focus:ring-blue-500"
+														checked={imageOperation === 'generations'}
+														onChange={() => setImageOperation('generations')}
+														disabled={isRunning}
+													/>
+													<span className="text-xs">generations</span>
+												</label>
+												<label className="inline-flex items-center gap-1.5 cursor-pointer">
+													<input
+														type="radio"
+														name="testConsoleImageOperation"
+														className="text-blue-600 focus:ring-blue-500"
+														checked={imageOperation === 'edits'}
+														onChange={() => setImageOperation('edits')}
+														disabled={isRunning}
+													/>
+													<span className="text-xs">edits</span>
+												</label>
+											</fieldset>
+											{imageOperation === 'edits' && (
+												<div className="flex items-center gap-2">
+													<input
+														type="file"
+														accept="image/png,image/jpeg,image/webp,image/*"
+														multiple
+														disabled={isRunning}
+														className="text-xs file:mr-2 file:rounded file:border-0 file:bg-purple-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-purple-700"
+														onChange={(e) => {
+															const list = e.target.files ? Array.from(e.target.files) : [];
+															setEditFiles(list.slice(0, IMAGE_MAX_REFERENCE_COUNT));
+														}}
+													/>
+													<span className="text-[11px] text-gray-400">
+														{editFiles.length > 0
+															? `${editFiles.length} ${t('referenceImagesSelected')}`
+															: t('referenceImagesHint', { max: IMAGE_MAX_REFERENCE_COUNT })}
+													</span>
+												</div>
+											)}
+										</div>
+									)}
+									{/* Audio file upload */}
+									{modelOptions.some((m) => m.kind === 'audio') && (
+										<div className="mt-2 flex items-center gap-2">
+											<input
+												type="file"
+												accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
+												disabled={isRunning}
+												className="text-xs file:mr-2 file:rounded file:border-0 file:bg-teal-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-teal-700"
+												onChange={(e) => {
+													setAudioFile(e.target.files?.[0] ?? null);
+												}}
+											/>
+											<span className="text-[11px] text-gray-400">
+												{audioFile ? `${audioFile.name} (${audioFile.size} bytes)` : t('audioFileHint')}
+											</span>
+										</div>
+									)}
 								</div>
 								<div className="flex flex-col gap-2">
 									{isRunning ? (
@@ -816,7 +1197,8 @@ function TestConsolePageInner() {
 										<button
 											type="button"
 											onClick={() => void sendAll()}
-											disabled={sendableModelIds.length === 0 || !prompt.trim()}
+											disabled={sendableModelIds.length === 0 || sendBlockReason !== null}
+											title={sendBlockedHint ?? undefined}
 											className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
 										>
 											<PaperAirplaneIcon className="h-4 w-4" />
@@ -835,6 +1217,9 @@ function TestConsolePageInner() {
 									)}
 								</div>
 							</div>
+							{sendBlockedHint && sendableModelIds.length > 0 && (
+								<p className="mt-1 text-xs text-amber-700">{sendBlockedHint}</p>
+							)}
 						</div>
 
 						{/* Results area */}
@@ -855,14 +1240,14 @@ function TestConsolePageInner() {
 											: 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
 								}`}>
 									{resultsList.map((result) => (
-									<ResultCard
-										key={result.modelId}
-										result={result}
-										selected={selectedModelIds.has(result.modelId)}
-										onToggleSelect={() => toggleModel(result.modelId)}
-										t={t}
-									/>
-								))}
+										<ResultCard
+											key={result.modelId}
+											result={result}
+											selected={selectedModelIds.has(result.modelId)}
+											onToggleSelect={() => toggleModel(result.modelId)}
+											t={t}
+										/>
+									))}
 								</div>
 							)}
 						</div>

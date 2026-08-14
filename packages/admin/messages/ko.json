@@ -1006,7 +1006,7 @@
 	},
 	"testConsole": {
 		"title": "Test Console",
-		"subtitle": "하나 이상의 모델을 선택하고 동일한 프롬프트를 전송하여 응답을 나란히 비교합니다.",
+		"subtitle": "하나 이상의 모델을 선택하고 동일한 프롬프트를 전송하여 응답을 나란히 비교합니다. LLM, 이미지 생성, 오디오 전사를 지원합니다.",
 		"selectModels": "모델",
 		"filterModels": "모델 필터...",
 		"noModelsAvailable": "Active Route가 있는 모델이 없습니다.",
@@ -1024,7 +1024,23 @@
 		"disableSelected": "선택 비활성화",
 		"enableSelected": "선택 활성화",
 		"selectModel": "이 모델 선택",
-		"deselectModel": "선택 해제"
+		"deselectModel": "선택 해제",
+		"kindAll": "전체",
+		"kindLlm": "LLM",
+		"kindImage": "이미지",
+		"kindAudio": "오디오",
+		"kind_llm": "LLM",
+		"kind_image": "이미지",
+		"kind_audio": "오디오",
+		"imageOperation": "이미지 작업",
+		"imagePreview": "생성된 이미지",
+		"referenceImagesSelected": "개 참조 이미지",
+		"referenceImagesHint": "최대 {max}개 참조 이미지",
+		"audioFileHint": "오디오 파일 선택",
+		"readyNeedModel": "모델을 하나 이상 선택하세요.",
+		"readyNeedPrompt": "프롬프트를 입력하세요.",
+		"readyNeedEditImages": "참조 이미지를 하나 이상 선택하세요.",
+		"readyNeedAudioFile": "오디오 파일을 선택하세요."
 	},
 	"simulator": {
 		"title": "Simulator",
