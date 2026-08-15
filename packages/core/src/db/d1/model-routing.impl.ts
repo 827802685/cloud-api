@@ -6,6 +6,7 @@ import type { ResolvedModelSurfaceRow } from '../../route-topology';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { D1DatabaseClient } from '../../storage/database-client';
 import type { ModelRoutingRepository } from '../../storage/gateway-repository-interfaces';
+import { vendorSearchKeywords } from '../vendor-keywords';
 
 const LIST_MODELS_WITH_ACTIVE_ROUTES_SQL = `SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
   (SELECT json_group_array(mt.tag) FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
@@ -232,19 +233,7 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 		},
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
-			const v = vendor.toLowerCase().trim();
-			// Map common vendor names to provider name patterns
-			const patterns: Record<string, string[]> = {
-				nvidia: ['nvidia'],
-				google: ['google', 'gemini'],
-				cloudflare: ['cloudflare'],
-				openai: ['openai'],
-				anthropic: ['anthropic'],
-				mistral: ['mistral'],
-				cohere: ['cohere'],
-				deepseek: ['deepseek'],
-			};
-			const keywords = patterns[v] || [v];
+			const keywords = vendorSearchKeywords(vendor);
 			for (const kw of keywords) {
 				const row = await raw
 					.prepare(

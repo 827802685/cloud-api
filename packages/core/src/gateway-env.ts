@@ -28,6 +28,12 @@ export type GatewayBindings = {
 	STORAGE_CONTEXT?: StorageContext;
 	/** 免费模型 RSS 同步源地址（可配置，便于后续改域名）。 */
 	RSS_SYNC_URL?: string;
+	/** Cloudflare Workers AI binding（`env.AI`），用于 RSS 同步时的智能归类；未配置则跳过。 */
+	AI?: unknown;
+	/** Cloudflare API Token（Workers AI REST 通道，需与 CF_ACCOUNT_ID 配合）。 */
+	CF_API_TOKEN?: string;
+	/** Cloudflare Account ID（Workers AI REST 通道）。 */
+	CF_ACCOUNT_ID?: string;
 };
 
 /**

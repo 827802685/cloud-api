@@ -26,6 +26,10 @@
 		"ADMIN_USERNAME": "admin",
 		// 免费模型 RSS 同步源（可改域名；留空则用代码内置默认值）。
 		"RSS_SYNC_URL": "https://rss.zjkl.dpdns.org/rss.xml",
+		// Workers AI 智能归类（可选）：REST 通道用 CF_API_TOKEN + CF_ACCOUNT_ID；
+		// 或在本文件配置 AI binding（env.AI）。未配置则 RSS 同步降级为启发式归类。
+		"CF_API_TOKEN": "",
+		"CF_ACCOUNT_ID": "",
 		// Admin 无 Next middleware.ts。Workerd 上 getMiddlewareManifest() 的动态 require 会 500；
 		// 上游 issue 仍 open 时用 minimal mode 跳过该路径（见 opennextjs-cloudflare#1232）。
 		"NEXT_PRIVATE_MINIMAL_MODE": "1"

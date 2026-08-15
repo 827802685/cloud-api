@@ -5,3 +5,8 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
 # 免费模型 RSS 同步源（可改域名；留空则用代码内置默认值）。
 RSS_SYNC_URL=https://rss.zjkl.dpdns.org/rss.xml
+# Workers AI 智能归类（可选）：配置后 RSS 同步会用 AI 复核模型分类。
+# 方式一：在 wrangler.jsonc 配置 AI binding（env.AI）。
+# 方式二：REST 通道，填 Cloudflare API Token + Account ID。
+# CF_API_TOKEN=
+# CF_ACCOUNT_ID=

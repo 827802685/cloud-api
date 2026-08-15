@@ -7,6 +7,7 @@ import type { ResolvedModelSurfaceRow } from '../../route-topology';
 import type { PostgresDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutingRepository } from '../../storage/gateway-repository-interfaces';
 import { modelRoutesTable as pgModelRoutesTable } from '../../storage/drizzle/schema.pg';
+import { vendorSearchKeywords } from '../vendor-keywords';
 
 function mapPgModelRouteToRow(r: {
 	id: string;
@@ -140,9 +141,12 @@ export function createPostgresModelRoutingRepository(db: PostgresDatabaseClient)
 		},
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
-			const kw = vendor.toLowerCase().trim();
-			const rows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ${'%' + kw + '%'} LIMIT 1`;
-			return rows?.[0]?.id ?? null;
+			const keywords = vendorSearchKeywords(vendor);
+			for (const kw of keywords) {
+				const rows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ${'%' + kw + '%'} LIMIT 1`;
+				if (rows?.[0]?.id) return rows[0].id;
+			}
+			return null;
 		},
 
 		async autoCreateRoute(modelId: string, providerId: string, providerModelName: string, upstreamProtocol: string): Promise<string> {

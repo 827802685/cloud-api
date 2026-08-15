@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import { syncFreeModelsFromRss, getRssSyncDue, DEFAULT_RSS_URL } from '@/lib/services/admin/rss-sync-service';
+import { createWorkersAiClassifier } from '@/lib/services/admin/workers-ai-classifier';
 import { handleAdminRouteError } from './error-response';
 
 export const adminRssSyncRoutes = new Hono<AdminEnv>();
@@ -42,10 +43,28 @@ adminRssSyncRoutes.post('/run', async (c) => {
 	}
 	try {
 		const repos = c.get('repositories');
-		const data = await syncFreeModelsFromRss(repos, url);
+		// Workers AI 智能归类：优先 env.AI binding，其次 CF_API_TOKEN + CF_ACCOUNT_ID REST 通道
+		const aiClassifier = createWorkersAiClassifier({
+			AI: c.env?.AI,
+			CF_API_TOKEN: c.env?.CF_API_TOKEN,
+			CF_ACCOUNT_ID: c.env?.CF_ACCOUNT_ID,
+		});
+		const data = await syncFreeModelsFromRss(repos, url, aiClassifier);
+		const parts = [
+			`${data.models_created} created`,
+			`${data.routes_created} routes`,
+			`${data.models_no_provider} skipped (no provider key)`,
+			`${data.models_skipped_unsupported} skipped (unsupported type)`,
+		];
+		if (data.models_skipped_video > 0) {
+			parts.push(`${data.models_skipped_video} video models (gateway doesn't support video yet)`);
+		}
+		if (data.failed.length > 0) {
+			parts.push(`${data.failed.length} failed`);
+		}
 		return c.json({
 			success: true,
-			message: `RSS sync finished: ${data.models_created} created, ${data.routes_created} routes, ${data.models_no_provider} skipped (no provider key), ${data.models_skipped_unsupported} skipped (unsupported type), ${data.failed.length} failed.`,
+			message: `RSS sync finished: ${parts.join(', ')}.`,
 			data,
 		});
 	} catch (error) {

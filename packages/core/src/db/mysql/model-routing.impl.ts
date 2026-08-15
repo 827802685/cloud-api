@@ -7,6 +7,7 @@ import type { ResolvedModelSurfaceRow } from '../../route-topology';
 import type { MySqlDatabaseClient } from '../../storage/database-client';
 import type { ModelRoutingRepository } from '../../storage/gateway-repository-interfaces';
 import { modelRoutesTable as myModelRoutesTable } from '../../storage/drizzle/schema.mysql';
+import { vendorSearchKeywords } from '../vendor-keywords';
 import { asMySqlPool } from './mysql2-compat';
 
 function mapMyModelRouteToRow(r: {
@@ -147,9 +148,16 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 		},
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
-			const kw = vendor.toLowerCase().trim();
-			const [rows] = await pool.query(`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ? LIMIT 1`, [`%${kw}%`]);
-			return (rows as any[])?.[0]?.id ?? null;
+			const keywords = vendorSearchKeywords(vendor);
+			for (const kw of keywords) {
+				const [rows] = await pool.query(
+					`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ? LIMIT 1`,
+					[`%${kw}%`]
+				);
+				const id = (rows as any[])?.[0]?.id;
+				if (id) return id;
+			}
+			return null;
 		},
 
 		async autoCreateRoute(modelId: string, providerId: string, providerModelName: string, upstreamProtocol: string): Promise<string> {

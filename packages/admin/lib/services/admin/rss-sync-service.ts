@@ -7,10 +7,12 @@
  *
  * 触发方式：手动（后台按钮）+ 定时（Cloudflare Cron，每 15 天）。
  */
-import type { GatewayRepositories } from '@cloud-api/core';
+import type { GatewayRepositories, UpstreamProtocol } from '@cloud-api/core';
+import { parseProviderEndpoints, type ProviderEndpointsMap } from '@cloud-api/core/provider-endpoints';
 import { scoreModelQuality, type FreeQuotaTier } from '@cloud-api/proxy';
 import { createModelService } from './models-service';
 import { createModelRouteService } from './model-routes-service';
+import type { WorkersAiClassifier } from './workers-ai-classifier';
 
 /** 默认 RSS 源 */
 export const DEFAULT_RSS_URL = 'https://rss.zjkl.dpdns.org/rss.xml';
@@ -52,6 +54,8 @@ export type RssSyncResult = {
 	models_no_provider: number;
 	/** 网关不支持的模型种类（嵌入/TTS/视频等），跳过导入 */
 	models_skipped_unsupported: number;
+	/** 其中视频生成模型数量（网关暂不支持视频生成，单独统计便于用户识别） */
+	models_skipped_video: number;
 	routes_created: number;
 	routes_skipped: number;
 	failed: Array<{ id: string; message: string }>;
@@ -173,6 +177,8 @@ export function resolveRssModelKind(capabilities: string[], modelName: string): 
 		if (fromName === 'audio-asr' || fromName === 'audio-tts') return fromName;
 		return 'vision';
 	}
+	// 能力标签明确为 vision（多模态 LLM）时直接采用，避免被模型名无特征误判为 chat
+	if (caps.has('vision')) return 'vision';
 	return fromName;
 }
 
@@ -277,6 +283,81 @@ export function resolveRssRouteOperation(kind: RssModelKind): string {
 		default:
 			return 'chat';
 	}
+}
+
+/**
+ * 结合 Workers AI 智能归类与启发式规则得到模型种类。
+ * - 能力标签（image/video/audio）是强证据，直接信任启发式结果，不额外调用 AI（省时）。
+ * - 启发式结果为默认 `chat`（厂商能力标签恒为 chat、模型名无特征）时，才调用 Workers AI 复核，
+ *   避免把 google/nvidia 等厂商的文生图 / TTS / 嵌入 / 视频模型误判为大语言模型。
+ * - Workers AI 未配置 / 调用失败 / 置信度不足时降级为启发式结果。
+ */
+export async function resolveRssModelKindWithAi(
+	entry: RssModelEntry,
+	aiClassifier: WorkersAiClassifier | null | undefined
+): Promise<RssModelKind> {
+	const heuristic = resolveRssModelKind(entry.capabilities, entry.providerModelName);
+	if (!aiClassifier) return heuristic;
+
+	const caps = new Set(entry.capabilities.map((c) => c.trim().toLowerCase()));
+	// 能力标签明确时（image/video/audio）启发式已可靠，避免无谓的 AI 调用
+	if (caps.has('image') || caps.has('video') || caps.has('audio')) return heuristic;
+	// 启发式已给出非默认分类（如模型名含 image/tts/embed/vl 等特征）时同样信任启发式
+	if (heuristic !== 'chat') return heuristic;
+
+	try {
+		const ai = await aiClassifier.classify({
+			id: entry.id,
+			displayName: entry.id,
+			description: `vendor=${entry.vendor}; capabilities=${entry.capabilities.join(',') || 'none'}`,
+			capabilities: entry.capabilities,
+		});
+		if (ai && ai.confidence >= 0.5) return ai.kind;
+	} catch {
+		// 降级为启发式
+	}
+	return heuristic;
+}
+
+/**
+ * 为 RSS 模型选择最合适的上游协议：
+ * - 文生图 / 音频转写必须走 OpenAI 协议（网关 Images/Audio API 仅用 OpenAI 路由）。
+ * - Google 聊天模型：优先 Gemini 原生协议（provider 已配置 gemini 端点时），否则 OpenAI。
+ * - 其余厂商默认 OpenAI。
+ */
+export function resolveRssUpstreamProtocol(
+	vendor: string,
+	kind: RssModelKind,
+	providerEndpoints: ProviderEndpointsMap | null | undefined
+): UpstreamProtocol {
+	if (kind === 'image' || kind === 'audio-asr') return 'openai';
+	if (vendor.toLowerCase() === 'google' && kind === 'chat' && providerEndpoints?.gemini?.base) {
+		return 'gemini';
+	}
+	return 'openai';
+}
+
+/** 由上游协议派生对应的 operation（与 `resolveRssRouteOperation` 对齐）。 */
+export function resolveRssOperationForProtocol(kind: RssModelKind, protocol: UpstreamProtocol): string {
+	if (protocol === 'gemini') return 'models.generate';
+	return resolveRssRouteOperation(kind);
+}
+
+/**
+ * 规范化上游模型名：
+ * - NVIDIA 的 RSS 模型名形如 `nvidia/nvidia-nemotron-*-v2` 或 `nvidia/nvidia/nemotron-*`，
+ *   冗余了 `nvidia/` 段，NIM OpenAI 端点期望 `nvidia/nemotron-*-v2`，需折叠为单段 `nvidia/` 前缀，避免上游 404。
+ * - 其余厂商原样返回。
+ */
+export function normalizeRssProviderModelName(vendor: string, providerModelName: string): string {
+	if (vendor.toLowerCase() === 'nvidia') {
+		const trimmed = providerModelName.trim();
+		// `nvidia/nvidia-...` 或 `nvidia/nvidia/...` → `nvidia/...`（折叠冗余的 nvidia 段）
+		if (/^nvidia\/nvidia(?:\/|-)/i.test(trimmed)) {
+			return trimmed.replace(/^nvidia\/nvidia(?:\/|-)/i, 'nvidia/');
+		}
+	}
+	return providerModelName;
 }
 
 /** 解析上下文数字（去掉千分位逗号）。 */
@@ -416,10 +497,12 @@ async function findProviderWithKey(repos: GatewayRepositories, vendor: string): 
  * 执行一次 RSS 免费模型同步。
  * @param repos 网关仓储
  * @param url RSS 源地址
+ * @param aiClassifier 可选的 Workers AI 归类器（未配置时降级为启发式归类）
  */
 export async function syncFreeModelsFromRss(
 	repos: GatewayRepositories,
-	url: string = DEFAULT_RSS_URL
+	url: string = DEFAULT_RSS_URL,
+	aiClassifier?: WorkersAiClassifier | null
 ): Promise<RssSyncResult> {
 	const entries = await fetchAndParseRss(url);
 	const result: RssSyncResult = {
@@ -429,6 +512,7 @@ export async function syncFreeModelsFromRss(
 		models_skipped: 0,
 		models_no_provider: 0,
 		models_skipped_unsupported: 0,
+		models_skipped_video: 0,
 		routes_created: 0,
 		routes_skipped: 0,
 		failed: [],
@@ -436,6 +520,8 @@ export async function syncFreeModelsFromRss(
 
 	// 按 vendor 缓存已匹配的 provider，避免重复查询
 	const providerCache = new Map<string, string | null>();
+	// providerId → 解析后的端点配置（用于协议选择）
+	const providerEndpointsCache = new Map<string, ProviderEndpointsMap>();
 	// 本次同步内已处理过的模型 id，避免同一 id 在 feed 中重复出现时重复创建
 	const seenModelIds = new Set<string>();
 
@@ -459,16 +545,16 @@ export async function syncFreeModelsFromRss(
 			}
 			seenModelIds.add(entry.id);
 
-			// 能力 → 模型种类 / modalities / pricing / operation
-			const kind = resolveRssModelKind(entry.capabilities, entry.providerModelName);
+			// 能力 → 模型种类（Workers AI 智能归类 + 启发式兜底）
+			const kind = await resolveRssModelKindWithAi(entry, aiClassifier);
 			// 网关不支持的种类（嵌入/TTS/视频/重排）直接跳过，避免建出无法请求的模型
 			if (!isRssModelKindSupported(kind)) {
 				result.models_skipped_unsupported++;
+				if (kind === 'video') result.models_skipped_video++;
 				return;
 			}
 			const modalities = resolveRssModalities(kind, entry.capabilities);
 			const pricingProfile = resolveRssPricingProfile(kind);
-			const operation = resolveRssRouteOperation(kind);
 
 			// 1. provider：仅匹配平台上带 key 的已有 provider
 			const providerId = providerCache.get(entry.vendor) ?? null;
@@ -478,7 +564,21 @@ export async function syncFreeModelsFromRss(
 				return;
 			}
 
-			// 2. 模型（去重：同 id 已存在则跳过）
+			// 2. 上游协议：Google 聊天模型优先 Gemini 原生协议（provider 已配置 gemini 端点时）
+			let providerEndpoints = providerEndpointsCache.get(providerId);
+			if (!providerEndpoints) {
+				const bases = await repos.providers.getProviderProtocolBases(providerId);
+				providerEndpoints = parseProviderEndpoints({
+					endpoints: bases?.endpoints ?? null,
+				});
+				providerEndpointsCache.set(providerId, providerEndpoints);
+			}
+			const upstreamProtocol = resolveRssUpstreamProtocol(entry.vendor, kind, providerEndpoints);
+			const operation = resolveRssOperationForProtocol(kind, upstreamProtocol);
+			// NVIDIA 上游模型名规范化（去掉冗余 `nvidia/` 前缀段）
+			const providerModelName = normalizeRssProviderModelName(entry.vendor, entry.providerModelName);
+
+			// 3. 模型（去重：同 id 已存在则跳过）
 			const existingModel = await repos.models.getModelDetailWithRouteCounts(entry.id);
 			if (!existingModel) {
 				await createModelService(repos, {
@@ -499,7 +599,7 @@ export async function syncFreeModelsFromRss(
 				result.models_skipped++;
 			}
 
-			// 3. 路由（去重：同 model + provider 已存在则跳过）
+			// 4. 路由（去重：同 model + provider 已存在则跳过）
 			const existingRoutes = await repos.modelRouting.getModelRoutesByModelId(entry.id);
 			const routeExists = existingRoutes.some((r) => r.provider_id === providerId);
 			if (routeExists) {
@@ -517,9 +617,9 @@ export async function syncFreeModelsFromRss(
 			await createModelRouteService(repos, {
 				model_id: entry.id,
 				provider_id: providerId,
-				provider_model_name: entry.providerModelName,
-				upstream_protocol: 'openai',
-				request_protocol: 'openai',
+				provider_model_name: providerModelName,
+				upstream_protocol: upstreamProtocol,
+				request_protocol: upstreamProtocol,
 				request_operation: operation,
 				upstream_operation: operation,
 				adapter: 'passthrough',
