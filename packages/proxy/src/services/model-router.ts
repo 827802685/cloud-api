@@ -219,6 +219,17 @@ export async function resolveRoutesForSurface(
 						// 模型 id 可能形如 `google/gemini-3.1-flash-lite-preview`，而上游（如 Google）
 						// 只认识 `gemini-3.1-flash-lite-preview`，带前缀会导致 404。
 						const providerModelName = stripVendorPrefix(params.modelId, vendor);
+						// 诊断：记录实际选中的 provider 名称与 base URL，便于核对是否真的指向目标厂商
+						let providerDiag = `providerId=${providerId}`;
+						try {
+							const provider = await repos.providers.getProviderById(providerId);
+							if (provider) {
+								const endpoints = parseProviderEndpoints(provider);
+								providerDiag = `providerId=${providerId} providerName=${provider.name ?? '?'} base=${endpoints[protocol]?.base ?? endpoints[protocol]?.endpoints?.chat ?? 'N/A'}`;
+							}
+						} catch {
+							// 诊断信息获取失败不影响主流程
+						}
 						await repos.modelRouting.autoCreateRoute(
 							params.modelId,
 							providerId,
@@ -226,7 +237,7 @@ export async function resolveRoutesForSurface(
 							protocol
 						);
 						console.log(
-							`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol} providerModelName=${providerModelName}`
+							`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol} providerModelName=${providerModelName} ${providerDiag}`
 						);
 						// Re-query routes after creation
 						const newRows = surface

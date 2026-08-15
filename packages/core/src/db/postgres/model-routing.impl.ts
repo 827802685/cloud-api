@@ -154,6 +154,14 @@ export function createPostgresModelRoutingRepository(db: PostgresDatabaseClient)
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
 			const keywords = vendorSearchKeywords(vendor);
+			const primary = keywords[0] ?? vendor.toLowerCase().trim();
+			// 1) 精确匹配厂商名本身，避免误匹配到名称里恰好含关键词的其他厂商
+			const exactRows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) = lower(${primary}) LIMIT 1`;
+			if (exactRows?.[0]?.id) return exactRows[0].id;
+			// 2) 前缀匹配，仍优先于子串
+			const prefixRows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND (lower(name) LIKE ${primary + '%'} OR lower(name) LIKE ${primary + ' %'} OR lower(name) LIKE ${primary + '-%'} OR lower(name) LIKE ${primary + '_%'}) LIMIT 1`;
+			if (prefixRows?.[0]?.id) return prefixRows[0].id;
+			// 3) 回退：其余关键词子串匹配
 			for (const kw of keywords) {
 				const rows = await pg<{ id: string }[]>`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ${'%' + kw + '%'} LIMIT 1`;
 				if (rows?.[0]?.id) return rows[0].id;

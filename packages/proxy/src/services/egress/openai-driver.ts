@@ -466,6 +466,11 @@ export async function dispatchOpenAiRoute(
     model: route.providerModelName,
   };
 
+  // 诊断：记录实际上游 URL 与模型名，便于核对 provider 是否真的指向目标厂商（如 Google vs GLM）
+  console.log(
+    `[Gateway OpenAI] dispatch providerId=${route.providerId} providerName=${route.providerName} model=${route.providerModelName} url=${url}`
+  );
+
   // Google Gemini OpenAI 兼容端点不接受 frequency_penalty / presence_penalty 等参数
   if (isGoogleOpenAiEndpoint(url)) {
     requestBody = stripGoogleUnsupportedParams(requestBody);

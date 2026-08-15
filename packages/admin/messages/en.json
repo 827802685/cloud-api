@@ -1356,6 +1356,7 @@
 		"detail": {
 			"upstreamMessageId": "Upstream message id",
 			"upstreamRequestId": "Upstream request id",
+			"upstreamUrl": "Actual upstream URL",
 			"timing": "Timing",
 			"pricingAudit": "Pricing audit",
 			"entryRequestBody": "Entry request body (redacted)",

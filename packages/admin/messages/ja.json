@@ -1356,6 +1356,7 @@
 		"detail": {
 			"upstreamMessageId": "アップストリーム message id",
 			"upstreamRequestId": "アップストリーム request id",
+			"upstreamUrl": "実際のアップストリーム URL",
 			"timing": "Timing",
 			"pricingAudit": "料金監査",
 			"entryRequestBody": "入口リクエスト Body（マスキング済み）",

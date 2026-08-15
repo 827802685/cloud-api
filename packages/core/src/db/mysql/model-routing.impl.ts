@@ -162,6 +162,22 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
 			const keywords = vendorSearchKeywords(vendor);
+			const primary = keywords[0] ?? vendor.toLowerCase().trim();
+			// 1) 精确匹配厂商名本身，避免误匹配到名称里恰好含关键词的其他厂商
+			const [exactRows] = await pool.query(
+				`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) = lower(?) LIMIT 1`,
+				[primary]
+			);
+			const exactId = (exactRows as any[])?.[0]?.id;
+			if (exactId) return exactId;
+			// 2) 前缀匹配，仍优先于子串
+			const [prefixRows] = await pool.query(
+				`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND (lower(name) LIKE ? OR lower(name) LIKE ? OR lower(name) LIKE ? OR lower(name) LIKE ?) LIMIT 1`,
+				[`${primary}%`, `${primary} %`, `${primary}-%`, `${primary}_%`]
+			);
+			const prefixId = (prefixRows as any[])?.[0]?.id;
+			if (prefixId) return prefixId;
+			// 3) 回退：其余关键词子串匹配
 			for (const kw of keywords) {
 				const [rows] = await pool.query(
 					`SELECT id FROM providers WHERE status = 'active' AND api_key != '' AND lower(name) LIKE ? LIMIT 1`,

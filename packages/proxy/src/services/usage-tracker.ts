@@ -138,6 +138,8 @@ export async function recordUsage(
 			attempted_target: string | null;
 			result: string;
 		} | null;
+		/** 实际上游请求 URL（诊断用，merged into route_trace.upstream_url）。 */
+		upstream_url?: string | null;
 		usage: UsageFromStream;
 		model_pricing_profile?: string | null;
 		route_price_override_json?: string | null;
@@ -283,6 +285,7 @@ export async function recordUsage(
 					? { gemini: { action: params.gemini_wire_action } }
 					: {}),
 				...(params.sticky_trace ? { sticky: params.sticky_trace } : {}),
+				...(params.upstream_url ? { upstream_url: params.upstream_url } : {}),
 			}),
 			inputTokens: params.usage.input_tokens,
 			outputTokens: params.usage.output_tokens,

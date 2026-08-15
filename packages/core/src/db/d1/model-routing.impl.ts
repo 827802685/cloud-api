@@ -254,6 +254,32 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 
 		async findProviderByVendor(vendor: string): Promise<string | null> {
 			const keywords = vendorSearchKeywords(vendor);
+			const primary = keywords[0] ?? vendor.toLowerCase().trim();
+			// 1) 精确匹配厂商名本身（如 name = "google"），避免误匹配到名称里恰好含关键词的其他厂商
+			const exact = await raw
+				.prepare(
+					`SELECT id FROM providers
+					 WHERE status = 'active'
+					   AND api_key != ''
+					   AND lower(name) = lower(?)
+					 LIMIT 1`
+				)
+				.bind(primary)
+				.first<{ id: string }>();
+			if (exact) return exact.id;
+			// 2) 前缀匹配（如 "Google AI Studio"、"Google-Gemini"、"Google_Relay"），仍优先于子串
+			const prefix = await raw
+				.prepare(
+					`SELECT id FROM providers
+					 WHERE status = 'active'
+					   AND api_key != ''
+					   AND (lower(name) LIKE ? OR lower(name) LIKE ? OR lower(name) LIKE ? OR lower(name) LIKE ?)
+					 LIMIT 1`
+				)
+				.bind(`${primary}%`, `${primary} %`, `${primary}-%`, `${primary}_%`)
+				.first<{ id: string }>();
+			if (prefix) return prefix.id;
+			// 3) 回退：其余关键词子串匹配（含厂商名本身的子串）
 			for (const kw of keywords) {
 				const row = await raw
 					.prepare(

@@ -342,6 +342,18 @@ export default function GatewayRequestLogsPage() {
     }
   };
 
+  /** 从 `route_trace` JSON 中提取实际上游请求 URL（诊断用，核对 provider 是否真的指向目标厂商）。 */
+  const extractRouteTraceUpstreamUrl = (raw: string | null | undefined): string => {
+    if (raw == null || raw === '') return '';
+    try {
+      const parsed = JSON.parse(raw) as { upstream_url?: unknown };
+      const url = parsed?.upstream_url;
+      return typeof url === 'string' && url.trim() !== '' ? url.trim() : '';
+    } catch {
+      return '';
+    }
+  };
+
   const formatCostMultiplier = (cost: number, standardCost: number): string | null => {
     if (!Number.isFinite(cost) || !Number.isFinite(standardCost) || standardCost <= 0) {
       return null;
@@ -915,6 +927,10 @@ export default function GatewayRequestLogsPage() {
                               { label: t('detail.protocolMapping'), value: protocolMapping },
                               { label: t('detail.providerKey'), value: providerKey },
                               { label: t('detail.routeTarget'), value: routeTarget },
+                              {
+                                label: t('detail.upstreamUrl'),
+                                value: extractRouteTraceUpstreamUrl(log.route_trace),
+                              },
                             ];
                             return (
                               <div className="min-w-[110rem]">

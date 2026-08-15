@@ -1356,6 +1356,7 @@
 		"detail": {
 			"upstreamMessageId": "上游消息 ID",
 			"upstreamRequestId": "上游请求 ID",
+			"upstreamUrl": "实际上游 URL",
 			"timing": "Timing",
 			"pricingAudit": "定价审计",
 			"entryRequestBody": "入口请求体（已脱敏）",

@@ -1356,6 +1356,7 @@
 		"detail": {
 			"upstreamMessageId": "업스트림 message id",
 			"upstreamRequestId": "업스트림 request id",
+			"upstreamUrl": "실제 업스트림 URL",
 			"timing": "Timing",
 			"pricingAudit": "요금 감사",
 			"entryRequestBody": "진입 요청 본문 (민감 정보 숨김)",

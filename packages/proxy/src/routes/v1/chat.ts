@@ -5,6 +5,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../../app';
 import { requireApiKey } from '../../middleware/auth';
+import { resolveUpstreamEndpoint } from '@cloud-api/core';
 import {
   resolveRoutesForSurface,
   type RouteResult,
@@ -316,6 +317,15 @@ chatRoutes.post('/', async (c) => {
           errorMessage = `HTTP ${response.status}`;
         }
         const upstreamRequestBodyForLog = openAiUpstreamWireBodyForLog(chosenRoute, body as Record<string, unknown>);
+        // 诊断：解析实际上游请求 URL（供 request log 展示，便于核对 provider 是否真的指向目标厂商）
+        let upstreamUrlForLog: string | null = null;
+        try {
+          upstreamUrlForLog = resolveUpstreamEndpoint('openai', 'chat', chosenRoute.providerEndpoints, {
+            providerId: chosenRoute.providerId,
+          });
+        } catch {
+          // 解析失败不阻塞记账
+        }
         return recordUsage(repos, {
           api_key_id: apiKey.keyId,
           user_id: apiKey.userId,
@@ -352,6 +362,7 @@ chatRoutes.post('/', async (c) => {
           provider_key_fingerprint: chosenRoute.providerKeyFingerprint ?? null,
           upstream_request_id: upstreamRequestId,
           upstream_message_id: usageCollected.upstreamMessageId ?? null,
+          upstream_url: upstreamUrlForLog,
           circuit_events: alertCircuitEvents.length > 0 ? alertCircuitEvents : undefined,
           suppress_error_alert: suppressErrorAlert || undefined,
         });
