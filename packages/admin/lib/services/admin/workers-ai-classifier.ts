@@ -37,6 +37,8 @@ export type WorkersAiClassifyInput = {
 	description: string | null;
 	/** RSS 能力标签（chat/video/image/audio...） */
 	capabilities: string[];
+	/** RSS 中文分类标签（对话、代码、向量嵌入、图像生成、推理、视觉理解、视频生成、语音/音频...） */
+	categories?: string[];
 };
 
 /** Workers AI 归类器接口。 */
@@ -124,11 +126,13 @@ function parseClassification(content: string): WorkersAiClassification | null {
 
 function buildUserPrompt(model: WorkersAiClassifyInput): string {
 	const caps = model.capabilities.length > 0 ? model.capabilities.join(', ') : '(none)';
+	const cats = model.categories && model.categories.length > 0 ? model.categories.join(', ') : '(none)';
 	return [
 		`Model ID: ${model.id}`,
 		`Display name: ${model.displayName ?? ''}`,
 		`Description: ${model.description ?? ''}`,
 		`Capability tags: ${caps}`,
+		`Category tags: ${cats}`,
 	].join('\n');
 }
 

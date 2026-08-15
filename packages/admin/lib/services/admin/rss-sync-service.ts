@@ -39,6 +39,8 @@ export type RssModelEntry = {
 	contextWindow: number | null;
 	/** 能力标签（chat、vision、audio...） */
 	capabilities: string[];
+	/** RSS 中文分类标签（对话、代码、向量嵌入、图像生成、推理、视觉理解、视频生成、语音/音频...） */
+	categories: string[];
 	/** 免费额度档位 */
 	freeQuota: FreeQuotaTier;
 	/** 参数量（十亿），从模型名推断；未知为 null */
@@ -167,7 +169,16 @@ export function inferRssModelKindFromName(modelName: string): RssModelKind {
  * 能力标签（openrouter/agnes/zhipu 等可靠厂商）优先；google/nvidia/modelscope 等厂商标签恒为 chat，
  * 此时用模型名兜底，避免把文生图 / 嵌入 / TTS / 多模态等误判为大语言模型。
  */
-export function resolveRssModelKind(capabilities: string[], modelName: string): RssModelKind {
+export function resolveRssModelKind(
+	capabilities: string[],
+	modelName: string,
+	categories: string[] = []
+): RssModelKind {
+	// 1. RSS 中文分类标签最权威（RSS 工具已按功能细分），优先采用
+	const fromCategories = resolveRssModelKindFromCategories(categories, modelName);
+	if (fromCategories) return fromCategories;
+
+	// 2. 能力标签兜底
 	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
 	const fromName = inferRssModelKindFromName(modelName);
 	if (caps.has('image')) return 'image';
@@ -180,6 +191,35 @@ export function resolveRssModelKind(capabilities: string[], modelName: string): 
 	// 能力标签明确为 vision（多模态 LLM）时直接采用，避免被模型名无特征误判为 chat
 	if (caps.has('vision')) return 'vision';
 	return fromName;
+}
+
+/**
+ * RSS 中文分类标签 → 模型种类。
+ * 一个模型可有多个分类标签（如 `对话, 代码`、`对话, 推理, 视觉理解`），
+ * 按功能特异性从高到低取最「特殊」的分类：
+ * - 向量嵌入 / 图像生成 / 视频生成 是强信号，直接采用
+ * - 语音/音频 需结合模型名细分（tts→audio-tts、asr→audio-asr，其余多模态→vision）
+ * - 视觉理解 → vision
+ * - 对话 / 代码 / 推理 → chat（代码、推理模型仍走 chat API）
+ * 无匹配返回 null（调用方回退到能力标签 / 模型名推断）。
+ */
+export function resolveRssModelKindFromCategories(
+	categories: string[],
+	modelName: string
+): RssModelKind | null {
+	const cats = new Set(categories.map((c) => c.trim()));
+	if (cats.has('向量嵌入')) return 'embedding';
+	if (cats.has('图像生成')) return 'image';
+	if (cats.has('视频生成')) return 'video';
+	if (cats.has('语音/音频')) {
+		const fromName = inferRssModelKindFromName(modelName);
+		if (fromName === 'audio-tts' || fromName === 'audio-asr') return fromName;
+		// omni 等多模态模型（如 nemotron-omni）→ vision
+		return 'vision';
+	}
+	if (cats.has('视觉理解')) return 'vision';
+	if (cats.has('对话') || cats.has('代码') || cats.has('推理')) return 'chat';
+	return null;
 }
 
 /** 网关能否直接服务该种类（否则跳过导入，避免建出无法请求的模型）。 */
@@ -196,9 +236,11 @@ export function isRssModelKindSupported(kind: RssModelKind): boolean {
 /** 按能力生成 input/output modalities（vision 追加 image 输入，audio/video 标签追加对应输入）。 */
 export function resolveRssModalities(
 	kind: RssModelKind,
-	capabilities: string[]
+	capabilities: string[],
+	categories: string[] = []
 ): { input: string[]; output: string[] } {
 	const caps = new Set(capabilities.map((c) => c.trim().toLowerCase()));
+	const cats = new Set(categories.map((c) => c.trim()));
 	switch (kind) {
 		case 'image':
 			return { input: ['text'], output: ['image'] };
@@ -206,8 +248,8 @@ export function resolveRssModalities(
 			return { input: ['audio'], output: ['text'] };
 		case 'vision': {
 			const input = ['text', 'image'];
-			if (caps.has('audio')) input.push('audio');
-			if (caps.has('video')) input.push('video');
+			if (caps.has('audio') || cats.has('语音/音频')) input.push('audio');
+			if (caps.has('video') || cats.has('视频生成')) input.push('video');
 			return { input, output: ['text'] };
 		}
 		case 'audio-tts':
@@ -296,8 +338,11 @@ export async function resolveRssModelKindWithAi(
 	entry: RssModelEntry,
 	aiClassifier: WorkersAiClassifier | null | undefined
 ): Promise<RssModelKind> {
-	const heuristic = resolveRssModelKind(entry.capabilities, entry.providerModelName);
+	const heuristic = resolveRssModelKind(entry.capabilities, entry.providerModelName, entry.categories);
 	if (!aiClassifier) return heuristic;
+
+	// RSS 中文分类标签明确时（向量嵌入/图像生成/视频生成/视觉理解等）启发式已可靠，避免无谓的 AI 调用
+	if (entry.categories.length > 0) return heuristic;
 
 	const caps = new Set(entry.capabilities.map((c) => c.trim().toLowerCase()));
 	// 能力标签明确时（image/video/audio）启发式已可靠，避免无谓的 AI 调用
@@ -311,6 +356,7 @@ export async function resolveRssModelKindWithAi(
 			displayName: entry.id,
 			description: `vendor=${entry.vendor}; capabilities=${entry.capabilities.join(',') || 'none'}`,
 			capabilities: entry.capabilities,
+			categories: entry.categories,
 		});
 		if (ai && ai.confidence >= 0.5) return ai.kind;
 	} catch {
@@ -322,7 +368,7 @@ export async function resolveRssModelKindWithAi(
 /**
  * 为 RSS 模型选择最合适的上游协议：
  * - 文生图 / 音频转写必须走 OpenAI 协议（网关 Images/Audio API 仅用 OpenAI 路由）。
- * - Google 聊天模型：优先 Gemini 原生协议（provider 已配置 gemini 端点时），否则 OpenAI。
+ * - Google 聊天 / 多模态模型：优先 Gemini 原生协议（provider 已配置 gemini 端点时），否则 OpenAI。
  * - 其余厂商默认 OpenAI。
  */
 export function resolveRssUpstreamProtocol(
@@ -331,7 +377,11 @@ export function resolveRssUpstreamProtocol(
 	providerEndpoints: ProviderEndpointsMap | null | undefined
 ): UpstreamProtocol {
 	if (kind === 'image' || kind === 'audio-asr') return 'openai';
-	if (vendor.toLowerCase() === 'google' && kind === 'chat' && providerEndpoints?.gemini?.base) {
+	if (
+		vendor.toLowerCase() === 'google' &&
+		(kind === 'chat' || kind === 'vision') &&
+		providerEndpoints?.gemini?.base
+	) {
 		return 'gemini';
 	}
 	return 'openai';
@@ -345,17 +395,19 @@ export function resolveRssOperationForProtocol(kind: RssModelKind, protocol: Ups
 
 /**
  * 规范化上游模型名：
- * - NVIDIA 的 RSS 模型名形如 `nvidia/nvidia-nemotron-*-v2` 或 `nvidia/nvidia/nemotron-*`，
- *   冗余了 `nvidia/` 段，NIM OpenAI 端点期望 `nvidia/nemotron-*-v2`，需折叠为单段 `nvidia/` 前缀，避免上游 404。
+ * - NVIDIA 的 RSS 模型名形如 `nvidia/nvidia-nemotron-*-v2`、`nvidia/nvidia/nemotron-*` 甚至
+ *   `nvidia/nvidia/nvidia/nemotron-*`，冗余了 `nvidia/` 段，NIM OpenAI 端点期望 `nvidia/nemotron-*-v2`，
+ *   需折叠为单段 `nvidia/` 前缀，避免上游 404。
  * - 其余厂商原样返回。
  */
 export function normalizeRssProviderModelName(vendor: string, providerModelName: string): string {
 	if (vendor.toLowerCase() === 'nvidia') {
-		const trimmed = providerModelName.trim();
-		// `nvidia/nvidia-...` 或 `nvidia/nvidia/...` → `nvidia/...`（折叠冗余的 nvidia 段）
-		if (/^nvidia\/nvidia(?:\/|-)/i.test(trimmed)) {
-			return trimmed.replace(/^nvidia\/nvidia(?:\/|-)/i, 'nvidia/');
+		let name = providerModelName.trim();
+		// 循环折叠 `nvidia/nvidia...` → `nvidia/...`，直到只剩单段前缀
+		while (/^nvidia\/nvidia(?:\/|-)/i.test(name)) {
+			name = name.replace(/^nvidia\/nvidia(?:\/|-)/i, 'nvidia/');
 		}
+		return name;
 	}
 	return providerModelName;
 }
@@ -430,6 +482,10 @@ export function parseRssXml(xml: string): RssModelEntry[] {
 			.split(',')
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0 && s !== '未知');
+		// RSS 中文分类标签（`<category>` 可重复出现）：对话、代码、向量嵌入、图像生成、推理、视觉理解、视频生成、语音/音频
+		const categories = extractTags(block, 'category')
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
 
 		items.push({
 			id: stripFreeSuffix(title),
@@ -439,6 +495,7 @@ export function parseRssXml(xml: string): RssModelEntry[] {
 			baseUrl,
 			contextWindow,
 			capabilities,
+			categories,
 			freeQuota: parseFreeQuota(fields['免费类型'] ?? fields['FreeType'] ?? null),
 			paramsB: inferParamsB(providerModelName),
 		});
@@ -452,6 +509,17 @@ function extractTag(block: string, tag: string): string {
 	if (!m) return '';
 	// 去除可能的 CDATA
 	return m[1]!.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
+}
+
+/** 提取 XML 块中所有指定标签的文本内容（如 `<category>`）。 */
+function extractTags(block: string, tag: string): string[] {
+	const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'g');
+	const results: string[] = [];
+	let m: RegExpExecArray | null;
+	while ((m = re.exec(block)) !== null) {
+		results.push(m[1]!.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim());
+	}
+	return results;
 }
 
 /** 拉取并解析 RSS。 */
@@ -553,7 +621,7 @@ export async function syncFreeModelsFromRss(
 				if (kind === 'video') result.models_skipped_video++;
 				return;
 			}
-			const modalities = resolveRssModalities(kind, entry.capabilities);
+			const modalities = resolveRssModalities(kind, entry.capabilities, entry.categories);
 			const pricingProfile = resolveRssPricingProfile(kind);
 
 			// 1. provider：仅匹配平台上带 key 的已有 provider
