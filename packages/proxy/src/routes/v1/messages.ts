@@ -107,7 +107,7 @@ messagesRoutes.post('/', async (c) => {
     });
   }
 
-  const resolved = await resolveModelRouting(repos, rawModelId, 'anthropic');
+  const resolved = await resolveModelRouting(repos, rawModelId);
   if (!resolved) {
     return gatewayErrorJson(c, {
       status: 404,

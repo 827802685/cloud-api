@@ -141,4 +141,23 @@ describe('resolveRoutesForSurface — auto-route creation', () => {
 
     assert.equal(calls.length, 0, 'should respect manual disable of matching-protocol routes');
   });
+
+  it('strips vendor/ prefix from provider_model_name when auto-creating route', async () => {
+    const calls: { modelId: string; providerId: string; modelName: string; protocol: string }[] = [];
+    const repos = makeRepos({
+      activeRows: [],
+      existingRoutes: [],
+      autoCreateCalls: calls,
+    });
+
+    await resolveRoutesForSurface(repos, {
+      modelId: 'google/gemini-3.1-flash-lite-preview',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].modelName, 'gemini-3.1-flash-lite-preview');
+  });
 });

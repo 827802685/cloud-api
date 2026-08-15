@@ -70,6 +70,22 @@ function parseJsonObject(raw: string | null | undefined): Record<string, unknown
 	return null;
 }
 
+/**
+ * 去掉模型 id 的 `vendor/` 前缀，得到上游真实模型名。
+ * 模型 id 可能形如 `google/gemini-3.1-flash-lite-preview` 或 `nvidia/deepseek-v3`，
+ * 而上游（如 Google/Vertex）只认识 `gemini-3.1-flash-lite-preview`。
+ * 仅当前缀与 vendor 一致时剥离；否则原样返回（避免误伤不含前缀的模型 id）。
+ */
+function stripVendorPrefix(modelId: string, vendor: string): string {
+	const v = vendor?.toLowerCase().trim();
+	if (!v) return modelId;
+	const prefix = `${v}/`;
+	if (modelId.toLowerCase().startsWith(prefix)) {
+		return modelId.slice(prefix.length);
+	}
+	return modelId;
+}
+
 async function routeRowToResult(repos: GatewayRepositories, route: ModelRouteRow): Promise<RouteResult | null> {
 	const provider = await repos.providers.getProviderById(route.provider_id);
 	if (!provider || provider.status === 'disabled' || !provider.api_key) {
@@ -199,8 +215,19 @@ export async function resolveRoutesForSurface(
 					const providerId = await repos.modelRouting.findProviderByVendor(vendor);
 					if (providerId) {
 						const protocol = params.requestProtocol || 'openai';
-						await repos.modelRouting.autoCreateRoute(params.modelId, providerId, params.modelId, protocol);
-						console.log(`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol}`);
+						// 自动创建路由时 provider_model_name 去掉 `vendor/` 前缀：
+						// 模型 id 可能形如 `google/gemini-3.1-flash-lite-preview`，而上游（如 Google）
+						// 只认识 `gemini-3.1-flash-lite-preview`，带前缀会导致 404。
+						const providerModelName = stripVendorPrefix(params.modelId, vendor);
+						await repos.modelRouting.autoCreateRoute(
+							params.modelId,
+							providerId,
+							providerModelName,
+							protocol
+						);
+						console.log(
+							`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol} providerModelName=${providerModelName}`
+						);
 						// Re-query routes after creation
 						const newRows = surface
 							? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)

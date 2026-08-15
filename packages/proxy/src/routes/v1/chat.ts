@@ -108,7 +108,7 @@ chatRoutes.post('/', async (c) => {
     });
   }
 
-  const resolved = await resolveModelRouting(repos, rawModelId, 'openai');
+  const resolved = await resolveModelRouting(repos, rawModelId);
   if (!resolved) {
     return gatewayErrorJson(c, {
       status: 404,

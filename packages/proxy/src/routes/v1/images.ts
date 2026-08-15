@@ -81,7 +81,7 @@ async function resolveOpenAiImageRoutes(
 	  }
 	| { ok: false; status: 400 | 404 | 502; error: string }
 > {
-	const resolved = await resolveModelRouting(repos, rawModelId, 'openai');
+	const resolved = await resolveModelRouting(repos, rawModelId);
 	if (!resolved) {
 		const modelForLog = truncateModelIdForLog(rawModelId);
 		console.warn(`[Gateway Images] model not found clientModel=${modelForLog}`);

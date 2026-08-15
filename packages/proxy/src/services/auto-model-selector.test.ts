@@ -29,13 +29,7 @@ function makeModel(id: string, vendor: string, contextWindow: number | null): Mo
 function makeRepos(models: ModelRow[]): GatewayRepositories {
   return {
     modelRouting: {
-      listModelsWithActiveRoutes: async (protocol?: string) => {
-        // 模拟按协议过滤：仅返回 vendor 与请求协议一致的模型
-        if (protocol) {
-          return models.filter((m) => m.vendor === protocol);
-        }
-        return models;
-      },
+      listModelsWithActiveRoutes: async () => models,
     },
   } as unknown as GatewayRepositories;
 }
@@ -44,9 +38,9 @@ afterEach(() => {
   clearAutoModelCache();
 });
 
-describe('auto-model-selector — protocol filtering', () => {
-  it('passes protocol to listModelsWithActiveRoutes so auto only considers matching-protocol models', async () => {
-    let receivedProtocol: string | undefined;
+describe('auto-model-selector — selects from all models (no protocol filtering)', () => {
+  it('lists all models with active routes (no protocol filter passed)', async () => {
+    let receivedProtocol: string | undefined = 'sentinel';
     const repos = {
       modelRouting: {
         listModelsWithActiveRoutes: async (protocol?: string) => {
@@ -56,41 +50,44 @@ describe('auto-model-selector — protocol filtering', () => {
       },
     } as unknown as GatewayRepositories;
 
-    const candidates = await selectAutoModelCandidates(repos, undefined, 5, 'openai');
-    assert.equal(receivedProtocol, 'openai');
+    const candidates = await selectAutoModelCandidates(repos, undefined, 5);
+    assert.equal(receivedProtocol, undefined, 'auto must not filter by protocol');
     assert.equal(candidates.length, 1);
     assert.equal(candidates[0]!.id, 'gpt-4o');
   });
 
-  it('selects best model among protocol-filtered candidates (context_window desc)', async () => {
+  it('selects best model among all candidates (context_window desc), including google models', async () => {
     const repos = makeRepos([
       makeModel('gemini-2.5-flash', 'google', 1000000),
       makeModel('gpt-4o', 'openai', 128000),
       makeModel('claude-3-5-sonnet', 'anthropic', 200000),
     ]);
 
-    // openai 协议下只应返回 gpt-4o（模拟过滤后）
-    const openaiCandidates = await selectAutoModelCandidates(repos, undefined, 5, 'openai');
+    const candidates = await selectAutoModelCandidates(repos, undefined, 5);
     assert.deepEqual(
-      openaiCandidates.map((m) => m.id),
-      ['gpt-4o']
-    );
-
-    // 不传协议时返回全部并按 context_window 降序
-    const allCandidates = await selectAutoModelCandidates(repos, undefined, 5);
-    assert.deepEqual(
-      allCandidates.map((m) => m.id),
+      candidates.map((m) => m.id),
       ['gemini-2.5-flash', 'claude-3-5-sonnet', 'gpt-4o']
     );
   });
 
-  it('selectAutoModel honors protocol filter', async () => {
+  it('selectAutoModel picks the largest-context model regardless of protocol', async () => {
     const repos = makeRepos([
       makeModel('gemini-2.5-flash', 'google', 1000000),
       makeModel('gpt-4o', 'openai', 128000),
     ]);
 
-    const selected = await selectAutoModel(repos, undefined, 'openai');
+    const selected = await selectAutoModel(repos);
+    assert.ok(selected);
+    assert.equal(selected.modelId, 'gemini-2.5-flash');
+  });
+
+  it('honors preferred vendor when specified', async () => {
+    const repos = makeRepos([
+      makeModel('gemini-2.5-flash', 'google', 1000000),
+      makeModel('gpt-4o', 'openai', 128000),
+    ]);
+
+    const selected = await selectAutoModel(repos, 'openai');
     assert.ok(selected);
     assert.equal(selected.modelId, 'gpt-4o');
   });

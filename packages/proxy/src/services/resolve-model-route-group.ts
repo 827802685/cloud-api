@@ -2,7 +2,7 @@
  * 解析请求体里的 `model` 字符串：`baseId` 与可选后缀 `baseId:route_group`（显式指定计费通道）。
  * 支持 `auto` 和 `auto:vendor` 语法，自动选择最佳可用模型。
  */
-import type { GatewayRepositories, ModelRow, UpstreamProtocol } from '@cloud-api/core';
+import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
 import { selectAutoModelCandidates, AUTO_MODEL_CANDIDATE_LIMIT } from './auto-model-selector';
 
 export interface ResolvedModelRouting {
@@ -21,15 +21,17 @@ export interface ResolvedModelRouting {
  * 将 OpenAI 风格 `model`（及 Gemini 路径中的模型段）解析为库中行 + 可选 route_group。
  * 整串命中 id → explicitGroup 为 null；否则按最后一个 `:` 切分，前缀为模型 id、后缀为显式路由组。
  * 支持 `auto` 和 `auto:vendor` 语法自动选择最佳模型。
+ *
+ * auto 从所有有活跃路由的模型中选择（不按协议过滤）；选中模型后若缺少当前请求协议
+ * 路由，`resolveRoutesForSurface` 会自动创建该协议路由，保证出站统一走请求协议格式。
+ *
  * @param repos 网关仓储
  * @param rawModelId 客户端传入的 model 字符串（可含前后空格，内部 trim）
- * @param requestProtocol 可选；auto 选择时按该协议过滤（如 openai），保证出站统一协议
  * @returns 无法匹配任一模型 id 时 `null`
  */
 export async function resolveModelRouting(
   repos: GatewayRepositories,
-  rawModelId: string,
-  requestProtocol?: UpstreamProtocol
+  rawModelId: string
 ): Promise<ResolvedModelRouting | null> {
   const t = rawModelId.trim();
   if (!t) {
@@ -42,8 +44,7 @@ export async function resolveModelRouting(
     const candidates = await selectAutoModelCandidates(
       repos,
       preferredVendor || undefined,
-      AUTO_MODEL_CANDIDATE_LIMIT,
-      requestProtocol
+      AUTO_MODEL_CANDIDATE_LIMIT
     );
     if (candidates.length === 0) {
       console.warn('[AutoModel] no available models found');
