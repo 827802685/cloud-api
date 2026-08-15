@@ -421,6 +421,36 @@ async function nonStreamResponseWithUsage(
  * @param requestSignal 用于检测取消并在断连后限时 drain 上游以尽量拿到末尾 usage
  * @returns 原样或包装后的 `Response` + 异步解析完成的 `usagePromise`
  */
+/** OpenAI 参数子集：Google Gemini OpenAI 兼容端点不支持的参数（会导致 400 INVALID_ARGUMENT）。 */
+const GOOGLE_OPENAI_UNSUPPORTED_PARAMS = new Set([
+	'frequency_penalty',
+	'presence_penalty',
+	'logit_bias',
+	'metadata',
+	'store',
+]);
+
+/** 检查该 URL 是否为 Google Gemini OpenAI 兼容端点。 */
+function isGoogleOpenAiEndpoint(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return parsed.hostname === 'generativelanguage.googleapis.com';
+	} catch {
+		return false;
+	}
+}
+
+/** 移除 Google Gemini OpenAI 兼容端点不支持的参数。 */
+function stripGoogleUnsupportedParams(body: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(body)) {
+		if (!GOOGLE_OPENAI_UNSUPPORTED_PARAMS.has(k)) {
+			out[k] = v;
+		}
+	}
+	return out;
+}
+
 export async function dispatchOpenAiRoute(
   route: RouteResult,
   body: Record<string, unknown>,
@@ -431,10 +461,15 @@ export async function dispatchOpenAiRoute(
   const url = resolveUpstreamEndpoint('openai', 'chat', route.providerEndpoints, {
     providerId: route.providerId,
   });
-  const requestBody = {
+  let requestBody: Record<string, unknown> = {
     ...buildRouteRequestBody(route, body),
     model: route.providerModelName,
   };
+
+  // Google Gemini OpenAI 兼容端点不接受 frequency_penalty / presence_penalty 等参数
+  if (isGoogleOpenAiEndpoint(url)) {
+    requestBody = stripGoogleUnsupportedParams(requestBody);
+  }
 
   const response = await fetch(url, {
     method: 'POST',

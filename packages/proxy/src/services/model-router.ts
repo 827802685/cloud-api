@@ -180,10 +180,15 @@ export async function resolveRoutesForSurface(
 	// Auto-route creation: if no routes found, try to create one automatically.
 	// 仅当模型完全没有路由时才自动创建；若模型已有路由（即使全部被手动禁用），
 	// 保持禁用状态，避免绕过管理员的禁用操作。
+	// 例外：模型已有路由但全部是其他协议（如 gemini），当前请求协议（如 openai）无路由时，
+	// 仍自动创建当前协议路由，避免 auto 选中后报 "No OpenAI route"。
 	if (routes.length === 0) {
 		try {
 			const existingRoutes = await repos.routes.listModelRoutesWithJoins({ modelId: params.modelId });
-			if (existingRoutes.length > 0) {
+			const hasMatchingProtocol = existingRoutes.some(
+				(r) => normalizeUpstreamProtocol(r.upstream_protocol) === params.requestProtocol
+			);
+			if (existingRoutes.length > 0 && hasMatchingProtocol) {
 				console.warn(
 					`[AutoRoute] model=${params.modelId} has ${existingRoutes.length} route(s) but none active; skipping auto-create to respect manual disable`
 				);
