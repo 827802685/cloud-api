@@ -512,7 +512,9 @@ export function requestOperationsForModel(
 	protocol: UpstreamProtocol
 ): readonly string[] {
 	if (model && isImageGenerationModel(model)) {
-		return protocol === 'openai' ? ['images.generations', 'images.edits'] : [];
+		if (protocol === 'openai') return ['images.generations', 'images.edits'];
+		if (protocol === 'gemini') return ['models.generate'];
+		return [];
 	}
 	if (model && isAudioTranscriptionModel(model)) {
 		return protocol === 'openai' ? ['audio.transcriptions'] : [];

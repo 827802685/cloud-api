@@ -95,6 +95,7 @@ export type ParsedImagesGenerationsResponse = {
 
 /**
  * Parse OpenAI-compatible images generations JSON into preview URLs / data URLs.
+ * Also supports Gemini format (candidates[].content.parts[].inlineData).
  */
 export function parseImagesGenerationsResponse(
 	jsonText: string,
@@ -110,6 +111,36 @@ export function parseImagesGenerationsResponse(
 		return empty;
 	}
 	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return empty;
+
+	// Try Gemini format first (candidates[].content.parts[].inlineData)
+	const candidates = (parsed as { candidates?: unknown }).candidates;
+	if (Array.isArray(candidates) && candidates.length > 0) {
+		const images: ImagePreviewItem[] = [];
+		for (const candidate of candidates) {
+			if (!candidate || typeof candidate !== 'object') continue;
+			const content = (candidate as { content?: unknown }).content;
+			if (!content || typeof content !== 'object') continue;
+			const parts = (content as { parts?: unknown }).parts;
+			if (!Array.isArray(parts)) continue;
+			for (const part of parts) {
+				if (!part || typeof part !== 'object') continue;
+				const inlineData = (part as { inlineData?: unknown }).inlineData;
+				if (!inlineData || typeof inlineData !== 'object') continue;
+				const data = (inlineData as { data?: unknown }).data;
+				const mimeType = (inlineData as { mimeType?: unknown }).mimeType;
+				if (typeof data === 'string' && data.trim()) {
+					const mime = typeof mimeType === 'string' && mimeType.trim() ? mimeType.trim() : 'image/png';
+					const src = data.startsWith('data:') ? data : `data:${mime};base64,${data}`;
+					images.push({ kind: 'b64' as const, src });
+				}
+			}
+		}
+		if (images.length > 0) {
+			return { images, count: images.length, usageHint: `${images.length} image${images.length === 1 ? '' : 's'}` };
+		}
+	}
+
+	// Fallback to OpenAI format
 	const data = (parsed as { data?: unknown }).data;
 	if (!Array.isArray(data)) return empty;
 

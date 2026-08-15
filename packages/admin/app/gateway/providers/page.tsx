@@ -5,6 +5,7 @@
  */
 import { ArrowDownTrayIcon, CheckIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import { ProgressBar } from '@/components/progress-bar';
 import { ProviderCard } from './components/provider-card';
 import { ProviderImportModal } from './components/provider-import-modal';
 import { ProviderModal } from './components/provider-modal';
@@ -105,6 +106,14 @@ export default function GatewayProvidersPage() {
 					)}
 				</div>
 			</div>
+
+			<ProgressBar
+				active={state.isBatchDeleting}
+				color="red"
+				label={state.isBatchDeleting ? tCommon('deleting') : undefined}
+				detail={state.isBatchDeleting ? `${state.batchSelectedIds.size}` : undefined}
+				className="mb-4"
+			/>
 
 			<ProviderToolbar
 				providerSearch={state.providerSearch}

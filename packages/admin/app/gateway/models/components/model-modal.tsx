@@ -8,6 +8,7 @@ import {
 } from '@cloud-api/core/db/model-modalities';
 import { ModelModalitiesBadgeFromRaw } from '@/components/model-modalities-badge';
 import { PricingTiersEditor } from '@/components/pricing-tiers-editor';
+import { ProgressBar } from '@/components/progress-bar';
 import { MODEL_VENDOR_OPTIONS } from '@/lib/model-vendor';
 import {
 	createDefaultAudioPricingDraft,
@@ -581,6 +582,13 @@ export function ModelModal(props: Props) {
 				</div>
 
 				<div className="px-6 py-4 border-t flex flex-wrap items-center justify-between gap-3 sticky bottom-0 bg-gray-50">
+					<ProgressBar
+						active={isSaving || isDeleting}
+						color={isDeleting ? 'red' : 'blue'}
+						label={isDeleting ? tCommon('deleting') : isSaving ? tCommon('saving') : undefined}
+						className="w-full"
+					/>
+					<div className="flex w-full flex-wrap items-center justify-between gap-3">
 					<div>
 						{editingModel && (
 							<button
@@ -611,6 +619,7 @@ export function ModelModal(props: Props) {
 						>
 							{isSaving ? tCommon('savingDots') : tCommon('save')}
 						</button>
+					</div>
 					</div>
 				</div>
 			</div>

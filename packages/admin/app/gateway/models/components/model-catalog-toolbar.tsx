@@ -2,6 +2,7 @@
 
 import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import { ProgressBar } from '@/components/progress-bar';
 
 type Props = {
 	activeVendorTitle: string;
@@ -162,15 +163,25 @@ export function ModelCatalogToolbar(props: Props) {
 					)}
 				</div>
 			</div>
-			{(isAutoAddingRoutes || isRssSyncing) && (
-				<div className="relative h-0.5 w-full overflow-hidden bg-gray-100">
-					<div
-						className={`absolute inset-y-0 left-0 w-1/3 rounded-full ${
-							isRssSyncing ? 'bg-sky-500' : 'bg-emerald-500'
-						} animate-[progress-slide_1.2s_ease-in-out_infinite]`}
-					/>
-				</div>
-			)}
+			<ProgressBar
+				active={isBatchDeleting}
+				color="red"
+				label={isBatchDeleting ? tCommon('deleting') : undefined}
+				detail={isBatchDeleting ? `${batchSelectedCount}` : undefined}
+				className="px-4 pb-2"
+			/>
+			<ProgressBar
+				active={isAutoAddingRoutes}
+				color="emerald"
+				label={isAutoAddingRoutes ? '正在自动添加路由...' : undefined}
+				className="px-4 pb-2"
+			/>
+			<ProgressBar
+				active={isRssSyncing}
+				color="sky"
+				label={isRssSyncing ? '正在同步 RSS 免费模型...' : undefined}
+				className="px-4 pb-2"
+			/>
 		</div>
 	);
 }

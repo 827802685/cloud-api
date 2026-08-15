@@ -462,17 +462,6 @@ export async function invokePlaygroundUpstream(
 
 	const start = Date.now();
 
-	if (route.isImageModel && route.upstreamProtocol !== 'openai') {
-		throw badRequest(
-			'Image-generation models require upstream_protocol=openai (Playground Images only calls /images/generations or /images/edits).'
-		);
-	}
-	if (route.isAudioModel && route.upstreamProtocol !== 'openai') {
-		throw badRequest(
-			'Audio transcription models require upstream_protocol=openai (Playground Audio only calls /audio/transcriptions).'
-		);
-	}
-
 	const imageOperation: ImageOperation | null =
 		route.isImageModel && !route.isAudioModel
 			? input.imageOperation === 'edits'
@@ -641,7 +630,19 @@ export async function invokePlaygroundUpstream(
 			}
 			url = geminiRequest.url;
 			headers = geminiRequest.headers;
-			fetchBody = JSON.stringify(merged);
+			// Convert body for image generation models to Gemini format
+			if (route.isImageModel && !route.isAudioModel) {
+				const prompt = typeof merged.prompt === 'string' ? merged.prompt : '';
+				const geminiBody: Record<string, unknown> = {
+					contents: [{ role: 'user', parts: [{ text: prompt }] }],
+					generationConfig: {
+						responseModalities: ['IMAGE'],
+					},
+				};
+				fetchBody = JSON.stringify(geminiBody);
+			} else {
+				fetchBody = JSON.stringify(merged);
+			}
 			upstreamWireBodyJson = fetchBody;
 			break;
 		}

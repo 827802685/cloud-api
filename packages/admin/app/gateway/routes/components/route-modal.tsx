@@ -2,6 +2,7 @@
 
 import { DocumentDuplicateIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import { ProgressBar } from '@/components/progress-bar';
 import { ReadOnlyImagePricing } from '@/components/read-only-image-pricing';
 import { ReadOnlyPricingTiersTable } from '@/components/read-only-pricing-tiers-table';
 import {
@@ -79,7 +80,7 @@ export function RouteModal(props: Props) {
 	const t = useTranslations('routes.modal');
 	const tModels = useTranslations('models.modal');
 	const tCommon = useTranslations('common');
-	const lockOpenaiProtocol = selectedModelIsImage || selectedModelIsAudio;
+	const lockOpenaiProtocol = selectedModelIsAudio;
 	const requestProtocols = UPSTREAM_PROTOCOLS.filter(
 		(protocol) => requestOperationsForModel(selectedModel, protocol).length > 0
 	);
@@ -349,11 +350,9 @@ export function RouteModal(props: Props) {
 										title={
 											selectedModelIsAudio
 												? t('protocolHintAudioOpenaiOnly')
-												: selectedModelIsImage
-													? t('protocolHintImageOpenaiOnly')
-													: selectedProvider
-														? t('protocolHintConfigured')
-														: t('protocolHintSelectProvider')
+												: selectedProvider
+													? t('protocolHintConfigured')
+													: t('protocolHintSelectProvider')
 										}
 										className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-600"
 									>
@@ -366,10 +365,6 @@ export function RouteModal(props: Props) {
 									{selectedModelIsAudio ? (
 										<p className="mt-1 text-[11px] text-amber-700">
 											{t('protocolHintAudioOpenaiOnly')}
-										</p>
-									) : selectedModelIsImage ? (
-										<p className="mt-1 text-[11px] text-amber-700">
-											{t('protocolHintImageOpenaiOnly')}
 										</p>
 									) : null}
 								</div>
@@ -732,7 +727,14 @@ export function RouteModal(props: Props) {
 					</div>
 				</div>
 
-				<div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/50 px-5 py-4">
+				<div className="flex shrink-0 flex-col gap-2 border-t border-gray-200 bg-gray-50/50 px-5 py-4">
+					<ProgressBar
+						active={isSaving || isDeleting}
+						color={isDeleting ? 'red' : 'blue'}
+						label={isDeleting ? tCommon('deleting') : isSaving ? tCommon('saving') : undefined}
+						className="w-full"
+					/>
+					<div className="flex flex-wrap items-center justify-between gap-3">
 					<div className="flex flex-wrap items-center gap-2">
 						{editingRoute && (
 							<button
@@ -774,6 +776,7 @@ export function RouteModal(props: Props) {
 						>
 							{isSaving ? tCommon('savingDots') : tCommon('save')}
 						</button>
+					</div>
 					</div>
 				</div>
 			</div>

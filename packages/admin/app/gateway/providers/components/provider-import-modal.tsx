@@ -3,6 +3,7 @@
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { parseProviderEndpoints } from '@cloud-api/core/provider-endpoints';
 import { VendorIcon } from '@/components/model-vendor-icon';
+import { ProgressBar } from '@/components/progress-bar';
 import { getModelVendorLabel } from '@/lib/model-vendor';
 import { summarizeOpenAiImportEndpoints } from '@/lib/provider-import-preset';
 import { useLocale, useTranslations } from 'next-intl';
@@ -237,23 +238,31 @@ export function ProviderImportModal(props: ProviderImportModalProps) {
 					)}
 				</div>
 
-				<div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t bg-gray-50 px-6 py-4">
-					<button
-						type="button"
-						onClick={onClose}
-						disabled={submitting}
-						className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-white disabled:opacity-50"
-					>
-						{tCommon('cancel')}
-					</button>
-					<button
-						type="button"
-						onClick={() => void onImport()}
-						disabled={submitting || catalogLoading || selectedCount === 0}
-						className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-					>
-						{submitting ? tCommon('importing') : t('importSelected', { count: selectedCount })}
-					</button>
+				<div className="flex shrink-0 flex-col gap-2 border-t bg-gray-50 px-6 py-4">
+					<ProgressBar
+						active={submitting}
+						color="blue"
+						label={submitting ? tCommon('importing') : undefined}
+						detail={submitting ? `${selectedCount}` : undefined}
+					/>
+					<div className="flex flex-wrap items-center justify-end gap-3">
+						<button
+							type="button"
+							onClick={onClose}
+							disabled={submitting}
+							className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-white disabled:opacity-50"
+						>
+							{tCommon('cancel')}
+						</button>
+						<button
+							type="button"
+							onClick={() => void onImport()}
+							disabled={submitting || catalogLoading || selectedCount === 0}
+							className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+						>
+							{submitting ? tCommon('importing') : t('importSelected', { count: selectedCount })}
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>

@@ -1023,6 +1023,7 @@
 		"usage": "Usage",
 		"disableSelected": "Disable selected",
 		"enableSelected": "Enable selected",
+		"statusUpdating": "Updating model status...",
 		"selectModel": "Select this model",
 		"deselectModel": "Deselect this model",
 		"kindAll": "All",

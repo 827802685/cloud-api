@@ -12,6 +12,7 @@ import {
 	PlusIcon,
 } from '@heroicons/react/24/outline';
 import { ConfigCardShell } from '@/components/ConfigCardShell';
+import { ProgressBar } from '@/components/progress-bar';
 import { readApiJson } from '@/lib/api-json';
 import type { SystemConfigRow } from '@/lib/types';
 import { BILLING_CURRENCY_KEY, getBillingCurrencyOptions } from '@/lib/billing-currency-options';
@@ -866,6 +867,12 @@ export default function GatewayConfigPage() {
               {tCommon('cancel')}
             </button>
           </div>
+          <ProgressBar
+            active={isSaving}
+            color="blue"
+            label={isSaving ? tCommon('saving') : undefined}
+            className="mt-3"
+          />
         </ConfigCardShell>
       )}
     </div>

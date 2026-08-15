@@ -27,7 +27,7 @@ import type {
 	AdminModelRouteRow,
 } from './types';
 
-/** Image-generation catalog models may only use OpenAI Images–compatible routes. */
+/** Image-generation catalog models may only use OpenAI Images– or Gemini generateContent–compatible routes. */
 async function assertImageModelOpenaiProtocol(
 	repos: GatewayRepositories,
 	modelId: string,
@@ -40,10 +40,11 @@ async function assertImageModelOpenaiProtocol(
 			output_modalities: model.output_modalities as string | null | undefined,
 			pricing_profile: model.pricing_profile as string | null | undefined,
 		}) &&
-		proto !== 'openai'
+		proto !== 'openai' &&
+		proto !== 'gemini'
 	) {
 		throw badRequest(
-			'Image-generation models require upstream_protocol=openai (Gateway Images API only uses OpenAI routes).'
+			'Image-generation models require upstream_protocol=openai or gemini (Gateway Images API uses OpenAI routes; Gemini-native image models use generateContent).'
 		);
 	}
 }
@@ -690,6 +691,12 @@ export async function autoAddModelRoutesService(
 			continue;
 		}
 
+		// 判断模型种类：图片模型优先 Gemini 原生协议（若供应商支持），否则回退 OpenAI
+		const isImageModel = isImageGenerationModel({
+			output_modalities: model.output_modalities as string | null | undefined,
+			pricing_profile: model.pricing_profile as string | null | undefined,
+		});
+
 		for (const provider of providers) {
 			const routeKey = `${model.id}::${provider.id}::${model.id}`;
 			if (existingRouteKeys.has(routeKey)) {
@@ -705,22 +712,45 @@ export async function autoAddModelRoutesService(
 				continue;
 			}
 
-			// 确定 upstream_protocol：默认 openai
-			const upstreamProtocol: 'openai' | 'anthropic' | 'gemini' = 'openai';
+			// 确定 upstream_protocol：图片模型优先 gemini（供应商支持时），否则 openai；音频/LLM 默认 openai
+			let upstreamProtocol: 'openai' | 'anthropic' | 'gemini' = 'openai';
+			if (isImageModel) {
+				upstreamProtocol = 'gemini';
+			}
 
 			// 检查 Provider 是否支持该协议
 			const providerBases = await repos.providers.getProviderProtocolBases(provider.id);
 			if (!providerBases || !providerSupportsUpstreamProtocol(upstreamProtocol, providerBases)) {
-				details.push({
-					model_id: model.id,
-					provider_id: provider.id,
-					provider_name: provider.name,
-					route_id: null,
-					status: 'skipped_no_protocol',
-					message: `Provider does not support protocol "${upstreamProtocol}"`,
-				});
-				skipped++;
-				continue;
+				if (isImageModel && upstreamProtocol === 'gemini') {
+					// Gemini 不可用时回退到 OpenAI
+					upstreamProtocol = 'openai';
+					if (
+						!providerBases ||
+						!providerSupportsUpstreamProtocol(upstreamProtocol, providerBases)
+					) {
+						details.push({
+							model_id: model.id,
+							provider_id: provider.id,
+							provider_name: provider.name,
+							route_id: null,
+							status: 'skipped_no_protocol',
+							message: `Provider does not support protocol "${upstreamProtocol}"`,
+						});
+						skipped++;
+						continue;
+					}
+				} else {
+					details.push({
+						model_id: model.id,
+						provider_id: provider.id,
+						provider_name: provider.name,
+						route_id: null,
+						status: 'skipped_no_protocol',
+						message: `Provider does not support protocol "${upstreamProtocol}"`,
+					});
+					skipped++;
+					continue;
+				}
 			}
 
 			try {

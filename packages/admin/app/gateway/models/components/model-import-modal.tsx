@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowPathIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ProgressBar } from '@/components/progress-bar';
 import { formatCompactTokens } from '@/lib/format-compact-tokens';
 import { formatPerMillionTokenUnit } from '@/lib/format-gateway-currency';
 import { getModelVendorLabel, normalizeModelVendorInput } from '@/lib/model-vendor';
@@ -499,7 +500,14 @@ export function ModelImportModal(props: Props) {
 					)}
 				</div>
 
-				<div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t bg-gray-50 px-6 py-4">
+				<div className="flex shrink-0 flex-col gap-2 border-t bg-gray-50 px-6 py-4">
+					<ProgressBar
+						active={submitting}
+						color="blue"
+						label={submitting ? tCommon('importing') : undefined}
+						detail={submitting ? `${selectedCount}` : undefined}
+					/>
+					<div className="flex flex-wrap items-center justify-end gap-3">
 					<button
 						type="button"
 						onClick={onClose}
@@ -516,6 +524,7 @@ export function ModelImportModal(props: Props) {
 					>
 						{submitting ? tCommon('importing') : t('importSelected', { count: selectedCount })}
 					</button>
+					</div>
 				</div>
 			</div>
 		</div>

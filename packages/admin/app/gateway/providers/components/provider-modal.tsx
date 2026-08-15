@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { useId, useState } from 'react';
+import { ProgressBar } from '@/components/progress-bar';
 import { protocolFormHasOverrides } from '../provider-utils';
 import type { GatewayProvider, ProtocolEndpointForm, ProviderFormData } from '../types';
 import { ProviderProtocolIcon } from './provider-protocol-icon';
@@ -433,7 +434,13 @@ export function ProviderModal(props: ProviderModalProps) {
 					</div>
 				</div>
 
-				<div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-gray-50 px-6 py-4">
+				<div className="flex shrink-0 flex-col gap-2 border-t bg-gray-50 px-6 py-4">
+					<ProgressBar
+						active={isSaving || isDeleting}
+						color={isDeleting ? 'red' : 'blue'}
+						label={isDeleting ? tCommon('deleting') : isSaving ? tCommon('saving') : undefined}
+					/>
+					<div className="flex flex-wrap items-center justify-between gap-3">
 					<div className="flex flex-wrap items-center gap-2">
 						{editingProvider && (
 							<button
@@ -475,6 +482,7 @@ export function ProviderModal(props: ProviderModalProps) {
 						>
 							{isSaving ? tCommon('saving') : editingProvider ? tCommon('save') : tCommon('create')}
 						</button>
+					</div>
 					</div>
 				</div>
 			</div>

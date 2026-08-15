@@ -1023,6 +1023,7 @@
 		"usage": "사용량",
 		"disableSelected": "선택 비활성화",
 		"enableSelected": "선택 활성화",
+		"statusUpdating": "모델 상태 업데이트 중...",
 		"selectModel": "이 모델 선택",
 		"deselectModel": "선택 해제",
 		"kindAll": "전체",

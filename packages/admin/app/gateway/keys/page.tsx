@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { PlusIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { readApiJson } from '@/lib/api-json';
+import { ProgressBar } from '@/components/progress-bar';
 import { formatGatewayDateTime } from '@/lib/datetime';
 import { formatGatewayMoneyCode } from '@/lib/format-gateway-currency';
 import { NewApiKeySecretBanner } from '@/lib/new-api-key-secret-banner';
@@ -812,9 +813,16 @@ export default function GatewayKeysPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t flex justify-end gap-3">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={isSaving}>{tCommon('cancel')}</button>
-              <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">{isSaving ? tCommon('creating') : tCommon('create')}</button>
+            <div className="px-6 py-4 border-t flex flex-col gap-2">
+              <ProgressBar
+                active={isSaving}
+                color="blue"
+                label={isSaving ? tCommon('creating') : undefined}
+              />
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={isSaving}>{tCommon('cancel')}</button>
+                <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">{isSaving ? tCommon('creating') : tCommon('create')}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -954,30 +962,37 @@ export default function GatewayKeysPage() {
 
             </div>
 
-            <div className="px-6 py-4 border-t flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleEditDelete}
-                disabled={isSaving || isDeleting}
-                className="px-4 py-2 rounded-md border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:hover:bg-transparent"
-              >
-                {isDeleting ? tCommon('deleting') : t('deleteKey')}
-              </button>
-              <div className="flex gap-3">
+            <div className="px-6 py-4 border-t flex flex-col gap-2">
+              <ProgressBar
+                active={isSaving || isDeleting}
+                color={isDeleting ? 'red' : 'blue'}
+                label={isDeleting ? tCommon('deleting') : isSaving ? tCommon('saving') : undefined}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  type="button"
+                  onClick={handleEditDelete}
                   disabled={isSaving || isDeleting}
+                  className="px-4 py-2 rounded-md border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:hover:bg-transparent"
                 >
-                  {tCommon('cancel')}
+                  {isDeleting ? tCommon('deleting') : t('deleteKey')}
                 </button>
-                <button
-                  onClick={handleEditSave}
-                  disabled={isSaving || isDeleting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isSaving ? tCommon('savingDots') : tCommon('save')}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    disabled={isSaving || isDeleting}
+                  >
+                    {tCommon('cancel')}
+                  </button>
+                  <button
+                    onClick={handleEditSave}
+                    disabled={isSaving || isDeleting}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isSaving ? tCommon('savingDots') : tCommon('save')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -1023,6 +1023,7 @@
 		"usage": "使用量",
 		"disableSelected": "選択を無効化",
 		"enableSelected": "選択を有効化",
+		"statusUpdating": "モデル状態を更新中...",
 		"selectModel": "このモデルを選択",
 		"deselectModel": "選択解除",
 		"kindAll": "すべて",

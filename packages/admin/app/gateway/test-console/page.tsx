@@ -17,6 +17,7 @@ import {
 	StopIcon,
 } from '@heroicons/react/24/outline';
 import { readApiJson } from '@/lib/api-json';
+import { ProgressBar } from '@/components/progress-bar';
 import {
 	mergeAssistantTextParts,
 	type PlaygroundProtocol,
@@ -142,8 +143,12 @@ function buildChatBody(prompt: string, protocol: PlaygroundProtocol): Record<str
 function buildImageBody(
 	prompt: string,
 	imageOperation: ImageOperation,
-	editImageDataUrls: string[]
+	editImageDataUrls: string[],
+	protocol?: PlaygroundProtocol
 ): Record<string, unknown> {
+	if (protocol === 'gemini') {
+		return { prompt, contents: [{ role: 'user', parts: [{ text: prompt }] }], imageOperation };
+	}
 	if (imageOperation === 'edits') {
 		return { prompt, image: editImageDataUrls };
 	}
@@ -373,6 +378,7 @@ function TestConsolePageInner() {
 	const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
 	const [results, setResults] = useState<Map<string, TestResult>>(new Map());
 	const [isRunning, setIsRunning] = useState(false);
+	const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
 	const [filterText, setFilterText] = useState('');
 	const [kindFilter, setKindFilter] = useState<KindFilter>('all');
 
@@ -623,9 +629,9 @@ function TestConsolePageInner() {
 							return;
 						}
 						const dataUrls = await Promise.all(editFiles.map((f) => readFileAsDataUrl(f)));
-						body = buildImageBody(prompt, 'edits', dataUrls);
+						body = buildImageBody(prompt, 'edits', dataUrls, protocol);
 					} else {
-						body = buildImageBody(prompt, 'generations', []);
+						body = buildImageBody(prompt, 'generations', [], protocol);
 					}
 					imageOperationForRequest = imageOperation;
 				} else {
@@ -920,6 +926,7 @@ function TestConsolePageInner() {
 		if (sendableModelIds.length === 0 || sendBlockReason) return;
 		setIsRunning(true);
 		setResults(new Map());
+		setProgress({ completed: 0, total: sendableModelIds.length });
 
 		const controllers = new Map<string, AbortController>();
 		abortControllersRef.current = controllers;
@@ -933,11 +940,18 @@ function TestConsolePageInner() {
 			const kind = model ? modelKindOf(model) : 'llm';
 			const controller = new AbortController();
 			controllers.set(modelId, controller);
-			promises.push(sendToModel(modelId, modelName, route, kind, controller.signal));
+			promises.push(
+				sendToModel(modelId, modelName, route, kind, controller.signal).then(() => {
+					setProgress((prev) =>
+						prev ? { ...prev, completed: prev.completed + 1 } : prev
+					);
+				})
+			);
 		}
 
 		await Promise.allSettled(promises);
 		setIsRunning(false);
+		setProgress(null);
 	}, [sendableModelIds, sendBlockReason, prompt, routes, models, sendToModel]);
 
 	/* Stop all */
@@ -1024,6 +1038,12 @@ function TestConsolePageInner() {
 						</button>
 					</div>
 				</div>
+				<ProgressBar
+					active={statusBusy}
+					color="amber"
+					label={statusBusy ? t('statusUpdating') : undefined}
+					className="mt-3"
+				/>
 			</div>
 
 			{loadError ? (

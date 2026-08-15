@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { readApiJson } from '@/lib/api-json';
+import { ProgressBar } from '@/components/progress-bar';
 import { formatGatewayMoneyCode } from '@/lib/format-gateway-currency';
 import { summarizeMetadata } from '@/lib/summarize-metadata';
 import { nextListSortStateWithAscToggle } from '@/lib/toggle-list-sort';
@@ -549,11 +550,18 @@ export default function GatewayUsersPage() {
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t flex justify-end gap-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-md text-sm" disabled={isSaving}>{tCommon('cancel')}</button>
-              <button type="button" onClick={submitCreate} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm disabled:opacity-50">
-                {isSaving ? tCommon('saving') : tCommon('create')}
-              </button>
+            <div className="px-6 py-4 border-t flex flex-col gap-2">
+              <ProgressBar
+                active={isSaving}
+                color="blue"
+                label={isSaving ? tCommon('creating') : undefined}
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-md text-sm" disabled={isSaving}>{tCommon('cancel')}</button>
+                <button type="button" onClick={submitCreate} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm disabled:opacity-50">
+                  {isSaving ? tCommon('saving') : tCommon('create')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

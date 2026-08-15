@@ -1023,6 +1023,7 @@
 		"usage": "用量",
 		"disableSelected": "禁用选中",
 		"enableSelected": "启用选中",
+		"statusUpdating": "正在更新模型状态...",
 		"selectModel": "选中该模型",
 		"deselectModel": "取消选中",
 		"kindAll": "全部",
