@@ -54,6 +54,8 @@ export interface ModelRouteJoinRow {
 	provider_model_name: string;
 	priority: number;
 	status: string;
+	/** 路由被禁用时间；NULL=手动禁用，非 NULL=熔断自动禁用（24h 后自动恢复） */
+	disabled_at?: string | null;
 	route_group: string;
 	/** 同 priority 层内权重 */
 	weight?: number;

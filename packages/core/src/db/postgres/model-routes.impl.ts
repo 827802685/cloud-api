@@ -43,6 +43,7 @@ export function createPostgresModelRoutesRepository(db: PostgresDatabaseClient):
 					route_pool_id: pgMr.routePoolId,
 					upstream_operation: pgMr.upstreamOperation,
 					adapter: pgMr.adapter,
+					disabled_at: pgMr.disabledAt,
 					pool_name: pgPools.name,
 					pool_strategy: pgPools.strategy,
 					pool_tier_strategies: pgPools.tierStrategies,

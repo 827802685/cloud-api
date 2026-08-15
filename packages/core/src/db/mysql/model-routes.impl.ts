@@ -11,7 +11,7 @@ import { asMySqlPool, mysqlExecute } from './mysql2-compat';
 
 const MODEL_ROUTE_LIST_JOIN_SQL = `SELECT mr.id, mr.model_id, mr.provider_id, mr.provider_model_name, mr.priority, mr.status,
 		mr.route_group, mr.weight, mr.price_override, mr.custom_params, mr.upstream_protocol,
-		mr.route_pool_id, mr.upstream_operation, mr.adapter,
+		mr.route_pool_id, mr.upstream_operation, mr.adapter, mr.disabled_at,
 		rp.name AS pool_name, rp.strategy AS pool_strategy, rp.tier_strategies AS pool_tier_strategies, rp.status AS pool_status,
 		rp.sticky_enabled AS pool_sticky_enabled,
 		rp.sticky_idle_ttl_seconds AS pool_sticky_idle_ttl_seconds,

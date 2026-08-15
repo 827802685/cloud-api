@@ -132,11 +132,11 @@ chatRoutes.post('/', async (c) => {
   let poolStrategy: string | null = null;
   let poolTierStrategies: string | null = null;
   let stickySurface: import('@cloud-api/core').ResolvedModelSurfaceRow | null = null;
+  // auto 模式：合并所有候选模型的路由，使 failover 能跨模型切换（首选在首位）
+  const candidateIds = isAutoSelected && autoCandidates?.length
+    ? autoCandidates.map((m) => m.id)
+    : [baseModelId];
   try {
-    // auto 模式：合并所有候选模型的路由，使 failover 能跨模型切换（首选在首位）
-    const candidateIds = isAutoSelected && autoCandidates?.length
-      ? autoCandidates.map((m) => m.id)
-      : [baseModelId];
     const mergedRoutes: RouteResult[] = [];
     for (const candId of candidateIds) {
       const resolvedSurface = await resolveRoutesForSurface(repos, {
@@ -145,6 +145,11 @@ chatRoutes.post('/', async (c) => {
         requestProtocol: 'openai',
         requestOperation: 'chat',
       });
+      if (resolvedSurface.routes.length === 0) {
+        console.warn(
+          `[Gateway Chat] candidate model=${candId} resolved 0 openai routes (surface=${resolvedSurface.surface?.id ?? 'none'})`
+        );
+      }
       // 首选模型的路由池策略优先；其余候选仅取其路由
       if (poolStrategy == null) {
         poolStrategy = resolvedSurface.surface?.pool_strategy ?? null;
@@ -165,7 +170,11 @@ chatRoutes.post('/', async (c) => {
   }
 
   if (routes.length === 0) {
-    console.warn('[Gateway Chat] no openai route for model', { baseModelId, effectiveRouteGroup });
+    console.warn('[Gateway Chat] no openai route for model', {
+      baseModelId,
+      effectiveRouteGroup,
+      candidates: candidateIds,
+    });
     return gatewayErrorJson(c, {
       status: 502,
       code: GatewayErrorCode.noRoute,

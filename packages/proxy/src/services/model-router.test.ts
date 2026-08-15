@@ -56,8 +56,9 @@ function makeModel() {
 
 function makeRepos(opts: {
   activeRows: ModelRouteRow[];
-  existingRoutes: { upstream_protocol: string; status: string }[];
+  existingRoutes: { upstream_protocol: string; status: string; disabled_at?: string | null; route_group?: string }[];
   autoCreateCalls?: { modelId: string; providerId: string; modelName: string; protocol: string }[];
+  providerDisabled?: boolean;
 }): GatewayRepositories {
   const calls = opts.autoCreateCalls ?? [];
   return {
@@ -73,7 +74,8 @@ function makeRepos(opts: {
       },
     },
     providers: {
-      getProviderById: async () => makeProvider(),
+      getProviderById: async () =>
+        opts.providerDisabled ? { ...makeProvider(), status: 'disabled' } : makeProvider(),
     },
     routes: {
       listModelRoutesWithJoins: async () => opts.existingRoutes as never,
@@ -128,7 +130,7 @@ describe('resolveRoutesForSurface — auto-route creation', () => {
     const calls: { modelId: string; providerId: string; modelName: string; protocol: string }[] = [];
     const repos = makeRepos({
       activeRows: [],
-      existingRoutes: [{ upstream_protocol: 'openai', status: 'disabled' }],
+      existingRoutes: [{ upstream_protocol: 'openai', status: 'disabled', disabled_at: null }],
       autoCreateCalls: calls,
     });
 
@@ -140,6 +142,66 @@ describe('resolveRoutesForSurface — auto-route creation', () => {
     });
 
     assert.equal(calls.length, 0, 'should respect manual disable of matching-protocol routes');
+  });
+
+  it('auto-creates when matching-protocol route is circuit-disabled (disabled_at set)', async () => {
+    const calls: { modelId: string; providerId: string; modelName: string; protocol: string }[] = [];
+    const repos = makeRepos({
+      activeRows: [],
+      existingRoutes: [
+        { upstream_protocol: 'openai', status: 'disabled', disabled_at: '2026-08-15T00:00:00Z' },
+      ],
+      autoCreateCalls: calls,
+    });
+
+    await resolveRoutesForSurface(repos, {
+      modelId: 'model-1',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(calls.length, 1, 'circuit-disabled route should not block auto-create');
+  });
+
+  it('auto-creates when matching-protocol route points to a disabled provider', async () => {
+    const calls: { modelId: string; providerId: string; modelName: string; protocol: string }[] = [];
+    const repos = makeRepos({
+      // active openai route exists, but its provider is disabled → routeRowToResult returns null
+      activeRows: [makeRouteRow({ upstream_protocol: 'openai' })],
+      existingRoutes: [{ upstream_protocol: 'openai', status: 'active' }],
+      providerDisabled: true,
+      autoCreateCalls: calls,
+    });
+
+    await resolveRoutesForSurface(repos, {
+      modelId: 'model-1',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(calls.length, 1, 'dead-provider route should not block auto-create');
+  });
+
+  it('auto-creates when matching-protocol route exists only in another route group', async () => {
+    const calls: { modelId: string; providerId: string; modelName: string; protocol: string }[] = [];
+    const repos = makeRepos({
+      activeRows: [],
+      existingRoutes: [
+        { upstream_protocol: 'openai', status: 'active', route_group: 'premium' },
+      ],
+      autoCreateCalls: calls,
+    });
+
+    await resolveRoutesForSurface(repos, {
+      modelId: 'model-1',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(calls.length, 1, 'route in another group should not block auto-create for default');
   });
 
   it('strips vendor/ prefix from provider_model_name when auto-creating route', async () => {

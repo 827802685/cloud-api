@@ -194,19 +194,27 @@ export async function resolveRoutesForSurface(
 		}));
 
 	// Auto-route creation: if no routes found, try to create one automatically.
-	// 仅当模型完全没有路由时才自动创建；若模型已有路由（即使全部被手动禁用），
-	// 保持禁用状态，避免绕过管理员的禁用操作。
-	// 例外：模型已有路由但全部是其他协议（如 gemini），当前请求协议（如 openai）无路由时，
-	// 仍自动创建当前协议路由，避免 auto 选中后报 "No OpenAI route"。
+	// 仅当模型存在「手动禁用」的同协议、同路由组路由时才跳过自动创建（尊重管理员禁用意图）。
+	// 其余情况（路由指向已停用/无 key 的 provider、被熔断自动禁用、路由组不匹配、
+	// 非 passthrough 适配器）都会导致上方 routes 为空，此时应自动创建可用路由，
+	// 否则 auto 会一直报 "No OpenAI route"。
 	if (routes.length === 0) {
 		try {
 			const existingRoutes = await repos.routes.listModelRoutesWithJoins({ modelId: params.modelId });
-			const hasMatchingProtocol = existingRoutes.some(
-				(r) => normalizeUpstreamProtocol(r.upstream_protocol) === params.requestProtocol
-			);
-			if (existingRoutes.length > 0 && hasMatchingProtocol) {
+			const manuallyDisabledMatchingRoute = existingRoutes.some((r) => {
+				if (normalizeUpstreamProtocol(r.upstream_protocol) !== params.requestProtocol) return false;
+				if (r.status !== 'disabled') return false;
+				// 熔断自动禁用会写入 disabled_at（24h 后自动恢复），手动禁用为 NULL
+				if (r.disabled_at != null && r.disabled_at !== '') return false;
+				const rowGroup =
+					typeof r.route_group === 'string' && r.route_group.trim() !== ''
+						? r.route_group.trim()
+						: 'default';
+				return rowGroup.toLowerCase() === params.routeGroup.toLowerCase();
+			});
+			if (manuallyDisabledMatchingRoute) {
 				console.warn(
-					`[AutoRoute] model=${params.modelId} has ${existingRoutes.length} route(s) but none active; skipping auto-create to respect manual disable`
+					`[AutoRoute] model=${params.modelId} has manually-disabled ${params.requestProtocol} route in group "${params.routeGroup}"; skipping auto-create to respect admin intent`
 				);
 			} else {
 				const model = await repos.modelRouting.getModelById(params.modelId);
@@ -239,13 +247,12 @@ export async function resolveRoutesForSurface(
 						console.log(
 							`[AutoRoute] created route for model=${params.modelId} vendor=${vendor} protocol=${protocol} providerModelName=${providerModelName} ${providerDiag}`
 						);
-						// Re-query routes after creation
-						const newRows = surface
-							? await repos.modelRouting.getModelRoutesByPoolId(surface.route_pool_id)
-							: selectActiveRouteRows(
-									await repos.modelRouting.getModelRoutesByModelId(params.modelId),
-									params.routeGroup
-								);
+						// Re-query routes after creation：用模型直查路径（含自动创建的无池路由），
+						// 比按池查询更稳——自动创建的路由没有 route_pool_id，按池查会漏掉。
+						const newRows = selectActiveRouteRows(
+							await repos.modelRouting.getModelRoutesByModelId(params.modelId),
+							params.routeGroup
+						);
 						routes = (await resolveRouteResultsFromRows(repos, newRows))
 							.filter(
 								(route) =>

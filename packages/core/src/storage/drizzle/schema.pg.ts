@@ -141,6 +141,7 @@ export const modelRoutesTable = pgTable('model_routes', {
 	routePoolId: text('route_pool_id'),
 	upstreamOperation: text('upstream_operation').notNull().default('*'),
 	adapter: text('adapter').notNull().default('passthrough'),
+	disabledAt: timestamp('disabled_at', { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 
