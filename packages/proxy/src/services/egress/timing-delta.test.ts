@@ -20,6 +20,33 @@ test('hasOpenAiReasoningDelta detects reasoning fields but not content', () => {
 	assert.equal(hasOpenAiContentDelta({ choices: [{ delta: { content: 'hello' } }] }), true);
 });
 
+test('hasOpenAiContentDelta detects non-streaming message content', () => {
+	assert.equal(
+		hasOpenAiContentDelta({
+			choices: [{ message: { content: 'full answer' } }],
+		}),
+		true,
+	);
+	assert.equal(
+		hasOpenAiContentDelta({
+			choices: [{ message: { content: '' } }],
+		}),
+		false,
+	);
+	assert.equal(
+		hasOpenAiContentDelta({
+			choices: [{ message: { tool_calls: [{ id: 'call_1' }] } }],
+		}),
+		true,
+	);
+	assert.equal(
+		hasOpenAiContentDelta({
+			choices: [{ message: { content: 'x' }, delta: { content: 'y' } }],
+		}),
+		true,
+	);
+});
+
 test('hasAnthropicReasoningDelta detects thinking_delta but not text_delta', () => {
 	assert.equal(
 		hasAnthropicReasoningDelta({

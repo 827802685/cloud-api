@@ -101,7 +101,10 @@ function parseEventData(data: string, usage: UsageFromStream, timing?: RequestTi
     };
     timing?.markFirstEvent();
     if (hasAnthropicReasoningDelta(parsed)) timing?.markFirstReasoningToken();
-    if (hasAnthropicContentDelta(parsed)) timing?.markFirstToken();
+    if (hasAnthropicContentDelta(parsed)) {
+      timing?.markFirstToken();
+      usage.streamedContent = true;
+    }
     // message id 来自 `message_start` 事件的 `message.id`（如 msg_* / msg_bdrk_*）；只取首个。
     if (!usage.upstreamMessageId) {
       const msgId = normalizeUpstreamId(parsed.message?.id);

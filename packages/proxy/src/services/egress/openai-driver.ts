@@ -149,14 +149,25 @@ export function hasOpenAiReasoningDelta(parsed: {
 export function hasOpenAiContentDelta(parsed: {
   choices?: Array<{
     delta?: { content?: unknown; tool_calls?: unknown; function_call?: unknown };
+    message?: { content?: unknown; tool_calls?: unknown; function_call?: unknown };
   }>;
 }): boolean {
   for (const choice of parsed.choices ?? []) {
-    const delta = choice?.delta;
-    if (!delta) continue;
-    if (typeof delta.content === 'string' && delta.content.length > 0) return true;
-    if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) return true;
-    if (delta.function_call != null) return true;
+    if (!choice) continue;
+    // 流式响应的 delta
+    const delta = choice.delta;
+    if (delta) {
+      if (typeof delta.content === 'string' && delta.content.length > 0) return true;
+      if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) return true;
+      if (delta.function_call != null) return true;
+    }
+    // 非流式响应的 message
+    const msg = choice.message;
+    if (msg) {
+      if (typeof msg.content === 'string' && msg.content.length > 0) return true;
+      if (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) return true;
+      if (msg.function_call != null) return true;
+    }
   }
   return false;
 }
@@ -169,7 +180,10 @@ function processUsageFromDataLine(line: string, usage: UsageFromStream, timing?:
     const parsed = JSON.parse(data) as { id?: string; usage?: ProviderUsage; choices?: Array<{ delta?: { content?: unknown; tool_calls?: unknown; function_call?: unknown; reasoning_content?: unknown; thinking?: unknown; reasoning?: unknown } }> };
     timing?.markFirstEvent();
     if (hasOpenAiReasoningDelta(parsed)) timing?.markFirstReasoningToken();
-    if (hasOpenAiContentDelta(parsed)) timing?.markFirstToken();
+    if (hasOpenAiContentDelta(parsed)) {
+      timing?.markFirstToken();
+      usage.streamedContent = true;
+    }
     // message id 为响应对象 id（如 chatcmpl-*）；每个 chunk 都带，取首个。
     if (!usage.upstreamMessageId) {
       const msgId = normalizeUpstreamId(parsed.id);
@@ -387,9 +401,17 @@ async function nonStreamResponseWithUsage(
   try {
     const text = await response.text();
     timing?.markStreamComplete();
-    const parsed = JSON.parse(text) as { id?: string; usage?: ProviderUsage };
+    const parsed = JSON.parse(text) as {
+      id?: string;
+      usage?: ProviderUsage;
+      choices?: Array<{ message?: { content?: unknown; tool_calls?: unknown; function_call?: unknown } }>;
+    };
     if (parsed.usage) {
       usage = usageFromProvider(parsed.usage);
+    }
+    // 上游未返回 usage 但确实有回答内容时，标记 streamedContent，避免误判 incomplete
+    if (hasOpenAiContentDelta(parsed)) {
+      usage.streamedContent = true;
     }
     const msgId = normalizeUpstreamId(parsed.id);
     // 新对象，避免污染共享的 EMPTY_USAGE_LOCAL 常量。
@@ -474,6 +496,10 @@ export async function dispatchOpenAiRoute(
   // Google Gemini OpenAI 兼容端点不接受 frequency_penalty / presence_penalty 等参数
   if (isGoogleOpenAiEndpoint(url)) {
     requestBody = stripGoogleUnsupportedParams(requestBody);
+    // Google 流式响应默认不返回 usage，需显式要求；另：非流式不受影响
+    if (requestBody.stream === true) {
+      requestBody = { ...requestBody, stream_options: { include_usage: true } };
+    }
   }
 
   const response = await fetch(url, {

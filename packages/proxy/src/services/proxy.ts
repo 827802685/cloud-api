@@ -45,6 +45,11 @@ export interface UsageFromStream {
 	/** 客户端在流结束前断开（如用户取消）时置位 */
 	cancelled?: boolean;
 	/**
+	 * 是否从上游流/响应中收到过任一有效内容 delta（content / tool_calls / function_call）。
+	 * 用于「上游不返回 usage 但确实有回答」时，避免被误判为 incomplete。
+	 */
+	streamedContent?: boolean;
+	/**
 	 * 上游响应 body 里的「生成结果」id（OpenAI `chatcmpl-*` / Anthropic `msg_*` / Gemini `responseId`）。
 	 * 与 header 侧 `upstreamRequestId` 语义不同：这是应用层 message id，穿透聚合商/CDN，随 usage 一起解析。
 	 */

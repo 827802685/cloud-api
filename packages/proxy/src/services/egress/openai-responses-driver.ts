@@ -84,8 +84,25 @@ function processDataLine(data: string, usage: UsageFromStream, timing?: RequestT
       id?: string;
       type?: string;
       usage?: ResponsesUsage;
+      delta?: string;
+      output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
     };
     timing?.markFirstEvent();
+    // Responses 流式：`response.output_text.delta` 事件带 `delta` 文本；非流式在 `output[].content[].text`
+    if (typeof parsed.delta === 'string' && parsed.delta.length > 0) {
+      usage.streamedContent = true;
+    }
+    if (Array.isArray(parsed.output)) {
+      for (const item of parsed.output) {
+        if (item?.type === 'message' && Array.isArray(item.content)) {
+          for (const part of item.content) {
+            if (part?.type === 'output_text' && typeof part.text === 'string' && part.text.length > 0) {
+              usage.streamedContent = true;
+            }
+          }
+        }
+      }
+    }
     if (!usage.upstreamMessageId) {
       const msgId = normalizeUpstreamId(parsed.id);
       if (msgId) usage.upstreamMessageId = msgId;
@@ -259,9 +276,25 @@ async function nonStreamResponseWithUsage(
   try {
     const text = await response.text();
     timing?.markStreamComplete();
-    const parsed = JSON.parse(text) as { id?: string; usage?: ResponsesUsage };
+    const parsed = JSON.parse(text) as {
+      id?: string;
+      usage?: ResponsesUsage;
+      output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
+    };
     if (parsed.usage) {
       usage = usageFromResponses(parsed.usage);
+    }
+    // 上游未返回 usage 但确实有回答内容时，标记 streamedContent，避免误判 incomplete
+    if (Array.isArray(parsed.output)) {
+      for (const item of parsed.output) {
+        if (item?.type === 'message' && Array.isArray(item.content)) {
+          for (const part of item.content) {
+            if (part?.type === 'output_text' && typeof part.text === 'string' && part.text.length > 0) {
+              usage.streamedContent = true;
+            }
+          }
+        }
+      }
     }
     const msgId = normalizeUpstreamId(parsed.id);
     if (msgId) usage = { ...usage, upstreamMessageId: msgId };

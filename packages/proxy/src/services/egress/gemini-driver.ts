@@ -125,7 +125,10 @@ function parseJsonUsage(text: string, usage: UsageFromStream, timing?: RequestTi
     };
     timing?.markFirstEvent();
     if (hasGeminiReasoningPart(parsed)) timing?.markFirstReasoningToken();
-    if (hasGeminiContentPart(parsed)) timing?.markFirstToken();
+    if (hasGeminiContentPart(parsed)) {
+      timing?.markFirstToken();
+      usage.streamedContent = true;
+    }
     // message id 为 Gemini 顶层 `responseId`（流式每个 chunk 亦带），取首个。
     if (!usage.upstreamMessageId) {
       const msgId = normalizeUpstreamId(parsed.responseId);

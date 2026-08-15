@@ -266,7 +266,8 @@ messagesRoutes.post('/', async (c) => {
   const usageOrSafety = Promise.race([
     usagePromise.then((u) => ({
       usage: u,
-      incomplete: !hasUsage(u),
+      // 上游不返回 usage 但确实流出了内容（streamedContent）时，不算 incomplete
+      incomplete: !hasUsage(u) && !u.streamedContent,
       timedOut: false as const,
     })),
     new Promise<{ usage: typeof EMPTY_USAGE; incomplete: true; timedOut: true }>((resolve) =>
