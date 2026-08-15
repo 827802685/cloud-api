@@ -167,7 +167,11 @@ export interface ModelsRepository {
 /** 推理路径：模型行（含 tags）、活跃路由列表、按 modelId 取路由 */
 export interface ModelRoutingRepository {
 	getModelById(id: string): Promise<ModelRow | null>;
-	listModelsWithActiveRoutes(): Promise<ModelRow[]>;
+	/**
+	 * 列出有活跃路由的模型。
+	 * @param protocol 可选；传入时仅返回存在该协议 active 路由的模型（auto 选择按请求协议过滤）。
+	 */
+	listModelsWithActiveRoutes(protocol?: string): Promise<ModelRow[]>;
 	getModelRoutesByModelId(modelId: string): Promise<ModelRouteRow[]>;
 	resolveModelSurface(params: {
 		modelId: string;

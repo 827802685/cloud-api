@@ -16,6 +16,14 @@ FROM models m
 WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active')
 ORDER BY m.id`;
 
+const LIST_MODELS_WITH_ACTIVE_ROUTES_BY_PROTOCOL_SQL = `SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
+  (SELECT json_group_array(mt.tag) FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
+  (SELECT json_group_array(r.route_group) FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active') AS route_groups,
+  m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at
+FROM models m
+WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active' AND lower(r.upstream_protocol) = lower(?))
+ORDER BY m.id`;
+
 /** 回退批大小：D1 单语句最多 100 个绑定参数，留余量避免再次触发限制。 */
 const FALLBACK_BATCH = 50;
 
@@ -39,9 +47,14 @@ function isD1PlannerFallbackError(err: unknown): boolean {
  * 高效回退：先取有 active route 的 model id，再按 id 批量取模型/tags/route_groups。
  * 避免原实现逐行 `LIMIT 1 OFFSET ?` 的 O(n²) 扫描。
  */
-async function listModelsWithActiveRoutesFallback(raw: D1Database): Promise<ModelRow[]> {
+async function listModelsWithActiveRoutesFallback(raw: D1Database, protocol?: string): Promise<ModelRow[]> {
 	const idRows = await raw
-		.prepare("SELECT DISTINCT model_id FROM model_routes WHERE status = 'active'")
+		.prepare(
+			protocol
+				? "SELECT DISTINCT model_id FROM model_routes WHERE status = 'active' AND lower(upstream_protocol) = lower(?)"
+				: "SELECT DISTINCT model_id FROM model_routes WHERE status = 'active'"
+		)
+		.bind(...(protocol ? [protocol] : []))
 		.all<{ model_id: string }>();
 	const modelIds = (idRows.results ?? []).map((r) => r.model_id);
 	if (modelIds.length === 0) return [];
@@ -110,14 +123,21 @@ export function createD1ModelRoutingRepository(db: D1DatabaseClient): ModelRouti
 				.first<ModelRow>();
 		},
 
-		async listModelsWithActiveRoutes(): Promise<ModelRow[]> {
+		async listModelsWithActiveRoutes(protocol?: string): Promise<ModelRow[]> {
 			try {
+				if (protocol) {
+					const rows = await raw
+						.prepare(LIST_MODELS_WITH_ACTIVE_ROUTES_BY_PROTOCOL_SQL)
+						.bind(protocol)
+						.all<ModelRow>();
+					return rows.results ?? [];
+				}
 				const rows = await raw.prepare(LIST_MODELS_WITH_ACTIVE_ROUTES_SQL).all<ModelRow>();
 				return rows.results ?? [];
 			} catch (err) {
 				// 仅对已知 D1 规划器/参数限制回退；其余错误如实抛出，避免掩盖真实故障
 				if (!isD1PlannerFallbackError(err)) throw err;
-				return listModelsWithActiveRoutesFallback(raw);
+				return listModelsWithActiveRoutesFallback(raw, protocol);
 			}
 		},
 

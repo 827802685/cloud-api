@@ -147,7 +147,7 @@ geminiRoutes.post('/models/:modelAction', async (c) => {
     });
   }
 
-  const resolved = await resolveModelRouting(repos, pathModelId);
+  const resolved = await resolveModelRouting(repos, pathModelId, 'gemini');
   if (!resolved) {
     return gatewayErrorJson(c, {
       status: 404,

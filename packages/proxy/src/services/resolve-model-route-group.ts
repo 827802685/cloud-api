@@ -2,8 +2,8 @@
  * 解析请求体里的 `model` 字符串：`baseId` 与可选后缀 `baseId:route_group`（显式指定计费通道）。
  * 支持 `auto` 和 `auto:vendor` 语法，自动选择最佳可用模型。
  */
-import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
-import { selectAutoModelCandidates } from './auto-model-selector';
+import type { GatewayRepositories, ModelRow, UpstreamProtocol } from '@cloud-api/core';
+import { selectAutoModelCandidates, AUTO_MODEL_CANDIDATE_LIMIT } from './auto-model-selector';
 
 export interface ResolvedModelRouting {
   model: ModelRow;
@@ -23,11 +23,13 @@ export interface ResolvedModelRouting {
  * 支持 `auto` 和 `auto:vendor` 语法自动选择最佳模型。
  * @param repos 网关仓储
  * @param rawModelId 客户端传入的 model 字符串（可含前后空格，内部 trim）
+ * @param requestProtocol 可选；auto 选择时按该协议过滤（如 openai），保证出站统一协议
  * @returns 无法匹配任一模型 id 时 `null`
  */
 export async function resolveModelRouting(
   repos: GatewayRepositories,
-  rawModelId: string
+  rawModelId: string,
+  requestProtocol?: UpstreamProtocol
 ): Promise<ResolvedModelRouting | null> {
   const t = rawModelId.trim();
   if (!t) {
@@ -37,7 +39,12 @@ export async function resolveModelRouting(
   // 处理 auto 模型选择
   if (t === 'auto' || t.startsWith('auto:')) {
     const preferredVendor = t.includes(':') ? t.slice(5).trim() : undefined;
-    const candidates = await selectAutoModelCandidates(repos, preferredVendor || undefined);
+    const candidates = await selectAutoModelCandidates(
+      repos,
+      preferredVendor || undefined,
+      AUTO_MODEL_CANDIDATE_LIMIT,
+      requestProtocol
+    );
     if (candidates.length === 0) {
       console.warn('[AutoModel] no available models found');
       return null;

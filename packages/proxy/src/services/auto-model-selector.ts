@@ -3,12 +3,14 @@
  *
  * 选择策略：
  * 1. 获取所有有活跃路由的模型（已由 listModelsWithActiveRoutes 过滤）
- * 2. 按 context_window 从大到小排序，优先选择能力最强的模型
- * 3. 同等 context_window 时，按厂商偏好和模型 ID 稳定排序
- * 4. 返回排序后的候选列表，供 failover 在首选模型配额耗尽/失败时自动切换到下一个模型
- * 5. 实际的 provider 健康检查由 failover dispatch 负责
+ * 2. 可选：按请求协议过滤（如 openai），只选有该协议 active 路由的模型，
+ *    保证 auto 出站统一走该协议，避免选中仅其他协议路由的模型后报 "No OpenAI route"。
+ * 3. 按 context_window 从大到小排序，优先选择能力最强的模型
+ * 4. 同等 context_window 时，按厂商偏好和模型 ID 稳定排序
+ * 5. 返回排序后的候选列表，供 failover 在首选模型配额耗尽/失败时自动切换到下一个模型
+ * 6. 实际的 provider 健康检查由 failover dispatch 负责
  */
-import type { GatewayRepositories, ModelRow } from '@cloud-api/core';
+import type { GatewayRepositories, ModelRow, UpstreamProtocol } from '@cloud-api/core';
 import { getRouteStabilityScore } from './route-stability-tracker';
 
 /** Auto 模型选择结果 */
@@ -17,9 +19,8 @@ export interface AutoModelSelection {
   modelId: string;
 }
 
-/** 缓存：避免每次请求都查询数据库 */
-let cachedModels: ModelRow[] | null = null;
-let cacheTimestamp = 0;
+/** 缓存：避免每次请求都查询数据库。按协议分桶（undefined 表示不区分协议的全量列表）。 */
+const modelCache = new Map<string, { models: ModelRow[]; timestamp: number }>();
 const CACHE_TTL_MS = 60_000; // 60 秒缓存
 
 /** 默认候选数量上限（auto 跨模型 failover 时最多合并多少个模型的路由） */
@@ -59,19 +60,27 @@ function sortModelCandidates(models: ModelRow[], preferredVendor?: string): Mode
   return sorted;
 }
 
-async function getCachedModels(repos: GatewayRepositories): Promise<ModelRow[] | null> {
+async function getCachedModels(
+  repos: GatewayRepositories,
+  protocol?: UpstreamProtocol
+): Promise<ModelRow[] | null> {
   const now = Date.now();
-  if (!cachedModels || now - cacheTimestamp > CACHE_TTL_MS) {
+  const cacheKey = protocol ?? '*';
+  const entry = modelCache.get(cacheKey);
+  if (!entry || now - entry.timestamp > CACHE_TTL_MS) {
     try {
-      cachedModels = await repos.modelRouting.listModelsWithActiveRoutes();
-      cacheTimestamp = now;
-      console.log(`[AutoModel] refreshed cache, ${cachedModels.length} models available`);
+      const models = await repos.modelRouting.listModelsWithActiveRoutes(protocol);
+      modelCache.set(cacheKey, { models, timestamp: now });
+      console.log(
+        `[AutoModel] refreshed cache, ${models.length} models available${protocol ? ` (protocol=${protocol})` : ''}`
+      );
+      return models;
     } catch (err) {
       console.error('[AutoModel] failed to list models', err);
       return null;
     }
   }
-  return cachedModels;
+  return entry.models;
 }
 
 /**
@@ -79,14 +88,16 @@ async function getCachedModels(repos: GatewayRepositories): Promise<ModelRow[] |
  * @param repos 网关仓储
  * @param preferredVendor 可选的厂商标识（如 "nvidia"），用于偏好选择
  * @param limit 返回的候选数量上限
+ * @param protocol 可选；传入时仅考虑有该协议 active 路由的模型（如 openai），保证出站统一协议
  * @returns 排序后的模型列表；无可用模型时返回空数组
  */
 export async function selectAutoModelCandidates(
   repos: GatewayRepositories,
   preferredVendor?: string,
-  limit: number = AUTO_MODEL_CANDIDATE_LIMIT
+  limit: number = AUTO_MODEL_CANDIDATE_LIMIT,
+  protocol?: UpstreamProtocol
 ): Promise<ModelRow[]> {
-  const models = await getCachedModels(repos);
+  const models = await getCachedModels(repos, protocol);
   if (!models || models.length === 0) {
     return [];
   }
@@ -98,19 +109,21 @@ export async function selectAutoModelCandidates(
  * 从所有可用模型中选择最佳模型。
  * @param repos 网关仓储
  * @param preferredVendor 可选的厂商标识（如 "nvidia"），用于偏好选择
+ * @param protocol 可选；传入时仅考虑有该协议 active 路由的模型
  * @returns 选中的模型，无可用模型时返回 null
  */
 export async function selectAutoModel(
   repos: GatewayRepositories,
-  preferredVendor?: string
+  preferredVendor?: string,
+  protocol?: UpstreamProtocol
 ): Promise<AutoModelSelection | null> {
-  const candidates = await selectAutoModelCandidates(repos, preferredVendor, 1);
+  const candidates = await selectAutoModelCandidates(repos, preferredVendor, 1, protocol);
   const best = candidates[0];
   if (!best) {
     return null;
   }
   console.log(
-    `[AutoModel] selected model=${best.id} contextWindow=${best.context_window ?? 'unknown'} vendor=${best.vendor}`
+    `[AutoModel] selected model=${best.id} contextWindow=${best.context_window ?? 'unknown'} vendor=${best.vendor}${protocol ? ` protocol=${protocol}` : ''}`
   );
 
   return {
@@ -121,6 +134,5 @@ export async function selectAutoModel(
 
 /** 清除缓存（用于测试或模型变更后） */
 export function clearAutoModelCache(): void {
-  cachedModels = null;
-  cacheTimestamp = 0;
+  modelCache.clear();
 }
