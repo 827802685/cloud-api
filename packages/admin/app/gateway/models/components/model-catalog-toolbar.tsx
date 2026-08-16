@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckIcon, XMarkIcon, BoltIcon, ArrowPathIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { ProgressBar } from '@/components/progress-bar';
 
@@ -24,6 +24,8 @@ type Props = {
 	onRssSync: () => void;
 	isRssSyncing: boolean;
 	rssLastSyncAt: string | null;
+	onWeightAdjust: () => void;
+	isSavingWeights: boolean;
 };
 
 export function ModelCatalogToolbar(props: Props) {
@@ -47,9 +49,12 @@ export function ModelCatalogToolbar(props: Props) {
 		onRssSync,
 		isRssSyncing,
 		rssLastSyncAt,
+		onWeightAdjust,
+		isSavingWeights,
 	} = props;
 
 	const t = useTranslations('models.catalog');
+	const tWeight = useTranslations('models.weight');
 	const tCommon = useTranslations('common');
 
 	return (
@@ -140,6 +145,16 @@ export function ModelCatalogToolbar(props: Props) {
 							>
 								<ArrowPathIcon className={`h-4 w-4 ${isRssSyncing ? 'animate-spin' : ''}`} />
 								{isRssSyncing ? 'Syncing...' : 'RSS Sync'}
+							</button>
+							<button
+								type="button"
+								onClick={onWeightAdjust}
+								disabled={!hasModels || isSavingWeights}
+								className="flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+								title={tWeight('toolbarButtonHint')}
+							>
+								<AdjustmentsHorizontalIcon className="h-4 w-4" />
+								{tWeight('toolbarButton')}
 							</button>
 							<button
 								type="button"

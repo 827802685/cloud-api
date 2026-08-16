@@ -548,9 +548,26 @@
 			"viewMetadataJson": "Metadata JSON を表示",
 			"kindAudio": "音声",
 			"disabled": "無効",
-			"disabledTitle": "このモデルには有効な Route がありません（テスト台で無効化すると auto モードでは使用されません）"
-		}
-	},
+			"disabledTitle": "このモデルには有効な Route がありません（テスト台で無効化すると auto モードでは使用されません）",
+			"autoWeightBadge": "重み {value}"
+		},
+		"weight": {
+			"title": "Auto モデル選択ウェイト",
+			"subtitle": "ウェイトを調整して auto モードのモデル選択順を制御します。ウェイトが高いほど優先的に使用されます。",
+			"batchLabel": "一括設定：",
+			"batchPlaceholder": "ウェイト値",
+			"batchApply": "すべてに適用",
+			"orderHint": "ウェイト降順、同値は context 降順",
+			"empty": "設定できるモデルがありません",
+			"colOrder": "順序",
+			"colModel": "モデル",
+			"colVendor": "ベンダー",
+			"colWeight": "ウェイト",
+			"orderTitle": "第 {rank} 位",
+			"save": "ウェイトを保存",
+			"toolbarButton": "ウェイト調整",
+			"toolbarButtonHint": "auto モードのモデル選択ウェイトを調整"
+		},
 	"routes": {
 		"title": "モデル Route",
 		"subtitle": "モデルから Provider へのルーティングを設定",

@@ -1,0 +1,4 @@
+-- Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。
+SET search_path TO octafuse_gateway;
+
+ALTER TABLE models ADD COLUMN auto_weight INTEGER NOT NULL DEFAULT 0;

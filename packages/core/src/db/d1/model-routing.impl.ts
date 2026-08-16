@@ -11,7 +11,7 @@ import { vendorSearchKeywords } from '../vendor-keywords';
 const LIST_MODELS_WITH_ACTIVE_ROUTES_SQL = `SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
   (SELECT json_group_array(mt.tag) FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
   (SELECT json_group_array(r.route_group) FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active') AS route_groups,
-  m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at
+  m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at
 FROM models m
 WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active')
 ORDER BY m.id`;
@@ -19,7 +19,7 @@ ORDER BY m.id`;
 const LIST_MODELS_WITH_ACTIVE_ROUTES_BY_PROTOCOL_SQL = `SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
   (SELECT json_group_array(mt.tag) FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
   (SELECT json_group_array(r.route_group) FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active') AS route_groups,
-  m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at
+  m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at
 FROM models m
 WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active' AND lower(r.upstream_protocol) = lower(?))
 ORDER BY m.id`;
@@ -70,7 +70,7 @@ async function listModelsWithActiveRoutesFallback(raw: D1Database, protocol?: st
 		const rows = await raw
 			.prepare(
 				`SELECT id, display_name, vendor, context_window, max_tokens, pricing_profile,
-				   description, metadata, input_modalities, output_modalities, released_at, created_at
+				   description, metadata, input_modalities, output_modalities, released_at, auto_weight, created_at
 				 FROM models WHERE id IN (${placeholders})`
 			)
 			.bind(...batch)

@@ -18,6 +18,7 @@ export const MODEL_PATCH_COLS = new Set([
 	'output_modalities',
 	'released_at',
 	'route_policy',
+	'auto_weight',
 ]);
 
 export const MODEL_ROUTE_PATCH_COLS = new Set([

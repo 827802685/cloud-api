@@ -64,7 +64,7 @@ export function createPostgresModelRoutingRepository(db: PostgresDatabaseClient)
 			SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 				(SELECT COALESCE(json_agg(mt.tag ORDER BY mt.tag)::text, '[]') FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
 				(SELECT COALESCE(json_agg(r.route_group ORDER BY r.route_group)::text, '[]') FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active') AS route_groups,
-				m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at::text
+				m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at::text
 			FROM models m
 			WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active' AND lower(r.upstream_protocol) = lower(${protocol}))
 			ORDER BY m.id
@@ -75,7 +75,7 @@ export function createPostgresModelRoutingRepository(db: PostgresDatabaseClient)
 		SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 			(SELECT COALESCE(json_agg(mt.tag ORDER BY mt.tag)::text, '[]') FROM model_tags mt WHERE mt.model_id = m.id) AS tags,
 			(SELECT COALESCE(json_agg(r.route_group ORDER BY r.route_group)::text, '[]') FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active') AS route_groups,
-			m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at::text
+			m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at::text
 		FROM models m
 		WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active')
 		ORDER BY m.id

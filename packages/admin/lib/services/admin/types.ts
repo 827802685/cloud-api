@@ -247,6 +247,19 @@ export type AdminModelsBatchDeleteOutput = {
 	failed: Array<{ id: string; message: string }>;
 };
 
+/** `POST /admin/models/batch-weight` 请求体：批量设置 Auto 模型选择权重。 */
+export type AdminModelsBatchWeightBody = {
+	/** 权重条目：model id → auto_weight（非负整数）。 */
+	weights: Array<{ id: string; auto_weight: number }>;
+};
+
+/** `POST /admin/models/batch-weight` 响应 */
+export type AdminModelsBatchWeightOutput = {
+	updated: number;
+	not_found: string[];
+	failed: Array<{ id: string; message: string }>;
+};
+
 /** `POST /admin/providers/batch-delete` 请求体 */
 export type AdminProvidersBatchDeleteBody = {
 	ids: string[];
@@ -294,6 +307,8 @@ export type AdminModelRow = {
 	metadata: string | null;
 	/** 路由策略 JSON（`strategy` + `rules`）；null=回退全局 ROUTE_STRATEGY */
 	route_policy?: string | null;
+	/** Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。 */
+	auto_weight?: number;
 	created_at: string;
 	routes_count?: number;
 	active_routes_count?: number;

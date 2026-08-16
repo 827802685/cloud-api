@@ -39,8 +39,10 @@ const CACHE_TTL_MS = 60_000; // 60 秒缓存
 export const AUTO_MODEL_CANDIDATE_LIMIT = 5;
 
 /**
- * 对候选模型排序：厂商偏好 → context_window 降序 → 综合可靠性评分降序 → 模型 ID 稳定排序。
- * 综合可靠性评分 = Bandit 期望值(70%) + 稳定性分(30%)，无数据时退回稳定性分。
+ * 对候选模型排序：厂商偏好 → auto_weight 降序 → context_window 降序 → 综合可靠性评分降序 → 模型 ID 稳定排序。
+ * auto_weight 为管理员手动配置的 Auto 模式选择权重（值越大越优先），
+ * 用于控制模型使用顺序（例如避免默认选中昂贵的谷歌模型）。
+ * 综合可靠性评分 = Bandit 期望值(70%) + 稳定性分(30%)，无数据时退回稳定性分；同权重下用于微调。
  */
 function sortModelCandidates(models: ModelRow[], preferredVendor?: string, nowMs = Date.now()): ModelRow[] {
 	const sorted = [...models];
@@ -50,6 +52,13 @@ function sortModelCandidates(models: ModelRow[], preferredVendor?: string, nowMs
 			const aMatch = a.vendor === preferredVendor ? 1 : 0;
 			const bMatch = b.vendor === preferredVendor ? 1 : 0;
 			if (aMatch !== bMatch) return bMatch - aMatch;
+		}
+
+// 按 auto_weight 降序（管理员手动配置的优先级，权重高的模型优先）
+		const aWeight = a.auto_weight ?? 0;
+		const bWeight = b.auto_weight ?? 0;
+		if (aWeight !== bWeight) {
+			return bWeight - aWeight;
 		}
 
 		// 按 context_window 降序

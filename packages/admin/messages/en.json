@@ -548,9 +548,26 @@
 			"viewMetadataJson": "View metadata JSON",
 			"kindAudio": "Audio",
 			"disabled": "Disabled",
-			"disabledTitle": "This model has no active routes (disabled in Test Console, auto mode won't use it)"
-		}
-	},
+			"disabledTitle": "This model has no active routes (disabled in Test Console, auto mode won't use it)",
+			"autoWeightBadge": "Weight {value}"
+		},
+		"weight": {
+			"title": "Auto Model Selection Weights",
+			"subtitle": "Adjust weights to control the model selection order in auto mode. Higher weight means the model is preferred first.",
+			"batchLabel": "Batch set:",
+			"batchPlaceholder": "Weight value",
+			"batchApply": "Apply to all",
+			"orderHint": "Sorted by weight desc; ties broken by context desc",
+			"empty": "No models to configure",
+			"colOrder": "Order",
+			"colModel": "Model",
+			"colVendor": "Vendor",
+			"colWeight": "Weight",
+			"orderTitle": "Rank {rank}",
+			"save": "Save weights",
+			"toolbarButton": "Weight adjust",
+			"toolbarButtonHint": "Adjust auto mode model selection weights"
+		},
 	"routes": {
 		"title": "Model Routes",
 		"subtitle": "Configure model-to-provider routing",

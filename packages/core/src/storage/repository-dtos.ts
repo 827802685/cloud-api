@@ -41,6 +41,8 @@ export interface ModelWithRouteCountsRow {
 	released_at: string | null;
 	/** 路由策略配置 JSON；NULL=使用全局/代码默认 */
 	route_policy: string | null;
+	/** Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。 */
+	auto_weight?: number;
 	created_at: string;
 	routes_count: number;
 	active_routes_count: number;

@@ -25,6 +25,7 @@ import type {
 	AdminModelMutationInput,
 	AdminModelRow,
 	AdminModelsBatchDeleteOutput,
+	AdminModelsBatchWeightOutput,
 	AdminModelsImportOutput,
 	AdminStaticModelPresetCatalogItem,
 } from './types';
@@ -469,4 +470,49 @@ export async function batchDeleteModelsService(
 	}
 
 	return { deleted, not_found, failed };
+}
+
+/**
+ * 批量设置 Auto 模型选择权重（`auto_weight`）。
+ * 权重必须为非负整数；逐条调用 `updateModelByPatch`，不存在的 id 记入 `not_found`，
+ * 异常记入 `failed`，不回滚已成功更新的条目。
+ */
+export async function batchUpdateModelWeightsService(
+	repos: GatewayRepositories,
+	weights: Array<{ id: string; auto_weight: number }>
+): Promise<AdminModelsBatchWeightOutput> {
+	const unique = new Map<string, number>();
+	for (const item of weights ?? []) {
+		const id = String(item?.id ?? '').trim();
+		if (!id) continue;
+		const raw = item?.auto_weight;
+		const value = typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : NaN;
+		if (!Number.isFinite(value) || value < 0) {
+			throw badRequest(`auto_weight for "${id}" must be a non-negative integer`);
+		}
+		unique.set(id, value);
+	}
+	if (unique.size === 0) {
+		throw badRequest('weights must be a non-empty array of { id, auto_weight }');
+	}
+
+	let updated = 0;
+	const not_found: string[] = [];
+	const failed: Array<{ id: string; message: string }> = [];
+
+	for (const [id, autoWeight] of unique) {
+		try {
+			const changes = await repos.models.updateModelByPatch(id, { auto_weight: autoWeight });
+			if (changes > 0) {
+				updated++;
+			} else {
+				not_found.push(id);
+			}
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			failed.push({ id, message });
+		}
+	}
+
+	return { updated, not_found, failed };
 }

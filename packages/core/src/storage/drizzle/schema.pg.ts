@@ -82,6 +82,8 @@ export const modelsTable = pgTable('models', {
 	releasedAt: text('released_at'),
 	/** 路由策略配置 JSON；NULL=使用全局/代码默认 */
 	routePolicy: text('route_policy'),
+	/** Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。 */
+	autoWeight: integer('auto_weight').notNull().default(0),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 

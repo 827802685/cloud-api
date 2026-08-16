@@ -114,6 +114,8 @@ export interface ModelRow {
   released_at: string | null;
   /** 路由策略配置 JSON（`parseModelRoutePolicy`）；NULL=使用全局/代码默认（部分查询可能无此列） */
   route_policy?: string | null;
+  /** Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。 */
+  auto_weight?: number;
   created_at: string;
 }
 

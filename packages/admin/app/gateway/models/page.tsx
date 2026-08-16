@@ -14,6 +14,7 @@ import { ModelFilterSidebar } from './components/model-filter-sidebar';
 import { ModelImportModal } from './components/model-import-modal';
 import { ModelMetadataPreviewModal } from './components/model-metadata-preview-modal';
 import { ModelModal } from './components/model-modal';
+import { ModelWeightModal } from './components/model-weight-modal';
 
 function ModelsContent() {
 	const t = useTranslations('models');
@@ -90,6 +91,8 @@ function ModelsContent() {
 							onRssSync={() => void state.handleRssSync()}
 							isRssSyncing={state.rssSyncState.syncing}
 							rssLastSyncAt={state.rssSyncState.lastSyncAt}
+							onWeightAdjust={() => state.setShowWeightModal(true)}
+							isSavingWeights={state.isSavingWeights}
 						/>
 
 						<div className="bg-slate-100/70 p-4 sm:p-6">
@@ -178,6 +181,13 @@ function ModelsContent() {
 				onReload={() => void state.loadImportCatalog()}
 				onTogglePreset={state.toggleImportPreset}
 				onImport={() => void state.runImportSelectedPresets()}
+			/>
+
+			<ModelWeightModal
+				open={state.showWeightModal}
+				models={state.models}
+				onClose={() => state.setShowWeightModal(false)}
+				onSave={state.handleSaveWeights}
 			/>
 		</div>
 	);

@@ -154,6 +154,8 @@ export interface GatewayModel {
   metadata: string | null;
   /** 路由策略 JSON（`strategy` + `rules`）；null=回退全局 ROUTE_STRATEGY */
   route_policy?: string | null;
+  /** Auto 模型选择权重：值越大，auto 模式越优先使用该模型（默认 0）。 */
+  auto_weight?: number;
   created_at: string;
   /** Count of active routes associated with this model */
   active_routes_count?: number;

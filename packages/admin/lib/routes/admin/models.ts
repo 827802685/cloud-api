@@ -6,6 +6,7 @@ import type { AdminEnv } from '@/lib/admin-env';
 import { requireMasterKey } from '@/lib/middleware/admin-auth';
 import {
 	batchDeleteModelsService,
+	batchUpdateModelWeightsService,
 	createModelService,
 	deleteModelService,
 	getModelService,
@@ -18,6 +19,8 @@ import type {
 	AdminModelMutationInput,
 	AdminModelsBatchDeleteBody,
 	AdminModelsBatchDeleteOutput,
+	AdminModelsBatchWeightBody,
+	AdminModelsBatchWeightOutput,
 	AdminModelsImportBody,
 	AdminModelsImportOutput,
 } from '@/lib/services/admin/types';
@@ -136,6 +139,42 @@ adminModelsRoutes.post('/batch-delete', async (c) => {
 		);
 	} catch (error) {
 		return handleAdminRouteError(c, error, 'Failed to batch delete models');
+	}
+});
+
+/** 批量设置 Auto 模型选择权重。 */
+adminModelsRoutes.post('/batch-weight', async (c) => {
+	let body: AdminModelsBatchWeightBody;
+	try {
+		body = await c.req.json();
+	} catch {
+		return c.json({ success: false, message: 'Invalid JSON body' }, 400);
+	}
+	try {
+		const repos = c.get('repositories');
+		if (!Array.isArray(body.weights)) {
+			return c.json({ success: false, message: 'weights must be an array' }, 400);
+		}
+		const data: AdminModelsBatchWeightOutput = await batchUpdateModelWeightsService(
+			repos,
+			body.weights
+		);
+		const parts = [`updated ${data.updated}`];
+		if (data.not_found.length) {
+			parts.push(`${data.not_found.length} not found`);
+		}
+		if (data.failed.length) {
+			parts.push(`${data.failed.length} failed`);
+		}
+		return c.json(
+			normalizeApiTimeFields({
+				success: true,
+				message: `Batch weight update finished (${parts.join(', ')})`,
+				data,
+			})
+		);
+	} catch (error) {
+		return handleAdminRouteError(c, error, 'Failed to batch update model weights');
 	}
 });
 

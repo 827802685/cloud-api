@@ -126,6 +126,25 @@ export async function batchDeleteModels(
 	return { success: false, message: data.message || 'Batch delete failed' };
 }
 
+export type BatchWeightUpdateResult = {
+	updated: number;
+	not_found: string[];
+	failed: Array<{ id: string; message: string }>;
+};
+
+export async function batchUpdateModelWeights(
+	weights: Array<{ id: string; auto_weight: number }>
+): Promise<{ success: true; data: BatchWeightUpdateResult } | { success: false; message: string }> {
+	const response = await fetch('/api/admin/models/batch-weight', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ weights }),
+	});
+	const data = await readApiJson<BatchWeightUpdateResult>(response);
+	if (data.success && data.data) return { success: true, data: data.data };
+	return { success: false, message: data.message || 'Batch weight update failed' };
+}
+
 export async function fetchImportCatalog(): Promise<PresetCatalogRow[]> {
 	const response = await fetch('/api/admin/models/import/catalog');
 	const data = await readApiJson<PresetCatalogRow[]>(response);

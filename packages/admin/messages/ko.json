@@ -548,9 +548,26 @@
 			"viewMetadataJson": "Metadata JSON 보기",
 			"kindAudio": "오디오",
 			"disabled": "비활성화됨",
-			"disabledTitle": "이 모델에는 활성 Route가 없습니다(테스트 콘솔에서 비활성화하면 auto 모드에서 사용되지 않습니다)"
-		}
-	},
+			"disabledTitle": "이 모델에는 활성 Route가 없습니다(테스트 콘솔에서 비활성화하면 auto 모드에서 사용되지 않습니다)",
+			"autoWeightBadge": "가중치 {value}"
+		},
+		"weight": {
+			"title": "Auto 모델 선택 가중치",
+			"subtitle": "가중치를 조정하여 auto 모드의 모델 선택 순서를 제어합니다. 가중치가 높을수록 우선 사용됩니다.",
+			"batchLabel": "일괄 설정:",
+			"batchPlaceholder": "가중치 값",
+			"batchApply": "모두 적용",
+			"orderHint": "가중치 내림차순, 동률은 context 내림차순",
+			"empty": "설정할 모델이 없습니다",
+			"colOrder": "순서",
+			"colModel": "모델",
+			"colVendor": "벤더",
+			"colWeight": "가중치",
+			"orderTitle": "{rank}번째",
+			"save": "가중치 저장",
+			"toolbarButton": "가중치 조정",
+			"toolbarButtonHint": "auto 모드 모델 선택 가중치 조정"
+		},
 	"routes": {
 		"title": "모델 Routes",
 		"subtitle": "모델과 Provider 간 Route를 설정합니다",

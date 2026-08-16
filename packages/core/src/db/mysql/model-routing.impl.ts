@@ -53,7 +53,7 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 			const [rows] = await pool.query<ModelRow[]>(
 				`SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 					CAST(COALESCE((SELECT JSON_ARRAYAGG(tag ORDER BY tag) FROM model_tags WHERE model_id = m.id), JSON_ARRAY()) AS CHAR) AS tags,
-					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.route_policy, m.created_at
+					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.route_policy, m.auto_weight, m.created_at
 				 FROM models m WHERE m.id = ?`,
 				[id]
 			);
@@ -66,7 +66,7 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 					`SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 						CAST(COALESCE((SELECT JSON_ARRAYAGG(mt.tag ORDER BY mt.tag) FROM model_tags mt WHERE mt.model_id = m.id), JSON_ARRAY()) AS CHAR) AS tags,
 						CAST(COALESCE((SELECT JSON_ARRAYAGG(r.route_group ORDER BY r.route_group) FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active'), JSON_ARRAY()) AS CHAR) AS route_groups,
-						m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at
+						m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at
 					 FROM models m
 					 WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active' AND LOWER(r.upstream_protocol) = LOWER(?))
 					 ORDER BY m.id`,
@@ -78,7 +78,7 @@ export function createMySqlModelRoutingRepository(db: MySqlDatabaseClient): Mode
 				`SELECT m.id, m.display_name, m.vendor, m.context_window, m.max_tokens, m.pricing_profile,
 					CAST(COALESCE((SELECT JSON_ARRAYAGG(mt.tag ORDER BY mt.tag) FROM model_tags mt WHERE mt.model_id = m.id), JSON_ARRAY()) AS CHAR) AS tags,
 					CAST(COALESCE((SELECT JSON_ARRAYAGG(r.route_group ORDER BY r.route_group) FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active'), JSON_ARRAY()) AS CHAR) AS route_groups,
-					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.created_at
+					m.description, m.metadata, m.input_modalities, m.output_modalities, m.released_at, m.auto_weight, m.created_at
 				 FROM models m
 				 WHERE EXISTS (SELECT 1 FROM model_routes r WHERE r.model_id = m.id AND r.status = 'active')
 				 ORDER BY m.id`

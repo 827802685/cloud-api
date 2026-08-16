@@ -33,6 +33,7 @@ function ModelIdentityHeader(props: { model: ModelListItem }) {
 		model.routes_count === 1
 			? t('routes', { count: model.routes_count })
 			: t('routesPlural', { count: model.routes_count });
+	const showWeightBadge = (model.auto_weight ?? 0) > 0;
 
 	return (
 		<div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -49,6 +50,11 @@ function ModelIdentityHeader(props: { model: ModelListItem }) {
 			</div>
 			<div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
 				<div className="flex flex-wrap items-center justify-start gap-1 sm:justify-end">
+					{showWeightBadge ? (
+						<span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200/60">
+							{t('autoWeightBadge', { value: model.auto_weight ?? 0 })}
+						</span>
+					) : null}
 					{tagShown.length ? (
 						<>
 							{tagShown.map((tag) => (

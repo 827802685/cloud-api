@@ -548,9 +548,26 @@
 			"viewMetadataJson": "查看 Metadata JSON",
 			"kindAudio": "音频",
 			"disabled": "已禁用",
-			"disabledTitle": "该模型没有活跃路由（在测试台禁用后 auto 模式不会使用）"
-		}
-	},
+			"disabledTitle": "该模型没有活跃路由（在测试台禁用后 auto 模式不会使用）",
+			"autoWeightBadge": "权重 {value}"
+		},
+		"weight": {
+			"title": "Auto 模型选择权重",
+			"subtitle": "调整权重以控制 Auto 模式的模型选择顺序。权重越高，auto 模式越优先使用该模型。",
+			"batchLabel": "批量设置：",
+			"batchPlaceholder": "权重值",
+			"batchApply": "应用到全部",
+			"orderHint": "按权重降序排列，权重相同则按 context 降序",
+			"empty": "没有可设置的模型",
+			"colOrder": "顺序",
+			"colModel": "模型",
+			"colVendor": "厂商",
+			"colWeight": "权重",
+			"orderTitle": "第 {rank} 位",
+			"save": "保存权重",
+			"toolbarButton": "权重调节",
+			"toolbarButtonHint": "调节 Auto 模式模型选择权重"
+		},
 	"routes": {
 		"title": "模型路由",
 		"subtitle": "配置模型到供应商的路由",

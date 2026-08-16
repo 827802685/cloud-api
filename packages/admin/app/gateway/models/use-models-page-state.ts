@@ -31,6 +31,7 @@ import { useReplaceListPageQuery } from '@/lib/use-replace-list-query';
 import {
 	autoAddRoutes,
 	batchDeleteModels,
+	batchUpdateModelWeights,
 	deleteModel,
 	fetchImportCatalog,
 	fetchModelDetail,
@@ -100,6 +101,8 @@ export function useModelsPageState() {
 	const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
 	const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 	const [isAutoAddingRoutes, setIsAutoAddingRoutes] = useState(false);
+	const [showWeightModal, setShowWeightModal] = useState(false);
+	const [isSavingWeights, setIsSavingWeights] = useState(false);
 	const [rssSyncState, setRssSyncState] = useState<{
 		source: string;
 		lastSyncAt: string | null;
@@ -763,6 +766,32 @@ export function useModelsPageState() {
 		}
 	}, [batchSelectedIds, refreshModels]);
 
+	const handleSaveWeights = useCallback(
+		async (weights: Array<{ id: string; auto_weight: number }>) => {
+			setIsSavingWeights(true);
+			try {
+				const result = await batchUpdateModelWeights(weights);
+				if (result.success) {
+					const { updated, not_found, failed } = result.data;
+					const parts = [`Updated: ${updated}`];
+					if (not_found.length) parts.push(`Not found: ${not_found.length}`);
+					if (failed.length) parts.push(`Failed: ${failed.length}`);
+					alert(parts.join('\n'));
+					setShowWeightModal(false);
+					await refreshModels();
+				} else {
+					alert(result.message || 'Batch weight update failed');
+				}
+			} catch (error) {
+				console.error('Batch weight update error:', error);
+				alert('Batch weight update failed');
+			} finally {
+				setIsSavingWeights(false);
+			}
+		},
+		[refreshModels]
+	);
+
 	const handleAutoAddRoutes = useCallback(async () => {
 		if (
 			!confirm(
@@ -947,6 +976,10 @@ export function useModelsPageState() {
 		handleBatchDelete,
 		isAutoAddingRoutes,
 		handleAutoAddRoutes,
+		showWeightModal,
+		setShowWeightModal,
+		isSavingWeights,
+		handleSaveWeights,
 		rssSyncState,
 		handleRssSync,
 	};
