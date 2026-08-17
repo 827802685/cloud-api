@@ -36,6 +36,26 @@ type CircuitEntry = {
 
 const circuitByProvider = new Map<string, CircuitEntry>();
 
+// ─── Per-key 熔断：与 provider 级熔断正交，避免单 key 故障污染整个 provider ───
+type KeyCircuitEntry = {
+	openUntil: number;
+	failureCount: number;
+	lastFailureKind: ProviderFailureKind | null;
+};
+
+const circuitByKey = new Map<string, KeyCircuitEntry>();
+const KEY_CIRCUIT_THRESHOLD = 2; // 单 key 连续 2 次失败即熔断
+const KEY_CIRCUIT_COOLDOWN_MS = 30_000; // key 级默认冷却 30s
+
+function purgeKeyCircuitIfOverCapacity(now: number): void {
+	if (circuitByKey.size <= MAX_ENTRIES) return;
+	for (const [keyId, entry] of circuitByKey) {
+		if (entry.openUntil <= now) {
+			circuitByKey.delete(keyId);
+		}
+	}
+}
+
 function purgeIfOverCapacity(now: number): void {
 	if (circuitByProvider.size <= MAX_ENTRIES) return;
 	for (const [providerId, entry] of circuitByProvider) {
@@ -150,4 +170,78 @@ export function isProviderCircuitOpen(providerId: string, now = Date.now()): boo
 /** 测试用：清空熔断状态。 */
 export function resetProviderCircuitStateForTests(): void {
 	circuitByProvider.clear();
+}
+
+// ─── Per-key 熔断 API ────────────────────────────────────────────────────────
+// 单 key 失败只影响该 key，不波及 provider 上其他 key（参考 freellmapi hasOtherUsableKey 思路）。
+
+/** 记录某 key 的失败并打开熔断。 */
+export function markKeyFailure(
+	keyFingerprint: string,
+	kind: ProviderFailureKind,
+	now = Date.now()
+): void {
+	if (!keyFingerprint) return;
+	const entry = circuitByKey.get(keyFingerprint) ?? {
+		openUntil: 0,
+		failureCount: 0,
+		lastFailureKind: null,
+	};
+	const previousOpenUntil = entry.openUntil;
+
+	// auth 类直接 30s；rate_limit 按梯度；server 按阈值
+	let cooldownMs = KEY_CIRCUIT_COOLDOWN_MS;
+	if (kind === 'auth') {
+		cooldownMs = AUTH_COOLDOWN_MS;
+	} else if (kind === 'rate_limit') {
+		const backoffIdx = Math.min(entry.failureCount, RATE_LIMIT_BACKOFF_MS.length - 1);
+		cooldownMs = RATE_LIMIT_BACKOFF_MS[backoffIdx]!;
+	}
+	// server：累计到阈值才打开
+	if (kind === 'server' && entry.failureCount < KEY_CIRCUIT_THRESHOLD - 1) {
+		entry.failureCount += 1;
+		entry.lastFailureKind = kind;
+		circuitByKey.set(keyFingerprint, entry);
+		purgeKeyCircuitIfOverCapacity(now);
+		return;
+	}
+
+	entry.openUntil = Math.max(entry.openUntil, now + cooldownMs);
+	entry.failureCount = kind === 'server' ? entry.failureCount + 1 : 1;
+	entry.lastFailureKind = kind;
+	circuitByKey.set(keyFingerprint, entry);
+	purgeKeyCircuitIfOverCapacity(now);
+
+	const openedOrExtended = entry.openUntil > Math.max(previousOpenUntil, now);
+	if (openedOrExtended) {
+		console.warn(
+			`[Gateway Proxy] key-level circuit opened fingerprint=${keyFingerprint} kind=${kind} cooldown=${cooldownMs}ms`
+		);
+	}
+}
+
+/** 请求成功：清零该 key 的熔断。 */
+export function markKeySuccess(keyFingerprint: string, now = Date.now()): void {
+	if (!keyFingerprint) return;
+	const entry = circuitByKey.get(keyFingerprint);
+	if (!entry) return;
+	if (entry.openUntil <= now) {
+		circuitByKey.delete(keyFingerprint);
+	} else {
+		entry.failureCount = 0;
+		entry.openUntil = now; // 提前解锁
+		circuitByKey.set(keyFingerprint, entry);
+	}
+}
+
+/** 该 key 是否仍在熔断中。 */
+export function getKeyCircuitRemainingMs(keyFingerprint: string, now = Date.now()): number {
+	const entry = circuitByKey.get(keyFingerprint);
+	if (!entry) return 0;
+	return Math.max(0, entry.openUntil - now);
+}
+
+/** 测试用：清空 key 级熔断状态。 */
+export function resetKeyCircuitStateForTests(): void {
+	circuitByKey.clear();
 }

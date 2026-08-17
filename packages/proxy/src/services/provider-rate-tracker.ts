@@ -220,6 +220,28 @@ export function getProviderHealthScore(providerId: string, now = Date.now()): nu
     }
   }
 
+  // ─── 空配额启发式（null-limit heuristic）─────────────────────────────
+  // 参考 freellmapi：对未公布日限额的 provider，用「近 1h 内 2+ 次 429」作为有效耗尽信号。
+  // 常见于 Ollama、Cloudflare Workers AI 等无明确 RPD 发布限额的平台。
+  const HOUR_MS = 60 * MINUTE_MS;
+  if (
+    state.knownRpmLimit == null &&
+    state.knownRpdLimit == null &&
+    state.consecutiveRateLimits >= 2 &&
+    (now - state.lastRateLimitAt) < HOUR_MS
+  ) {
+    // 该 provider 无已知日限额但频繁 429 → 视为日配额已耗尽
+    score = Math.min(score, 0.1);
+  }
+
+  // ─── 429 次数递增降分 ──────────────────────────────────────────────
+  // 同一 key 短时间内多次 429，额外惩罚
+  if (state.consecutiveRateLimits >= 3) {
+    score = Math.min(score, 0.2);
+  } else if (state.consecutiveRateLimits >= 2) {
+    score = Math.min(score, 0.4);
+  }
+
   return score;
 }
 

@@ -8,6 +8,7 @@ import { getProviderCircuitRemainingMs } from './provider-circuit-breaker';
 import { ROUTE_STRATEGIES } from './route-strategies';
 import { getProviderHealthScore } from './provider-rate-tracker';
 import { getRouteStabilityScore } from './route-stability-tracker';
+import { getBanditReliabilityScore } from './auto-model-bandit';
 
 export type RouteAttemptPlan = {
 	attempts: RouteResult[];
@@ -65,6 +66,7 @@ export function buildRouteAttemptPlan(
 			route,
 			healthScore: getProviderHealthScore(route.providerId, now),
 			stabilityScore: getRouteStabilityScore(route.targetId, now),
+			banditScore: getBanditReliabilityScore(route.targetId, getRouteStabilityScore(route.targetId, now), now),
 		}));
 
 		// 稳定排序：同等健康分保持原策略排序
@@ -76,7 +78,11 @@ export function buildRouteAttemptPlan(
 			if (Math.abs(a.healthScore - b.healthScore) > 0.1) {
 				return b.healthScore - a.healthScore;
 			}
-			// 健康分相近时，用稳定性评分微调（稳定性高的优先）
+			// 健康分相近时，用综合可靠性评分微调（Bandit 70% + 稳定性 30%）
+			if (Math.abs(a.banditScore - b.banditScore) > 0.02) {
+				return b.banditScore - a.banditScore;
+			}
+			// 可靠度也相近时，用稳定性评分微调
 			if (Math.abs(a.stabilityScore - b.stabilityScore) > 0.05) {
 				return b.stabilityScore - a.stabilityScore;
 			}

@@ -40,6 +40,12 @@ import { RequestTimingCollector } from '../../services/request-timing';
 /** 流若长期不结束（上游挂死），超过此时长仍无 usage 则按 incomplete 记账；正常/取消场景通常很快结束。 */
 const USAGE_SAFETY_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
 
+/** 整个 failover 过程的墙钟重试预算：attempt 0/1 不受限，之后的尝试在此预算内执行。 */
+const DEFAULT_RETRY_BUDGET_MS = 45_000;
+
+/** Hedging timeout：单 attempt 首字节超时后 abort 并切换到下一 provider。 */
+const DEFAULT_HEDGE_TIMEOUT_MS = 30_000;
+
 /** OpenAI Chat Completions：去掉消息与内嵌多模态 data，保留采样/工具等元数据。 */
 function openAiBodyRedactedForLog(body: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -225,6 +231,8 @@ chatRoutes.post('/', async (c) => {
     timing,
     routePoolId: stickySurface?.route_pool_id ?? routes[0]?.routePoolId ?? null,
     sticky: stickyConfigFromSurface(stickySurface),
+    retryBudgetMs: DEFAULT_RETRY_BUDGET_MS,
+    hedgeTimeoutMs: DEFAULT_HEDGE_TIMEOUT_MS,
   });
   const {
     usagePromise,

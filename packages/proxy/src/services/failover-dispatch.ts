@@ -17,10 +17,17 @@ import {
 	recordRouteStabilitySuccess,
 } from './route-stability-tracker';
 import {
+	recordBanditSuccess,
+	recordBanditFailure,
+} from './auto-model-bandit';
+import {
 	getProviderCircuitRemainingMs,
 	markProviderFailure,
 	markProviderSuccess,
 	parseRetryAfterMs,
+	getKeyCircuitRemainingMs,
+	markKeyFailure,
+	markKeySuccess,
 } from './provider-circuit-breaker';
 import type { GatewayCircuitAlertEvent } from './circuit-alert-types';
 import {
@@ -128,6 +135,19 @@ export type FailoverDispatchOptions = {
 	routePoolId?: string | null;
 	/** Pool sticky config from surface join */
 	sticky?: RoutePoolStickyRoutingConfig | null;
+	/**
+	 * 整个 failover 过程的墙钟重试预算（毫秒）。
+	 * 超过此预算后不再发起新的上游请求（attempt 0 和 1 不受限制，保证首次尝试正常执行）。
+	 * 设置为 null 或 0 时不启用预算限制。
+	 */
+	retryBudgetMs?: number | null;
+	/**
+	 * Hedge timeout：单 attempts 首次响应到达前的最大等待时间（毫秒）。
+	 * 若超时未收到首字节，则 abort 当前 in-flight 请求并切换到下一个 provider。
+	 * 仅在流式响应且 timing 可用时生效。
+	 * 设置为 null 或 0 时不启用 hedging。
+	 */
+	hedgeTimeoutMs?: number | null;
 };
 
 type DispatchFn = (
@@ -279,6 +299,11 @@ export async function failoverDispatch(
 		};
 	}
 
+	// 墙钟重试预算：记录 dispatch 开始的绝对时间，用于后续判断是否耗尽预算
+	const dispatchStartMs = Date.now();
+	const retryBudgetMs = options?.retryBudgetMs ?? null;
+	const hedgeTimeoutMs = options?.hedgeTimeoutMs ?? null;
+
 	let lastResponse: Response | null = null;
 	let lastRoute: RouteResult = protocolRoutes[0]!;
 	let lastTimingAttempt: RequestTimingAttempt | undefined;
@@ -307,6 +332,28 @@ export async function failoverDispatch(
 			continue;
 		}
 
+		// Per-key 熔断：单 key 失败只影响该 key，不波及整个 provider
+		if (route.providerKeyFingerprint) {
+			const keyCircuitRemaining = getKeyCircuitRemainingMs(route.providerKeyFingerprint);
+			if (keyCircuitRemaining > 0) {
+				console.warn(
+					`[Gateway Proxy] key cooling down mid-request, skipping fingerprint=${route.providerKeyFingerprint} remaining=${keyCircuitRemaining}ms providerId=${route.providerId}`
+				);
+				continue;
+			}
+		}
+
+		// 墙钟重试预算检查：attempt 0 和 1 不受限制（保证首次尝试正常执行）
+		if (retryBudgetMs != null && retryBudgetMs > 0 && attemptIndex >= 2) {
+			const elapsed = Date.now() - dispatchStartMs;
+			if (elapsed >= retryBudgetMs) {
+				console.warn(
+					`[Gateway Proxy] retry budget exhausted elapsed=${elapsed}ms budget=${retryBudgetMs}ms attempt=${attemptCount + 1}, stopping failover`
+				);
+				break;
+			}
+		}
+
 		attemptCount += 1;
 		const timingAttempt = timing?.startAttempt(route);
 		lastTimingAttempt = timingAttempt;
@@ -315,17 +362,49 @@ export async function failoverDispatch(
 			`[Gateway Proxy] calling provider providerId=${route.providerId} model=${route.providerModelName}${isStickyAttempt ? ' sticky=1' : ''} attempt=${attemptCount}`
 		);
 
+		// Hedge timeout：若启用且在首字节到达前超过阈值，则 abort 当前请求并切换 provider
+		let hedgeSignal: AbortSignal | undefined;
+		let hedgeTimer: ReturnType<typeof setTimeout> | undefined;
+		if (hedgeTimeoutMs != null && hedgeTimeoutMs > 0 && timing != null) {
+			const hedgeController = new AbortController();
+			hedgeSignal = hedgeController.signal;
+			hedgeTimer = setTimeout(() => {
+				if (!hedgeSignal.aborted) {
+					console.warn(
+						`[Gateway Proxy] hedge timeout trigger providerId=${route.providerId} timeout=${hedgeTimeoutMs}ms attempt=${attemptCount}`
+					);
+					hedgeController.abort();
+				}
+			}, hedgeTimeoutMs);
+		}
+
 		let response: Response;
 		let usagePromise: Promise<UsageFromStream>;
 		let upstreamRequestId: string | null = null;
 		let dispatchMeta: ProxyDispatchMeta | undefined;
 		try {
-			const dispatched = await dispatch(route, requestSignal, timing, timingAttempt);
+			const dispatched = await dispatch(route, hedgeSignal ?? requestSignal, timing, timingAttempt);
 			response = dispatched.response;
 			usagePromise = dispatched.usagePromise;
 			upstreamRequestId = dispatched.upstreamRequestId;
 			dispatchMeta = dispatched.meta;
 		} catch (err) {
+			// hedge abort 被触发时 throw 的 DOMException 不属于需要告警的 fetch 错误
+			const isHedgeAbort =
+				hedgeSignal?.aborted === true &&
+				err instanceof DOMException &&
+				err.name === 'AbortError';
+			if (hedgeTimer) {
+				clearTimeout(hedgeTimer);
+				hedgeTimer = undefined;
+			}
+			if (isHedgeAbort) {
+				console.warn(
+					`[Gateway Proxy] hedge aborted providerId=${route.providerId} attempt=${attemptCount}, trying next`
+				);
+				if (hasNextAttempt) timing?.markAttemptFailover(timingAttempt);
+				continue;
+			}
 			timing?.markAttemptError(timingAttempt, err);
 			if (hasNextAttempt) timing?.markAttemptFailover(timingAttempt);
 			const errMessage = err instanceof Error ? err.message : String(err);
@@ -334,6 +413,10 @@ export async function failoverDispatch(
 			);
 			const fetchClassification = classifyUpstreamFetchFailure();
 			recordRouteStabilityFailure(route.targetId, 'error');
+			recordBanditFailure(route.targetId);
+			if (route.providerKeyFingerprint) {
+				markKeyFailure(route.providerKeyFingerprint, 'server');
+			}
 			if (
 				stickySession &&
 				isStickyAttempt &&
@@ -352,6 +435,11 @@ export async function failoverDispatch(
 			});
 			lastRoute = route;
 			continue;
+		} finally {
+			if (hedgeTimer) {
+				clearTimeout(hedgeTimer);
+				hedgeTimer = undefined;
+			}
 		}
 
 		lastResponse = response;
@@ -363,6 +451,10 @@ export async function failoverDispatch(
 			recordProviderSuccess(route.providerId);
 			recordProviderRequest(route.providerId);
 			recordRouteStabilitySuccess(route.targetId);
+			recordBanditSuccess(route.targetId);
+			if (route.providerKeyFingerprint) {
+				markKeySuccess(route.providerKeyFingerprint);
+			}
 			if (stickySession) {
 				if (isStickyAttempt && stickySession.bindingToken) {
 					scheduleStickyTouchIfNeeded(repos, stickySession);
@@ -419,6 +511,10 @@ export async function failoverDispatch(
 
 		if (classification.failureKind) {
 			recordRouteStabilityFailure(route.targetId, 'error');
+			recordBanditFailure(route.targetId);
+			if (route.providerKeyFingerprint) {
+				markKeyFailure(route.providerKeyFingerprint, classification.failureKind);
+			}
 			const circuitResult = markProviderFailure(
 				route.providerId,
 				classification.failureKind,
@@ -446,6 +542,8 @@ export async function failoverDispatch(
 		} else if (response.status === 404) {
 			// 404：路由配置问题（模型名/路径不对），只记录 route 稳定性失败，不触发 provider 熔断
 			recordRouteStabilityFailure(route.targetId, 'error');
+			recordBanditFailure(route.targetId);
+			// 404 不算 key 故障，不触发 key 级熔断（可能是模型名映射问题，换 key 也无用）
 		}
 		if (hasNextAttempt) timing?.markAttemptFailover(timingAttempt);
 		console.warn(
