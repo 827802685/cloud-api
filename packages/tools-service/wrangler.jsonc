@@ -1,11 +1,14 @@
 // Tools Service — Cloudflare Worker 部署配置
 // 通过 `GEN_TOOLS_WRANGLER=1` 或硬编码修改。默认仅本地调试。
-name = "tools-service"
-main = "dist/worker.js"
-compatibility_date = "2026-01-01"
-workers_dev = false
-
-[vars]
-# 调用方（Gateway Proxy）需携带 `Authorization: Bearer <TOOLS_SERVICE_TOKEN>`。
-# 留空则跳过内部鉴权（仅建议内网或临时调试）。
-# TOOLS_SERVICE_TOKEN = ""
+{
+	"name": "mcp-key",
+	"main": "dist/worker.js",
+	"compatibility_date": "2026-01-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"vars": {
+		// 调用方（Gateway Proxy）需携带 `Authorization: Bearer <TOOLS_SERVICE_TOKEN>`。
+		// 留空则跳过内部鉴权（仅建议内网或临时调试）。
+		// "TOOLS_SERVICE_TOKEN": ""
+	}
+}
