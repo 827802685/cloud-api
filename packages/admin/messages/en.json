@@ -38,7 +38,7 @@
 		"import": "Import",
 		"delete": "Delete",
 		"batchDelete": "Batch Delete",
-		"selectAll": "Select All",
+		"selectAll": "Select all",
 		"clear": "Clear",
 		"select": "Select",
 		"copy": "Copy",
@@ -80,7 +80,6 @@
 		"send": "Send",
 		"reload": "Reload",
 		"duplicate": "Duplicate",
-		"selectAll": "Select all",
 		"active": "Active",
 		"inactive": "Inactive",
 		"status": "Status",
@@ -566,8 +565,28 @@
 			"orderTitle": "Rank {rank}",
 			"save": "Save weights",
 			"toolbarButton": "Weight adjust",
-			"toolbarButtonHint": "Adjust auto mode model selection weights"
+			"toolbarButtonHint": "Adjust auto mode model selection weights",
+			"updated": "Updated: {count}",
+			"notFound": "Not found: {count}",
+			"failed": "Failed: {count}",
+			"saveFailed": "Batch weight update failed"
 		},
+		"batchDeleteConfirm": "Are you sure you want to delete {count} model(s)? This will also delete all associated routes, tags, and route pools. This action cannot be undone.",
+		"batchDeleteResult": {
+			"deleted": "Deleted: {count}",
+			"notFound": "Not found: {count}",
+			"failed": "Failed: {count}"
+		},
+		"batchDeleteFailed": "Batch delete failed",
+		"autoAddRoutesConfirm": "Automatically add routes for all models? This will match models to providers by vendor and create routes using the OpenAI protocol. Existing routes will be skipped.",
+		"autoAddRoutesResult": {
+			"created": "Created: {count}",
+			"skipped": "Skipped: {count}",
+			"failed": "Failed: {count}",
+			"failedDetails": "Failed details:"
+		},
+		"autoAddRoutesFailed": "Auto-add routes failed"
+	},
 	"routes": {
 		"title": "Model Routes",
 		"subtitle": "Configure model-to-provider routing",
@@ -1886,5 +1905,4 @@
 		"providerLabel": "Provider: {id}",
 		"stdMetered": "Standard {std} · Metered {metered}"
 	}
-}
 }

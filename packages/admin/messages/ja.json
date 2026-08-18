@@ -38,7 +38,7 @@
 		"import": "インポート",
 		"delete": "削除",
 		"batchDelete": "一括削除",
-		"selectAll": "全選択",
+		"selectAll": "すべて選択",
 		"clear": "クリア",
 		"select": "選択",
 		"copy": "コピー",
@@ -80,7 +80,6 @@
 		"send": "送信",
 		"reload": "再読み込み",
 		"duplicate": "複製",
-		"selectAll": "すべて選択",
 		"active": "有効",
 		"inactive": "無効",
 		"status": "ステータス",
@@ -566,8 +565,28 @@
 			"orderTitle": "第 {rank} 位",
 			"save": "ウェイトを保存",
 			"toolbarButton": "ウェイト調整",
-			"toolbarButtonHint": "auto モードのモデル選択ウェイトを調整"
+			"toolbarButtonHint": "auto モードのモデル選択ウェイトを調整",
+			"updated": "更新済み: {count}",
+			"notFound": "見つかりません: {count}",
+			"failed": "失敗: {count}",
+			"saveFailed": "バッチ重み更新に失敗しました"
 		},
+		"batchDeleteConfirm": "{count} 件のモデルを削除しますか？関連するすべてのルート、タグ、ルートプールも削除されます。この操作は元に戻せません。",
+		"batchDeleteResult": {
+			"deleted": "削除済み: {count}",
+			"notFound": "見つかりません: {count}",
+			"failed": "失敗: {count}"
+		},
+		"batchDeleteFailed": "一括削除に失敗しました",
+		"autoAddRoutesConfirm": "すべてのモデルにルートを自動追加しますか？ベンダーでモデルをプロバイダーにマッチングし、OpenAI プロトコルでルートを作成します。既存のルートはスキップされます。",
+		"autoAddRoutesResult": {
+			"created": "作成済み: {count}",
+			"skipped": "スキップ: {count}",
+			"failed": "失敗: {count}",
+			"failedDetails": "失敗の詳細:"
+		},
+		"autoAddRoutesFailed": "ルート自動追加に失敗しました"
+	},
 	"routes": {
 		"title": "モデル Route",
 		"subtitle": "モデルから Provider へのルーティングを設定",
@@ -1886,5 +1905,4 @@
 		"providerLabel": "Provider：{id}",
 		"stdMetered": "標準 {std} · 計量 {metered}"
 	}
-}
 }

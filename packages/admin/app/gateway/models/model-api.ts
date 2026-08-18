@@ -142,7 +142,7 @@ export async function batchUpdateModelWeights(
 	});
 	const data = await readApiJson<BatchWeightUpdateResult>(response);
 	if (data.success && data.data) return { success: true, data: data.data };
-	return { success: false, message: data.message || 'Batch weight update failed' };
+	return { success: false, message: data.message || '' };
 }
 
 export async function fetchImportCatalog(): Promise<PresetCatalogRow[]> {

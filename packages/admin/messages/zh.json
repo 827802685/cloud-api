@@ -80,7 +80,6 @@
 		"send": "发送",
 		"reload": "重新加载",
 		"duplicate": "复制",
-		"selectAll": "全选",
 		"active": "活跃",
 		"inactive": "未启用",
 		"status": "状态",
@@ -566,8 +565,28 @@
 			"orderTitle": "第 {rank} 位",
 			"save": "保存权重",
 			"toolbarButton": "权重调节",
-			"toolbarButtonHint": "调节 Auto 模式模型选择权重"
+			"toolbarButtonHint": "调节 Auto 模式模型选择权重",
+			"updated": "已更新 {count}",
+			"notFound": "未找到 {count}",
+			"failed": "失败 {count}",
+			"saveFailed": "批量权重更新失败"
 		},
+		"batchDeleteConfirm": "确定要删除 {count} 个模型吗？这将同时删除所有关联的路由、标签和路由池。此操作不可撤销。",
+		"batchDeleteResult": {
+			"deleted": "已删除: {count}",
+			"notFound": "未找到: {count}",
+			"failed": "失败: {count}"
+		},
+		"batchDeleteFailed": "批量删除失败",
+		"autoAddRoutesConfirm": "自动为所有模型添加路由？将按厂商匹配模型到供应商，并使用 OpenAI 协议创建路由。已存在的路由将跳过。",
+		"autoAddRoutesResult": {
+			"created": "已创建: {count}",
+			"skipped": "已跳过: {count}",
+			"failed": "失败: {count}",
+			"failedDetails": "失败详情:"
+		},
+		"autoAddRoutesFailed": "自动添加路由失败"
+	},
 	"routes": {
 		"title": "模型路由",
 		"subtitle": "配置模型到供应商的路由",
@@ -1886,5 +1905,4 @@
 		"providerLabel": "供应商：{id}",
 		"stdMetered": "标准 {std} · 成本 {metered}"
 	}
-}
 }

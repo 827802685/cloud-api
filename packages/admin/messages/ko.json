@@ -80,7 +80,6 @@
 		"send": "전송",
 		"reload": "다시 불러오기",
 		"duplicate": "복제",
-		"selectAll": "전체 선택",
 		"active": "활성",
 		"inactive": "비활성",
 		"status": "상태",
@@ -566,8 +565,28 @@
 			"orderTitle": "{rank}번째",
 			"save": "가중치 저장",
 			"toolbarButton": "가중치 조정",
-			"toolbarButtonHint": "auto 모드 모델 선택 가중치 조정"
+			"toolbarButtonHint": "auto 모드 모델 선택 가중치 조정",
+			"updated": "업데이트됨: {count}",
+			"notFound": "찾을 수 없음: {count}",
+			"failed": "실패: {count}",
+			"saveFailed": "일괄 가중치 업데이트 실패"
 		},
+		"batchDeleteConfirm": "{count}개의 모델을 삭제하시겠습니까? 관련된 모든 라우트, 태그, 라우트 풀도 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+		"batchDeleteResult": {
+			"deleted": "삭제됨: {count}",
+			"notFound": "찾을 수 없음: {count}",
+			"failed": "실패: {count}"
+		},
+		"batchDeleteFailed": "일괄 삭제 실패",
+		"autoAddRoutesConfirm": "모든 모델에 라우트를 자동 추가하시겠습니까? 벤더별로 모델을 공급자에 매칭하고 OpenAI 프로토콜로 라우트를 생성합니다. 기존 라우트는 건너뜁니다.",
+		"autoAddRoutesResult": {
+			"created": "생성됨: {count}",
+			"skipped": "건너뜀: {count}",
+			"failed": "실패: {count}",
+			"failedDetails": "실패 세부사항:"
+		},
+		"autoAddRoutesFailed": "라우트 자동 추가 실패"
+	},
 	"routes": {
 		"title": "모델 Routes",
 		"subtitle": "모델과 Provider 간 Route를 설정합니다",
@@ -1886,5 +1905,4 @@
 		"providerLabel": "Provider: {id}",
 		"stdMetered": "표준 {std} · 계측 {metered}"
 	}
-}
 }

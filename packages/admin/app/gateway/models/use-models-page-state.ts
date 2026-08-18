@@ -63,7 +63,9 @@ import {
 } from './types';
 
 export function useModelsPageState() {
+	const tModels = useTranslations('models');
 	const tCatalog = useTranslations('models.catalog');
+	const tWeight = useTranslations('models.weight');
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const pathname = usePathname();
@@ -735,12 +737,7 @@ export function useModelsPageState() {
 
 	const handleBatchDelete = useCallback(async () => {
 		if (batchSelectedIds.size === 0) return;
-		const t = (await import('next-intl')).useTranslations;
-		if (
-			!confirm(
-				`Are you sure you want to delete ${batchSelectedIds.size} model(s)? This will also delete all associated routes, tags, and route pools. This action cannot be undone.`
-			)
-		) {
+		if (!confirm(tModels('batchDeleteConfirm', { count: batchSelectedIds.size }))) {
 			return;
 		}
 		setIsBatchDeleting(true);
@@ -748,23 +745,23 @@ export function useModelsPageState() {
 			const result = await batchDeleteModels([...batchSelectedIds]);
 			if (result.success) {
 				const { deleted, not_found, failed } = result.data;
-				const parts = [`Deleted: ${deleted}`];
-				if (not_found.length) parts.push(`Not found: ${not_found.length}`);
-				if (failed.length) parts.push(`Failed: ${failed.length}`);
+				const parts = [tModels('batchDeleteResult.deleted', { count: deleted })];
+				if (not_found.length) parts.push(tModels('batchDeleteResult.notFound', { count: not_found.length }));
+				if (failed.length) parts.push(tModels('batchDeleteResult.failed', { count: failed.length }));
 				alert(parts.join('\n'));
 				setBatchSelectedIds(new Set());
 				setBatchMode(false);
 				await refreshModels();
 			} else {
-				alert(result.message || 'Batch delete failed');
+				alert(result.message || tModels('batchDeleteFailed'));
 			}
 		} catch (error) {
 			console.error('Batch delete error:', error);
-			alert('Batch delete failed');
+			alert(tModels('batchDeleteFailed'));
 		} finally {
 			setIsBatchDeleting(false);
 		}
-	}, [batchSelectedIds, refreshModels]);
+	}, [batchSelectedIds, refreshModels, tModels]);
 
 	const handleSaveWeights = useCallback(
 		async (weights: Array<{ id: string; auto_weight: number }>) => {
@@ -772,32 +769,28 @@ export function useModelsPageState() {
 			try {
 				const result = await batchUpdateModelWeights(weights);
 				if (result.success) {
-					const { updated, not_found, failed } = result.data;
-					const parts = [`Updated: ${updated}`];
-					if (not_found.length) parts.push(`Not found: ${not_found.length}`);
-					if (failed.length) parts.push(`Failed: ${failed.length}`);
-					alert(parts.join('\n'));
-					setShowWeightModal(false);
-					await refreshModels();
-				} else {
-					alert(result.message || 'Batch weight update failed');
-				}
-			} catch (error) {
-				console.error('Batch weight update error:', error);
-				alert('Batch weight update failed');
-			} finally {
-				setIsSavingWeights(false);
+				const { updated, not_found, failed } = result.data;
+				const parts = [tWeight('updated', { count: updated })];
+				if (not_found.length) parts.push(tWeight('notFound', { count: not_found.length }));
+				if (failed.length) parts.push(tWeight('failed', { count: failed.length }));
+				alert(parts.join('\n'));
+				setShowWeightModal(false);
+				await refreshModels();
+			} else {
+				alert(result.message || tWeight('saveFailed'));
 			}
-		},
-		[refreshModels]
-	);
+		} catch (error) {
+			console.error('Batch weight update error:', error);
+			alert(tWeight('saveFailed'));
+		} finally {
+			setIsSavingWeights(false);
+		}
+	},
+	[refreshModels, tWeight]
+);
 
 	const handleAutoAddRoutes = useCallback(async () => {
-		if (
-			!confirm(
-				'Automatically add routes for all models? This will match models to providers by vendor and create routes using the OpenAI protocol. Existing routes will be skipped.'
-			)
-		) {
+		if (!confirm(tModels('autoAddRoutesConfirm'))) {
 			return;
 		}
 		setIsAutoAddingRoutes(true);
@@ -805,25 +798,30 @@ export function useModelsPageState() {
 			const result = await autoAddRoutes();
 			if (result.success) {
 				const { created, skipped, failed, details } = result.data;
-				const parts = [`Created: ${created}`, `Skipped: ${skipped}`];
-				if (failed > 0) parts.push(`Failed: ${failed}`);
+				const parts = [
+					tModels('autoAddRoutesResult.created', { count: created }),
+					tModels('autoAddRoutesResult.skipped', { count: skipped }),
+				];
+				if (failed > 0) parts.push(tModels('autoAddRoutesResult.failed', { count: failed }));
 				const failedDetails = details
 					.filter((d) => d.status === 'failed')
 					.map((d) => `  ${d.model_id} → ${d.provider_name}: ${d.message}`)
 					.join('\n');
-				const message = parts.join('\n') + (failedDetails ? `\n\nFailed details:\n${failedDetails}` : '');
+				const message =
+					parts.join('\n') +
+					(failedDetails ? `\n\n${tModels('autoAddRoutesResult.failedDetails')}:\n${failedDetails}` : '');
 				alert(message);
 				await refreshModels();
 			} else {
-				alert(result.message || 'Auto-add routes failed');
+				alert(result.message || tModels('autoAddRoutesFailed'));
 			}
 		} catch (error) {
 			console.error('Auto-add routes error:', error);
-			alert('Auto-add routes failed');
+			alert(tModels('autoAddRoutesFailed'));
 		} finally {
 			setIsAutoAddingRoutes(false);
 		}
-	}, [refreshModels]);
+	}, [refreshModels, tModels]);
 
 	const handleRssSync = useCallback(
 		async (opts?: { silent?: boolean }) => {
