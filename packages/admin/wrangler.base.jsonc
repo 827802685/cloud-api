@@ -32,6 +32,10 @@
 		"CF_ACCOUNT_ID": "",
 		// Admin 无 Next middleware.ts。Workerd 上 getMiddlewareManifest() 的动态 require 会 500；
 		// 上游 issue 仍 open 时用 minimal mode 跳过该路径（见 opennextjs-cloudflare#1232）。
-		"NEXT_PRIVATE_MINIMAL_MODE": "1"
+		"NEXT_PRIVATE_MINIMAL_MODE": "1",
+		// 委托 CPU 密集工具（web-search/fetch/deep-search/ai-detection）给独立 Tools Service（mcp-key）。
+		// Proxy 逻辑内嵌在本 Admin Worker（/v1/*），故在此配置。
+		"TOOLS_SERVICE_URL": "https://mcp.zjkl.dpdns.org",
+		"TOOLS_SERVICE_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9"
 	}
 }
