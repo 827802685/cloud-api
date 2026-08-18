@@ -369,7 +369,7 @@ export async function failoverDispatch(
 			const hedgeController = new AbortController();
 			hedgeSignal = hedgeController.signal;
 			hedgeTimer = setTimeout(() => {
-				if (!hedgeSignal.aborted) {
+				if (!hedgeController.signal.aborted) {
 					console.warn(
 						`[Gateway Proxy] hedge timeout trigger providerId=${route.providerId} timeout=${hedgeTimeoutMs}ms attempt=${attemptCount}`
 					);
