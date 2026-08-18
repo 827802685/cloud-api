@@ -16,19 +16,12 @@ cd octafuse-gateway
 ```bash
 npm install
 npm run db:migrate
-npm run dev:proxy
-```
-
-另开一个终端：
-
-```bash
 npm run dev:admin
 ```
 
 | 服务 | 地址 / 位置 |
 |------|-------------|
-| Proxy 逻辑（本地 `dev:proxy`） | `http://127.0.0.1:8787` |
-| 管理后台 preview | `http://127.0.0.1:8789` |
+| 管理后台（含 Proxy 逻辑，本地 `dev:admin`） | `http://127.0.0.1:8789` |
 | 控制台登录 | `admin` / `admin`（本地默认；首次 `dev:admin` 会自动生成 `packages/admin/.dev.vars`） |
 | D1 本地状态 | `./.wrangler/state` |
 | 管理 API Bearer | `sk-dev-admin-key`（管理 API，不是网页密码） |

@@ -1,9 +1,12 @@
 /**
- * Proxy 双目标打包：
+ * Proxy 打包：
  * 1. Node 运行时（dist/runtime/node.js）：Docker / 本地 node 部署
- * 2. Cloudflare Workers（dist/worker.js）：Connect to Git / wrangler deploy
  *
- * 两种目标都把 `@cloud-api/*` workspace 源码打进 bundle，
+ * Cloudflare 生产为单 Worker 二合一：Proxy 逻辑（`@cloud-api/proxy`）作为库被
+ * Admin Worker 直接复用（见 packages/admin/lib/proxy-app.ts），不再单独打包/部署
+ * 独立 Proxy Worker，因此不再产出 dist/worker.js。
+ *
+ * 打包时把 `@cloud-api/*` workspace 源码打进 bundle，
  * 其余裸导入（hono、postgres、drizzle-orm…）保持 external。
  */
 import * as esbuild from 'esbuild';
@@ -27,7 +30,7 @@ const bundleWorkspacePackages = {
 	},
 };
 
-// ── 目标 1：Node 运行时 ─────────────────────────────────────────────
+// ── Node 运行时 ─────────────────────────────────────────────────────
 const nodeOutfile = join(pkgRoot, 'dist/runtime/node.js');
 
 await esbuild.build({
@@ -42,22 +45,6 @@ await esbuild.build({
 
 verifyNoWorkspaceExternals(nodeOutfile);
 console.log('[proxy/build] OK: node bundle →', nodeOutfile);
-
-// ─ 目标 2：Cloudflare Workers（Connect to Git / wrangler deploy）────
-const cfOutfile = join(pkgRoot, 'dist/worker.js');
-
-await esbuild.build({
-	entryPoints: [join(pkgRoot, 'src/index.ts')],
-	bundle: true,
-	platform: 'neutral',
-	format: 'esm',
-	outfile: cfOutfile,
-	logLevel: 'warning',
-	plugins: [bundleWorkspacePackages],
-});
-
-verifyNoWorkspaceExternals(cfOutfile);
-console.log('[proxy/build] OK: cf bundle   →', cfOutfile);
 
 /** 产物不得再含 `@cloud-api/*` 外部说明符。 */
 function verifyNoWorkspaceExternals(outfile) {

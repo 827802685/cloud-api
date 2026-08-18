@@ -28,7 +28,7 @@ npm run deploy        # Deploy to Cloudflare
 npm run cf-typegen    # Regenerate cloudflare-env.d.ts (required after fresh clone; file is gitignored)
 ```
 
-For full admin API debugging use **`npm run preview`** or root **`npm run dev:admin`** (D1), or **`npm run dev:node`** / **`npm run dev:admin:node`** (Postgres). Do not rely on the Proxy logic (`dev:proxy`) alone.
+For full admin API debugging use **`npm run preview`** or root **`npm run dev:admin`** (D1, includes the Proxy logic), or **`npm run dev:node`** / **`npm run dev:admin:node`** (Postgres).
 
 After a remote deploy (`deploy:*` / `db:migrate:remote`) on this machine, run **`npm run gen:wrangler`** before local D1 dev so Admin/Proxy/migrate share the same local SQLite identity — see [local-development.md §1](../../docs/developers/local-development.md#️-本地-d1-与-database_id远程-deploy-后必读).
 

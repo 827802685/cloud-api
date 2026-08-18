@@ -85,7 +85,7 @@ Proxy 通过以下环境变量（Workers 里为 `wrangler` `vars` / binding）�
 | `TOOLS_SERVICE_URL` | 工具服务基址，例如 `http://127.0.0.1:8899`、`http://gateway-tools:8899` 或 `https://tools.example.com`。**必填以启用委托**；留空则 Proxy 内联执行（向后兼容）。 |
 | `TOOLS_SERVICE_TOKEN` | 可选内部令牌。Proxy 与工具服务两端**都**设置且相同，则请求携带 `Authorization: Bearer <token>`。任一端缺失即不校验。 |
 
-Cloudflare Worker 场景在 `packages/proxy/wrangler.jsonc`（或经 `gen:wrangler` 生成的配置）的 `vars` 里添加：
+Cloudflare Worker 场景在 `packages/admin/wrangler.base.jsonc`（或经 `gen:wrangler` 生成的 `packages/admin/wrangler.jsonc`，Proxy 逻辑内嵌于 Admin Worker）的 `vars` 里添加：
 
 ```jsonc
 "vars": {

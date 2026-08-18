@@ -266,12 +266,10 @@ export function ensureD1Database(databaseName, opts = {}) {
 /**
  * @param {string} instance
  * @param {{
- *   proxyWorkerName: string,
  *   adminWorkerName: string,
  *   d1DatabaseName: string,
  *   d1DatabaseId: string,
  *   d1MigrationsWorkerName: string,
- *   proxyCustomDomain?: string,
  *   adminCustomDomain?: string,
  * }} names
  */
@@ -285,7 +283,6 @@ export function writeInstanceEnvFile(instance, names) {
 		`# Instance: ${instance}`,
 		`# Docs: docs/operators/deployment/cloudflare-quickstart.md`,
 		``,
-		`PROXY_WORKER_NAME=${names.proxyWorkerName}`,
 		`ADMIN_WORKER_NAME=${names.adminWorkerName}`,
 		``,
 		`D1_DATABASE_NAME=${names.d1DatabaseName}`,
@@ -293,11 +290,6 @@ export function writeInstanceEnvFile(instance, names) {
 		`D1_MIGRATIONS_WORKER_NAME=${names.d1MigrationsWorkerName}`,
 		``,
 	];
-	if (names.proxyCustomDomain) {
-		lines.push(`PROXY_CUSTOM_DOMAIN=${names.proxyCustomDomain}`);
-	} else {
-		lines.push(`# PROXY_CUSTOM_DOMAIN=`);
-	}
 	if (names.adminCustomDomain) {
 		lines.push(`ADMIN_CUSTOM_DOMAIN=${names.adminCustomDomain}`);
 	} else {
@@ -372,7 +364,7 @@ export function fetchRemoteMasterKey(vars) {
 
 export function printLocalDevHint() {
 	log("Remote deploy wrote D1 database_id into generated wrangler.jsonc.");
-	log("Before local dev:proxy / dev:admin, run:");
+	log("Before local dev:admin, run:");
 	log("  npm run gen:wrangler");
 	log(
 		"See docs/developers/local-development.md §1 (database_id).",
@@ -417,7 +409,6 @@ export async function promptYesNo(question, defaultYes = true) {
 export function namesFromPrefix(prefix) {
 	const p = prefix.replace(/\/+$/, "").trim();
 	return {
-		proxyWorkerName: `${p}-proxy`,
 		adminWorkerName: `${p}-admin`,
 		d1DatabaseName: p,
 		d1MigrationsWorkerName: `${p}-d1-migrations`,
@@ -427,7 +418,6 @@ export function namesFromPrefix(prefix) {
 export function printDownstreamHints({
 	proxyUrl,
 	adminUrl,
-	proxyWorkerName,
 	adminWorkerName,
 }) {
 	console.log("");
@@ -436,10 +426,10 @@ export function printDownstreamHints({
 		console.log(`GATEWAY_URL=${proxyUrl}`);
 	} else {
 		console.log(
-			`GATEWAY_URL=https://${proxyWorkerName}.<account-subdomain>.workers.dev`,
+			`GATEWAY_URL=https://${adminWorkerName}.<account-subdomain>.workers.dev`,
 		);
 		console.log(
-			`# Or open Dashboard → Workers → ${proxyWorkerName} for the workers.dev URL`,
+			`# Or open Dashboard → Workers → ${adminWorkerName} for the workers.dev URL`,
 		);
 	}
 	if (adminUrl) {

@@ -66,7 +66,7 @@ flowchart LR
 
 ## Wrangler 配置
 
-在 **`packages/proxy/wrangler.base.jsonc`**（生成后的 `wrangler.jsonc`）中启用请求取消信号（与断连检测配合）：
+在 **`packages/admin/wrangler.base.jsonc`**（生成后的 `wrangler.jsonc`）中启用请求取消信号（与断连检测配合）：
 
 ```jsonc
 "compatibility_flags": ["nodejs_compat", "enable_request_signal"],
@@ -82,7 +82,7 @@ flowchart LR
 | `packages/proxy/src/services/proxy.ts` | 组装路由与 `requestSignal` |
 | `packages/proxy/src/routes/v1/chat.ts` 等 | 传入 signal、`cancelled` 状态 |
 | `packages/proxy/src/services/usage-tracker.ts` | `recordUsage` |
-| `packages/proxy/wrangler.base.jsonc` → 生成的 `wrangler.jsonc` | `enable_request_signal` |
+| `packages/admin/wrangler.base.jsonc` → 生成的 `wrangler.jsonc` | `enable_request_signal` |
 
 ## 限制与排查日志
 

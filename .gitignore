@@ -21,7 +21,6 @@ docker/test
 data/
 
 # Generated Wrangler configs (source: *.base.jsonc + npm run gen:wrangler)
-packages/proxy/wrangler.jsonc
 packages/admin/wrangler.jsonc
 packages/core/wrangler.d1.jsonc
 

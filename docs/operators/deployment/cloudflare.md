@@ -59,7 +59,7 @@
 | 文件 | 角色 |
 |------|------|
 | `packages/*/wrangler.base.jsonc`、`packages/core/wrangler.d1.base.jsonc` | **已提交模板**（无生产 `database_id`） |
-| `packages/admin/wrangler.jsonc`（含 Proxy 逻辑）、`packages/proxy/wrangler.jsonc`（仅本地 `dev:proxy` 调试）、`packages/core/wrangler.d1.jsonc` | **生成产物**（`npm run gen:wrangler`，gitignore） |
+| `packages/admin/wrangler.jsonc`（含 Proxy 逻辑）、`packages/core/wrangler.d1.jsonc` | **生成产物**（`npm run gen:wrangler`，gitignore） |
 | `cloudflare-worker/example.env` | **dev 演示**配置（可提交） |
 | `cloudflare-worker/*.env`（除 example） | **生产/私有**（gitignore）；或仅用 Cloudflare Dashboard **Build variables** |
 

@@ -8,8 +8,6 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"dev": "wrangler dev --config ./wrangler.jsonc --port 8787 --persist-to ../../.wrangler/state --log-level info",
-		"deploy": "wrangler deploy --config ./wrangler.jsonc",
 		"predev:node": "npm run build:node-index -w @cloud-api/core",
 		"dev:node": "dotenv -c -- tsx src/runtime/node.ts",
 		"start:node": "tsx src/runtime/node.ts",

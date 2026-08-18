@@ -9,7 +9,7 @@
  * - With D1_DATABASE_ID (remote deploy / db:migrate:remote) → local wrangler dev uses a *different*
  *   SQLite under .wrangler/state than npm run db:migrate (default local path).
  * After any remote deploy on this machine, run `npm run gen:wrangler` (no D1_DATABASE_ID in shell)
- * before dev:proxy / dev:admin. See docs/developers/local-development.md §1.
+ * before dev:admin. See docs/developers/local-development.md §1.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -30,8 +30,6 @@ function resolveNames() {
 		trimEnv("D1_DATABASE_NAME") || "cloud-api";
 
 	return {
-		proxyWorkerName:
-			trimEnv("PROXY_WORKER_NAME") || "cloud-api-proxy",
 		adminWorkerName:
 			trimEnv("ADMIN_WORKER_NAME") || "cloud-api-admin",
 		d1MigrationsWorkerName:
@@ -39,7 +37,6 @@ function resolveNames() {
 			"cloud-api-d1-migrations",
 		d1DatabaseName,
 		d1DatabaseId: trimEnv("D1_DATABASE_ID"),
-		proxyCustomDomain: trimEnv("PROXY_CUSTOM_DOMAIN") || "",
 		adminCustomDomain: trimEnv("ADMIN_CUSTOM_DOMAIN") || "",
 	};
 }
@@ -106,30 +103,6 @@ function customDomainRoutes(domain) {
 	return [{ pattern: domain, custom_domain: true }];
 }
 
-function generateProxy(names) {
-	const base = readBase("packages/proxy/wrangler.base.jsonc");
-	const config = {
-		...base,
-		name: names.proxyWorkerName,
-		d1_databases: [
-			applyD1Binding(
-				base.d1_databases[0],
-				names.d1DatabaseName,
-				names.d1DatabaseId,
-			),
-		],
-	};
-
-	const routes = customDomainRoutes(names.proxyCustomDomain);
-	if (routes) {
-		config.routes = routes;
-	} else {
-		delete config.routes;
-	}
-
-	writeJson("packages/proxy/wrangler.jsonc", config);
-}
-
 function generateAdmin(names) {
 	const base = readBase("packages/admin/wrangler.base.jsonc");
 	const config = {
@@ -190,19 +163,18 @@ function main() {
 		validateRemote(names);
 	}
 
-	generateProxy(names);
 	generateAdmin(names);
 	generateD1(names);
 
 	console.log(
-		`gen-wrangler: proxy=${names.proxyWorkerName} admin=${names.adminWorkerName} d1=${names.d1DatabaseName}` +
+		`gen-wrangler: admin=${names.adminWorkerName} d1=${names.d1DatabaseName}` +
 			(names.d1DatabaseId ? ` id=${names.d1DatabaseId}` : " (local, no database_id)"),
 	);
 
 	if (REMOTE && names.d1DatabaseId) {
 		console.warn(
 			"gen-wrangler: remote config written (includes database_id). " +
-				"Before local dev:proxy/dev:admin, run `npm run gen:wrangler` without D1_DATABASE_ID in the shell.",
+				"Before local dev:admin, run `npm run gen:wrangler` without D1_DATABASE_ID in the shell.",
 		);
 	}
 }

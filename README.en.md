@@ -122,7 +122,7 @@ Ratings are based on each project's current public repository and official docum
 
 ## Quick Start
 
-Requires **Node.js 20+**. Run Proxy and Admin concurrently in **two terminals**.
+Requires **Node.js 20+**. Run Admin (which includes the Proxy logic) in a single terminal.
 
 ```bash
 git clone https://github.com/OctaFuse/octafuse-gateway.git
@@ -131,24 +131,19 @@ npm install
 npm run db:migrate
 ```
 
-Terminal 1 — Proxy (`:8787`):
-
-```bash
-npm run dev:proxy
-```
-
-Terminal 2 — Admin (`:8789`):
+Terminal 1 — Admin (includes Proxy logic, `:8789`):
 
 ```bash
 npm run dev:admin
 ```
 
+(For local Proxy logic debugging, you can also use `npm run dev:proxy:node` with Node + SQL.)
+
 | Service | URL | Description |
 |---------|-----|-------------|
-| Proxy | http://127.0.0.1:8787 | Inference endpoint |
-| Admin | http://127.0.0.1:8789 | Console; local default credentials: **`admin` / `admin`** |
+| Admin (includes Proxy logic) | http://127.0.0.1:8789 | Inference endpoint + console; local default credentials: **`admin` / `admin`** |
 
-The first `dev:admin` run creates `packages/admin/.dev.vars`. Open Admin, configure a Provider, Route, and user API key, then call Proxy with that key. See [docs/users/quickstart.md](./docs/users/quickstart.md) for detailed steps and `curl` examples.
+The first `dev:admin` run creates `packages/admin/.dev.vars`. Open Admin, configure a Provider, Route, and user API key, then call the API with that key. See [docs/users/quickstart.md](./docs/users/quickstart.md) for detailed steps and `curl` examples.
 
 ### Deploy to Cloudflare
 

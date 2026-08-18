@@ -19,7 +19,7 @@
 ## 命令（在仓库根 `npm install` 后）
 
 ```bash
-npm run dev:proxy          # 本地调试 Proxy 逻辑（Worker + 本地 D1）
+npm run dev:admin          # 本地调试 Proxy 逻辑（OpenNext preview，含 Proxy 逻辑 + 本地 D1）
 npm run dev:proxy:node     # Node + SQL（根 `.env`）
 npm run deploy:admin       # Cloudflare 生产部署：Admin Worker（含 Proxy 逻辑）
 ```

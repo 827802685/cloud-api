@@ -13,7 +13,7 @@
 
 | 组件 | Cloudflare 运行时 | Node 运行时 | 数据库 |
 |------|-------------------|-------------|--------|
-| **代理服务（Proxy）**（`packages/proxy`） | **单 Worker 二合一**：逻辑作为库被 Admin Worker 复用（`deploy:admin`），不再单独部署独立 Worker；本地调试可用 `npm run dev:proxy`；**仅绑定 D1**，不用 `DATABASE_URL` | `npm run dev:proxy:node`（`packages/proxy/src/runtime/node.ts`）；**Postgres 或 MySQL**（`DATABASE_DRIVER` + `DATABASE_URL`） | **D1 ⊕ Postgres ⊕ MySQL**（同进程不能混用） |
+| **代理服务（Proxy）**（`packages/proxy`） | **单 Worker 二合一**：逻辑作为库被 Admin Worker 复用（`deploy:admin`），不再单独部署独立 Worker；本地调试可用 `npm run dev:admin`（含 Proxy 逻辑）；**仅绑定 D1**，不用 `DATABASE_URL` | `npm run dev:proxy:node`（`packages/proxy/src/runtime/node.ts`）；**Postgres 或 MySQL**（`DATABASE_DRIVER` + `DATABASE_URL`） | **D1 ⊕ Postgres ⊕ MySQL**（同进程不能混用） |
 | **管理后台（Admin）**（`packages/admin`） | OpenNext + wrangler：`npm run dev:admin` / `deploy:admin`；**绑定同一 D1** | 本地开发：`npm run dev:admin:node`（或 `packages/admin` 内 `npm run dev:node`，`:8789`）；生产：`next start` / Docker：需 **`DATABASE_URL`** + **`DATABASE_DRIVER`**（与 Node 代理服务同语义；Postgres 可省略驱动，**MySQL 须 `mysql`**）与 **`ADMIN_*`** | **D1 ⊕ Postgres ⊕ MySQL 二选一** |
 | **工具服务（Tools Service）**（`packages/tools-service`，可选） | Worker / **Pages Functions**（`_worker.js`）：`npm run deploy:pages -w @cloud-api/tools-service` | **Node 外部服务器（推荐）**：`npm run dev:tools` / `build:tools` + `Dockerfile.tools`，端口 `8899` | **无数据库依赖、无状态**（引擎凭证由调用方经请求体透传） |
 | **Core**（`packages/core`） | 被 Worker / Pages 以 `d1` 驱动引用 | 被 Node 以 `postgres` / `mysql` 驱动引用 | 迁移见下 |

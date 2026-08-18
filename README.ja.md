@@ -122,7 +122,7 @@ Octafuse Gateway の中核的な目標は、**一人会社（OPC）や企業向�
 
 ## クイックスタート
 
-**Node.js 20+** が必要です。Proxy と Admin は、**2 つのターミナル**で同時に起動してください。
+**Node.js 20+** が必要です。Proxy ロジックを含む Admin を**単一のターミナル**で起動します。
 
 ```bash
 git clone https://github.com/OctaFuse/octafuse-gateway.git
@@ -131,24 +131,19 @@ npm install
 npm run db:migrate
 ```
 
-ターミナル 1 — Proxy（`:8787`）：
-
-```bash
-npm run dev:proxy
-```
-
-ターミナル 2 — Admin（`:8789`）：
+ターミナル 1 — Admin（Proxy ロジック含む、`:8789`）：
 
 ```bash
 npm run dev:admin
 ```
 
+（ローカルで Proxy ロジックをデバッグする場合は、`npm run dev:proxy:node` で Node + SQL を使うこともできます。）
+
 | サービス | URL | 説明 |
 |------|------|------|
-| Proxy | http://127.0.0.1:8787 | 推論エンドポイント |
-| Admin | http://127.0.0.1:8789 | 管理コンソール。ローカル環境のデフォルトアカウントは **`admin` / `admin`** |
+| Admin（Proxy ロジック含む） | http://127.0.0.1:8789 | 推論エンドポイント + 管理コンソール。ローカル環境のデフォルトアカウントは **`admin` / `admin`** |
 
-`dev:admin` の初回実行時に `packages/admin/.dev.vars` が生成されます。Admin を開いて Provider、Route、ユーザー API Key を設定し、その Key で Proxy を呼び出してください。詳しい手順と `curl` の例については、[docs/users/quickstart.md](./docs/users/quickstart.md)を参照してください。
+`dev:admin` の初回実行時に `packages/admin/.dev.vars` が生成されます。Admin を開いて Provider、Route、ユーザー API Key を設定し、その Key で API を呼び出してください。詳しい手順と `curl` の例については、[docs/users/quickstart.md](./docs/users/quickstart.md)を参照してください。
 
 ### Cloudflare へのデプロイ
 

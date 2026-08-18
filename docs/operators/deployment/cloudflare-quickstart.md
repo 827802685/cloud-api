@@ -246,7 +246,7 @@ HTTP/2 200
 ```
 
 ```json
-{"status":"ok","service":"octafuse-proxy"}
+{"status":"ok","service":"octafuse-admin"}
 ```
 
 ### 7.2 公开模型目录
@@ -562,7 +562,6 @@ npm run gen:wrangler
 
 ```bash
 npm run db:migrate
-npm run dev:proxy
 npm run dev:admin
 ```
 

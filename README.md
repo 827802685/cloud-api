@@ -18,7 +18,7 @@
 
 ## 快速开始（本地开发）
 
-需要 **Node.js 20+**。代理服务与管理后台需**两个终端**同时运行。
+需要 **Node.js 20+**。管理后台（含 Proxy 逻辑）在**一个终端**中运行。
 
 ```bash
 git clone https://github.com/827802685/cloud-api.git
@@ -27,22 +27,17 @@ npm install
 npm run db:migrate
 ```
 
-终端 1 — 代理服务（`:8787`）：
-
-```bash
-npm run dev:proxy
-```
-
-终端 2 — 管理后台（`:8789`）：
+终端 1 — 管理后台（含 Proxy 逻辑，`:8789`）：
 
 ```bash
 npm run dev:admin
 ```
 
+（本地调试 Proxy 逻辑也可用 `npm run dev:proxy:node` 走 Node + SQL。）
+
 | 服务 | 地址 | 说明 |
 |------|------|------|
-| 代理服务 | http://127.0.0.1:8787 | 推理入口 |
-| 管理后台 | http://127.0.0.1:8789 | 控制台；默认账号 **`admin` / `admin`** |
+| 管理后台（含 Proxy 逻辑） | http://127.0.0.1:8789 | 推理入口 + 控制台；默认账号 **`admin` / `admin`** |
 
 ## 部署到 Cloudflare
 
@@ -123,7 +118,7 @@ npm run deploy:cloudflare -- production --migrate
 ```bash
 # 健康检查（Admin Worker 也暴露 /health）
 curl -i "https://<your-worker>.workers.dev/health"
-# 预期返回：{"status":"ok","service":"cloud-api-proxy"}
+# 预期返回：{"status":"ok","service":"cloud-api-admin"}
 
 # 打开管理后台
 # https://<your-worker>.workers.dev

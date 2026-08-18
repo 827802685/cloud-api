@@ -65,12 +65,10 @@ jobs:
 
       - name: Generate wrangler config
         env:
-          PROXY_WORKER_NAME: ${{ vars.PROXY_WORKER_NAME }}
           ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
           D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
           D1_MIGRATIONS_WORKER_NAME: ${{ vars.D1_MIGRATIONS_WORKER_NAME }}
-          PROXY_CUSTOM_DOMAIN: ${{ vars.PROXY_CUSTOM_DOMAIN }}
           ADMIN_CUSTOM_DOMAIN: ${{ vars.ADMIN_CUSTOM_DOMAIN }}
         run: npm run gen:wrangler -- --remote
 
@@ -104,7 +102,6 @@ jobs:
 
       - name: Run D1 migrations
         env:
-          PROXY_WORKER_NAME: ${{ vars.PROXY_WORKER_NAME }}
           ADMIN_WORKER_NAME: ${{ vars.ADMIN_WORKER_NAME }}
           D1_DATABASE_NAME: ${{ vars.D1_DATABASE_NAME }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}

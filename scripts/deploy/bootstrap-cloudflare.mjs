@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * First-time Cloudflare bootstrap for external self-hosters:
- * login check → create/reuse D1 → write instance env → migrate → deploy
- * proxy + admin → ADMIN_PASSWORD secret → print downstream hints.
+ * login check → create/reuse D1 → write instance env → migrate →
+ * deploy admin (含 Proxy 逻辑) → ADMIN_PASSWORD secret → print downstream hints.
  *
  * Usage (repo root):
  *   npm run bootstrap:cloudflare
@@ -11,7 +11,6 @@
  * Options:
  *   --instance <name>           Env file basename (default: interactive / "default")
  *   --prefix <prefix>           Worker/D1 name prefix (default: cloud-api)
- *   --proxy-domain <host>       Optional custom domain for Proxy
  *   --admin-domain <host>       Optional custom domain for Admin
  *   --admin-password-env <VAR>  Read ADMIN_PASSWORD from that env var (non-interactive)
  *   --reuse-d1                  Fail if D1 name missing (do not create)
@@ -40,13 +39,12 @@ import {
 function usage() {
 	console.log(`Usage: npm run bootstrap:cloudflare -- [options]
 
-First-time Cloudflare deploy (Proxy + Admin + shared D1).
+First-time Cloudflare deploy (Admin 含 Proxy 逻辑 + shared D1).
 
 Options:
   --instance <name>           cloudflare-worker/<name>.env (default: default)
-  --prefix <prefix>           Names: <prefix>-proxy / -admin / D1 <prefix>
+  --prefix <prefix>           Names: <prefix>-admin / D1 <prefix>
                               (default: cloud-api)
-  --proxy-domain <host>       Optional Proxy custom domain
   --admin-domain <host>       Optional Admin custom domain
   --admin-password-env <VAR>  Password from process.env[VAR] (no prompt)
   --reuse-d1                  Require existing D1 with that name
@@ -100,9 +98,6 @@ function parseArgs(argv) {
 			case "--prefix":
 				out.prefix = next();
 				break;
-			case "--proxy-domain":
-				out.proxyDomain = next();
-				break;
 			case "--admin-domain":
 				out.adminDomain = next();
 				break;
@@ -149,18 +144,15 @@ async function main() {
 	}
 
 	const baseNames = namesFromPrefix(prefix);
-	let proxyDomain =
-		typeof args.proxyDomain === "string" ? args.proxyDomain : "";
 	let adminDomain =
 		typeof args.adminDomain === "string" ? args.adminDomain : "";
 
-	if (interactive && !proxyDomain && !adminDomain) {
+	if (interactive && !adminDomain) {
 		const wantDomain = await promptYesNo(
 			"Bind custom domains now? (usually skip; use workers.dev first)",
 			false,
 		);
 		if (wantDomain) {
-			proxyDomain = await promptLine("Proxy custom domain (empty to skip)", "");
 			adminDomain = await promptLine("Admin custom domain (empty to skip)", "");
 		}
 	}
@@ -199,7 +191,6 @@ async function main() {
 	const names = {
 		...baseNames,
 		d1DatabaseId,
-		proxyCustomDomain: proxyDomain || undefined,
 		adminCustomDomain: adminDomain || undefined,
 	};
 
@@ -207,24 +198,17 @@ async function main() {
 
 	/** @type {Record<string, string>} */
 	const vars = {
-		PROXY_WORKER_NAME: names.proxyWorkerName,
 		ADMIN_WORKER_NAME: names.adminWorkerName,
 		D1_DATABASE_NAME: names.d1DatabaseName,
 		D1_DATABASE_ID: names.d1DatabaseId,
 		D1_MIGRATIONS_WORKER_NAME: names.d1MigrationsWorkerName,
 	};
-	if (names.proxyCustomDomain) {
-		vars.PROXY_CUSTOM_DOMAIN = names.proxyCustomDomain;
-	}
 	if (names.adminCustomDomain) {
 		vars.ADMIN_CUSTOM_DOMAIN = names.adminCustomDomain;
 	}
 
 	log("Applying remote D1 migrations…");
 	runNpmWithEnv(vars, ["db:migrate:remote"]);
-
-	log("Deploying Proxy Worker (usually under a minute)…");
-	runNpmWithEnv(vars, ["deploy:proxy"]);
 
 	log(
 		"Deploying Admin Worker (OpenNext build — often several minutes on first run)…",
@@ -257,8 +241,8 @@ async function main() {
 		}
 	}
 
-	const proxyUrl = names.proxyCustomDomain
-		? `https://${names.proxyCustomDomain}`
+	const proxyUrl = names.adminCustomDomain
+		? `https://${names.adminCustomDomain}`
 		: undefined;
 	const adminUrl = names.adminCustomDomain
 		? `https://${names.adminCustomDomain}`
@@ -267,7 +251,6 @@ async function main() {
 	printDownstreamHints({
 		proxyUrl,
 		adminUrl,
-		proxyWorkerName: names.proxyWorkerName,
 		adminWorkerName: names.adminWorkerName,
 	});
 
