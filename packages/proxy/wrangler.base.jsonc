@@ -13,6 +13,11 @@
 			"database_name": "cloud-api"
 		}
 	],
+	"vars": {
+		// 委托 CPU 密集工具（web-search/fetch/deep-search/ai-detection）给独立 Tools Service（mcp-key）。
+		"TOOLS_SERVICE_URL": "https://mcp.zjkl.dpdns.org",
+		"TOOLS_SERVICE_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9"
+	},
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1
