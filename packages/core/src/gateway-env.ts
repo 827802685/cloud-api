@@ -34,6 +34,14 @@ export type GatewayBindings = {
 	CF_API_TOKEN?: string;
 	/** Cloudflare Account ID（Workers AI REST 通道）。 */
 	CF_ACCOUNT_ID?: string;
+	/**
+	 * Tools Service 基址（例如 `https://tools.example.com` 或 Node 容器 `http://127.0.0.1:8899`）。
+	 * 配置后，Proxy 将 web-search / web-fetch / web-deep-search / ai-detection 委托给该服务执行，
+	 * 从而把 CPU 密集工具负载移出 Gateway Worker；未配置则走内联实现（向后兼容）。
+	 */
+	TOOLS_SERVICE_URL?: string;
+	/** 可选的 Tools Service 内部令牌；配置则 Proxy 调用时携带 `Authorization: Bearer <token>`。 */
+	TOOLS_SERVICE_TOKEN?: string;
 };
 
 /**

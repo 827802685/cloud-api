@@ -48,9 +48,14 @@ services:
       DATABASE_DRIVER: postgres
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/octafuse
       PORT: "8787"
+      # 委托 CPU 密集工具到独立 tools-service（未配置则 Proxy 内联执行）
+      TOOLS_SERVICE_URL: "http://tools-service:8899"
+      TOOLS_SERVICE_TOKEN: "${TOOLS_SERVICE_TOKEN:-}"
     depends_on:
       postgres:
         condition: service_healthy
+      tools-service:
+        condition: service_started
     healthcheck:
       test:
         [
@@ -63,6 +68,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # 独立工具引擎服务：承载 web-search / web-fetch / web-deep-search / ai-detection 的 CPU 负载
+  tools-service:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.tools
+    ports:
+      - "${TOOLS_SERVICE_HOST_PORT:-8899}:8899"
+    environment:
+      PORT: "8899"
+      TOOLS_SERVICE_TOKEN: "${TOOLS_SERVICE_TOKEN:-}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8899/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   gateway-admin:
     build:

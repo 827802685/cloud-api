@@ -11,6 +11,10 @@ import {
 	deepSearchByProvider,
 	WebDeepSearchProviderError,
 } from '@cloud-api/tool-engines/web-deep-search';
+import {
+	createToolsServiceClient,
+	resolveToolsServiceConfig,
+} from '../../../services/tools-service-client';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 
@@ -69,12 +73,22 @@ webDeepSearchRoutes.post('/', async (c) => {
 	const count = typeof record.count === 'number' ? clampDeepSearchCount(record.count) : undefined;
 	const started = Date.now();
 
+	// 委托外部 Tools Service（若配置了 TOOLS_SERVICE_URL），否则内联执行
+	const toolsCfg = resolveToolsServiceConfig(c);
+	const client = toolsCfg ? createToolsServiceClient(toolsCfg) : null;
+
 	try {
-		const results = await deepSearchByProvider(provider, {
-			apiKey: providerApiKey,
-			query,
-			count,
-		});
+		const results = client
+			? await client.webDeepSearch(provider, {
+					apiKey: providerApiKey,
+					query,
+					count,
+				})
+			: await deepSearchByProvider(provider, {
+					apiKey: providerApiKey,
+					query,
+					count,
+				});
 
 		const latencyMs = Date.now() - started;
 		const { chargedCost } = await chargeToolUsage({

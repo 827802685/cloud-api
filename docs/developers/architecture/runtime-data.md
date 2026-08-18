@@ -15,6 +15,7 @@
 |------|-------------------|-------------|--------|
 | **代理服务（Proxy）**（`packages/proxy`） | **单 Worker 二合一**：逻辑作为库被 Admin Worker 复用（`deploy:admin`），不再单独部署独立 Worker；本地调试可用 `npm run dev:proxy`；**仅绑定 D1**，不用 `DATABASE_URL` | `npm run dev:proxy:node`（`packages/proxy/src/runtime/node.ts`）；**Postgres 或 MySQL**（`DATABASE_DRIVER` + `DATABASE_URL`） | **D1 ⊕ Postgres ⊕ MySQL**（同进程不能混用） |
 | **管理后台（Admin）**（`packages/admin`） | OpenNext + wrangler：`npm run dev:admin` / `deploy:admin`；**绑定同一 D1** | 本地开发：`npm run dev:admin:node`（或 `packages/admin` 内 `npm run dev:node`，`:8789`）；生产：`next start` / Docker：需 **`DATABASE_URL`** + **`DATABASE_DRIVER`**（与 Node 代理服务同语义；Postgres 可省略驱动，**MySQL 须 `mysql`**）与 **`ADMIN_*`** | **D1 ⊕ Postgres ⊕ MySQL 二选一** |
+| **工具服务（Tools Service）**（`packages/tools-service`，可选） | Worker / **Pages Functions**（`_worker.js`）：`npm run deploy:pages -w @cloud-api/tools-service` | **Node 外部服务器（推荐）**：`npm run dev:tools` / `build:tools` + `Dockerfile.tools`，端口 `8899` | **无数据库依赖、无状态**（引擎凭证由调用方经请求体透传） |
 | **Core**（`packages/core`） | 被 Worker / Pages 以 `d1` 驱动引用 | 被 Node 以 `postgres` / `mysql` 驱动引用 | 迁移见下 |
 
 > **约束**：Cloudflare Worker **不能**直连外部 Postgres/MySQL；若在边缘保留 Worker，则数据库只能是 **D1**。要用 Postgres 或 MySQL，代理服务 / 管理后台须在 **Node** 跑（例如 Docker 自托管，见 [docker.md](../../operators/deployment/docker.md)）。
@@ -29,6 +30,24 @@
 | **B. Hybrid** | **Node**（容器/VPS） | 仍为 **Cloudflare Pages** | 代理服务=**Postgres**，管理后台=**D1**（两库需分别迁移/对齐，适合分阶段上 PG） | 推理侧先行迁 PG，管理端仍在 CF |
 | **C. Full Node + Postgres** | Node | Node（Next 容器等） | **同一 Postgres** | 全自托管、与 K8s/Docker 一致；见 Docker 文档 |
 | **C′. Full Node + MySQL 8** | Node | Node（Next 容器等） | **同一 MySQL** | 与 C 相同交付形态；迁移目录 `migrations-mysql/` |
+
+---
+
+## 工具服务分离（Tools Service）
+
+CPU 密集 / 长耗时的 Agent 工具（`POST /v1/tools/web-search` / `web-fetch` / `web-deep-search` / `ai-detection`）默认在 Proxy 进程内（Worker 或 Node）执行，会占用边缘 CPU 时长预算。可为它们另起**无状态**工具服务 `packages/tools-service`（仅依赖 `core` 类型 + `tool-engines` 引擎客户端，**不含数据库**，端口 `8899`）。
+
+委托开关：Proxy 读 `TOOLS_SERVICE_URL`（可选 `TOOLS_SERVICE_TOKEN`）。配置后对应 4 个工具路由改为 `POST {baseUrl}/v1/tools/...` 远程执行（Web Worker 仅剩轻量转发与计费）；未配置则维持内联实现（向后兼容）。
+
+- **鉴权 / 计费仍在 Proxy**：工具服务不做 Key 校验、不读 `system_config` 计费；引擎 provider 与凭证由 Proxy 读取配置后，经请求体透传给工具服务，成功后由 Proxy 落 `chargeToolUsage`。
+- **凭证不放环境变量**：`web-search`/`web-fetch`/`web-deep-search` 的 `apiKey`、`ai-detection` 的 `secretId`/`secretKey` 均由调用方在请求体携带，服务的 `system_config` 仍是唯一真源。
+- **安全**：工具服务默认不校验调用方，仅建议内网部署；跨公网时设 `TOOLS_SERVICE_TOKEN`，Proxy 与工具服务两端一致即会发送 `Authorization: Bearer`（任一端缺失即不校验）。
+- **部署形态**：Node 外部服务器最有效（推荐，`Dockerfile.tools`）；亦可部署为 **Cloudflare Pages Functions**（`_worker.js`，独立资源/域名预算，`npm run deploy:pages -w @cloud-api/tools-service`）或独立 Worker（`npm run deploy`），把工具负载从网关 Worker 的 CPU 预算中移走但仍留在边缘。
+- **拓扑**：模式 A 可叠加工具服务 → 网关 Worker + 轻量转发工具 + Node 工具服务；模式 B/C 亦可在网关侧将工具负载独立出来。
+
+详细步骤：[tools-service.md](../../operators/deployment/tools-service.md)。
+
+---
 
 详细步骤与变量（本表为 SSOT；其它文档只摘要并链回此处）：
 

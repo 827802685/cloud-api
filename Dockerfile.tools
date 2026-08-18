@@ -1,0 +1,74 @@
+# gateway-tools-service — 独立工具引擎服务（仅含 core + tool-engines + tools-service，无 Next/admin）
+# Build: docker build -f Dockerfile.tools -t cloud-api-tools:latest .
+# Base: Node 22 on Alpine 3.22, pinned digest (see Dockerfile.admin).
+ARG NODE_IMAGE=node:22-alpine3.22@sha256:b77017c37f430e4466ff497058948a2f16e8b59779600d53711eeb7b999b0f4e
+
+FROM ${NODE_IMAGE} AS deps
+
+WORKDIR /app
+
+RUN apk upgrade --no-cache \
+	&& apk add --no-cache ca-certificates
+
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/tool-engines/package.json packages/tool-engines/
+COPY packages/tools-service/package.json packages/tools-service/
+
+RUN --mount=type=cache,target=/root/.npm \
+	npm ci --omit=dev --ignore-scripts \
+	--workspace=@cloud-api/core \
+	--workspace=@cloud-api/tool-engines \
+	--workspace=@cloud-api/tools-service
+
+FROM ${NODE_IMAGE} AS build
+
+WORKDIR /app
+
+RUN apk upgrade --no-cache \
+	&& apk add --no-cache ca-certificates
+
+COPY package.json package-lock.json ./
+COPY tsconfig.json tsconfig.base.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/tool-engines/package.json packages/tool-engines/
+COPY packages/tools-service/package.json packages/tools-service/
+
+RUN --mount=type=cache,target=/root/.npm \
+	npm ci --ignore-scripts \
+	--workspace=@cloud-api/core \
+	--workspace=@cloud-api/tool-engines \
+	--workspace=@cloud-api/tools-service
+
+# esbuild：见 Dockerfile.admin 同段注释
+RUN find node_modules -path '*/esbuild/install.js' -exec node {} \;
+
+COPY packages/core ./packages/core
+COPY packages/tool-engines ./packages/tool-engines
+COPY packages/tools-service ./packages/tools-service
+
+RUN npm run build -w @cloud-api/core && npm run build -w @cloud-api/tools-service
+
+FROM ${NODE_IMAGE} AS runner
+
+WORKDIR /app
+
+RUN apk upgrade --no-cache \
+	&& apk add --no-cache ca-certificates
+
+COPY --from=deps /app/package.json /app/package-lock.json ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/packages/core/package.json ./packages/core/package.json
+COPY --from=build /app/packages/core/dist ./packages/core/dist
+COPY --from=build /app/packages/tools-service/package.json ./packages/tools-service/package.json
+COPY --from=build /app/packages/tools-service/dist ./packages/tools-service/dist
+
+ENV NODE_ENV=production
+ENV PORT=8899
+
+EXPOSE 8899
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+	CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8899)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "packages/tools-service/dist/runtime/node.js"]

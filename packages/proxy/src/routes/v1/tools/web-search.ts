@@ -8,6 +8,10 @@ import type { Env } from '../../../app';
 import { requireApiKey } from '../../../middleware/auth';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
 import { searchWebByProvider, WebSearchProviderError } from '@cloud-api/tool-engines/web-search';
+import {
+	createToolsServiceClient,
+	resolveToolsServiceConfig,
+} from '../../../services/tools-service-client';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 
@@ -80,14 +84,26 @@ webSearchRoutes.post('/', async (c) => {
 	const count = typeof record.count === 'number' ? record.count : undefined;
 	const started = Date.now();
 
+	// 委托外部 Tools Service（若配置了 TOOLS_SERVICE_URL），否则内联执行
+	const toolsCfg = resolveToolsServiceConfig(c);
+	const client = toolsCfg ? createToolsServiceClient(toolsCfg) : null;
+
 	try {
-		const results = await searchWebByProvider(provider, {
-			apiKey: providerApiKey,
-			query,
-			count,
-			allowedDomains,
-			blockedDomains,
-		});
+		const results = client
+			? await client.webSearch(provider, {
+					apiKey: providerApiKey,
+					query,
+					count,
+					allowedDomains,
+					blockedDomains,
+				})
+			: await searchWebByProvider(provider, {
+					apiKey: providerApiKey,
+					query,
+					count,
+					allowedDomains,
+					blockedDomains,
+				});
 
 		const latencyMs = Date.now() - started;
 		const { chargedCost } = await chargeToolUsage({

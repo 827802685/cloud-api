@@ -12,6 +12,10 @@ import {
 	fetchUrlByProvider,
 	WebFetchProviderError,
 } from '@cloud-api/tool-engines/web-fetch';
+import {
+	createToolsServiceClient,
+	resolveToolsServiceConfig,
+} from '../../../services/tools-service-client';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 
@@ -70,11 +74,20 @@ webFetchRoutes.post('/', async (c) => {
 
 	const started = Date.now();
 
+	// 委托外部 Tools Service（若配置了 TOOLS_SERVICE_URL），否则内联执行
+	const toolsCfg = resolveToolsServiceConfig(c);
+	const client = toolsCfg ? createToolsServiceClient(toolsCfg) : null;
+
 	try {
-		const result = await fetchUrlByProvider(provider, {
-			apiKey: providerApiKey,
-			url: guarded.url,
-		});
+		const result = client
+			? await client.webFetch(provider, {
+					apiKey: providerApiKey,
+					url: guarded.url,
+				})
+			: await fetchUrlByProvider(provider, {
+					apiKey: providerApiKey,
+					url: guarded.url,
+				});
 
 		const latencyMs = Date.now() - started;
 		const { chargedCost } = await chargeToolUsage({

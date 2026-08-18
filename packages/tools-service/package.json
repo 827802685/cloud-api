@@ -1,0 +1,32 @@
+{
+	"name": "@cloud-api/tools-service",
+	"version": "2.3.0",
+	"private": true,
+	"type": "module",
+	"description": "Standalone Tool engine HTTP service (web-search / web-fetch / web-deep-search / ai-detection). Deploy as Node.js external server or Cloudflare Worker to offload CPU-heavy tool work from the gateway Worker.",
+	"scripts": {
+		"dev:node": "dotenv -c -- tsx src/runtime/node.ts",
+		"start:node": "tsx src/runtime/node.ts",
+		"start:node:dist": "node dist/runtime/node.js",
+		"prebuild": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
+		"build": "node ./scripts/build.mjs",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"deploy": "wrangler deploy --config ./wrangler.jsonc",
+		"deploy:pages": "wrangler pages deploy dist/pages --project-name cloud-api-tools --branch main"
+	},
+	"dependencies": {
+		"@cloud-api/core": "*",
+		"@cloud-api/tool-engines": "*",
+		"@hono/node-server": "^1.19.13",
+		"hono": "^4.12.9"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250427.0",
+		"@types/node": "^25.5.0",
+		"dotenv-cli": "^11.0.0",
+		"esbuild": "^0.28.1",
+		"tsx": "^4.21.0",
+		"typescript": "^5.7.2",
+		"wrangler": "^4.107.0"
+	}
+}

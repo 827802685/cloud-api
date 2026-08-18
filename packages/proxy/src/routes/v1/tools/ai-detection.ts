@@ -12,6 +12,10 @@ import {
 	getAiDetectionDriver,
 } from '@cloud-api/tool-engines/ai-detection';
 import { canAffordToolCost, chargeToolUsage } from '../../../services/tool-usage-charge';
+import {
+	createToolsServiceClient,
+	resolveToolsServiceConfig,
+} from '../../../services/tools-service-client';
 
 type ToolsEnv = Env & { Variables: { apiKey: import('../../../middleware/auth').ApiKeyContext } };
 
@@ -83,8 +87,19 @@ aiDetectionRoutes.post('/', async (c) => {
 	const started = Date.now();
 	const logRequestBody = JSON.stringify({ total_chars: totalChars, billing_units: billingUnits, provider });
 
+	// 委托外部 Tools Service（若配置了 TOOLS_SERVICE_URL），否则内联执行
+	const toolsCfg = resolveToolsServiceConfig(c);
+	const client = toolsCfg ? createToolsServiceClient(toolsCfg) : null;
+
 	try {
-		const result = await detectAiRate(trimmed, driver, resolved.config);
+		const result = client
+			? await client.aiDetection(provider, trimmed, {
+					secretId: resolved.config.entry.secretId ?? '',
+					secretKey: resolved.config.entry.secretKey ?? '',
+					region: resolved.config.entry.region,
+					bizType: resolved.config.entry.bizType,
+				})
+			: await detectAiRate(trimmed, driver, resolved.config);
 		const latencyMs = Date.now() - started;
 
 		const { chargedCost } = await chargeToolUsage({
