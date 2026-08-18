@@ -1,0 +1,45 @@
+name: Deploy Tools Service (mcp-key)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/tools-service/**'
+      - 'packages/core/**'
+      - 'packages/tool-engines/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-tools-service.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-tools-service:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tools Service (Worker bundle)
+        run: npm run build -w @cloud-api/tools-service
+
+      - name: Deploy Tools Service Worker to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'packages/tools-service'
+          command: 'deploy'
