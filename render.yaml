@@ -1,0 +1,32 @@
+# Render 蓝图：Tools Service（CPU 密集工具引擎）
+#
+# 部署方式（二选一）：
+#   A. Render Dashboard → New → Blueprint → 选择本仓库 → 自动读取本 render.yaml
+#   B. Render Dashboard → New → Web Service → 选择仓库 → Runtime: Docker → Dockerfile 路径 ./Dockerfile.tools
+#
+# 防沉睡说明：
+#   - free/starter 实例空闲 15 分钟后休眠，冷启动约 30-60s。
+#   - 配合 .github/workflows/keep-alive-tools.yml 每 10 分钟 ping /health，可保持常醒
+#     （free 实例 750 实例小时/月，24/7 常醒约 744 小时，够用）。
+#   - 若仍想彻底免唤醒，可升级 Standard 及以上（不自动休眠）或开启 Keep service alive 附加项。
+#
+# 令牌说明：
+#   - TOOLS_SERVICE_TOKEN 与 CF Worker（mcp-key）共用同一内部令牌，Proxy 调用时携带
+#     Authorization: Bearer <token>。建议部署后轮换，并把 render.yaml 中的值改为 sync: false
+#     在 Dashboard 手动设置，避免明文入库。
+services:
+  - type: web
+    name: cloud-api-tools
+    runtime: docker
+    repo: https://github.com/827802685/cloud-api.git
+    dockerfilePath: ./Dockerfile.tools
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8899
+      - key: NODE_ENV
+        value: production
+      - key: TOOLS_SERVICE_TOKEN
+        value: ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9

@@ -223,3 +223,74 @@ describe('resolveRoutesForSurface — auto-route creation', () => {
     assert.equal(calls[0].modelName, 'gemini-3.1-flash-lite-preview');
   });
 });
+
+describe('normalizeProviderModelName — defensive prefix stripping', () => {
+  it('strips vendor/ prefix when provider_model_name was copied verbatim from model_id', async () => {
+    const repos = makeRepos({
+      activeRows: [
+        makeRouteRow({
+          model_id: 'google/gemini-3.5-flash',
+          provider_model_name: 'google/gemini-3.5-flash',
+          upstream_protocol: 'openai',
+        }),
+      ],
+      existingRoutes: [],
+    });
+
+    const { routes } = await resolveRoutesForSurface(repos, {
+      modelId: 'google/gemini-3.5-flash',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(routes.length, 1);
+    assert.equal(routes[0].providerModelName, 'gemini-3.5-flash');
+  });
+
+  it('does not strip already-correct provider_model_name (nvidia double-prefix model_id)', async () => {
+    const repos = makeRepos({
+      activeRows: [
+        makeRouteRow({
+          model_id: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct',
+          provider_model_name: 'nvidia/llama-3.1-nemotron-70b-instruct',
+          upstream_protocol: 'openai',
+        }),
+      ],
+      existingRoutes: [],
+    });
+
+    const { routes } = await resolveRoutesForSurface(repos, {
+      modelId: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(routes.length, 1);
+    assert.equal(routes[0].providerModelName, 'nvidia/llama-3.1-nemotron-70b-instruct');
+  });
+
+  it('does not strip OpenRouter provider_model_name that differs from model_id', async () => {
+    const repos = makeRepos({
+      activeRows: [
+        makeRouteRow({
+          model_id: 'openrouter/google/gemma-4-26b-a4b-it',
+          provider_model_name: 'google/gemma-4-26b-a4b-it:free',
+          upstream_protocol: 'openai',
+        }),
+      ],
+      existingRoutes: [],
+    });
+
+    const { routes } = await resolveRoutesForSurface(repos, {
+      modelId: 'openrouter/google/gemma-4-26b-a4b-it',
+      routeGroup: 'default',
+      requestProtocol: 'openai',
+      requestOperation: 'chat',
+    });
+
+    assert.equal(routes.length, 1);
+    assert.equal(routes[0].providerModelName, 'google/gemma-4-26b-a4b-it:free');
+  });
+});

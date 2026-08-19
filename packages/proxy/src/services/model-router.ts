@@ -86,6 +86,24 @@ function stripVendorPrefix(modelId: string, vendor: string): string {
 	return modelId;
 }
 
+/**
+ * 防御性归一化 `provider_model_name`：当它被错误地原样复制了 `model_id` 的 `vendor/` 前缀时
+ * （例如 `provider_model_name = "google/gemini-3.5-flash"` 而 `model_id = "google/gemini-3.5-flash"`），
+ * 剥离首个段前缀，避免上游 404（Google 等只认识 `gemini-3.5-flash`）。
+ *
+ * 仅当两者**完全相等**时才剥离——这是「复制粘贴前缀」bug 的精确特征：
+ * - 已正确的 `provider_model_name`（如 `nvidia/llama-...` 与 `model_id = "nvidia/nvidia/llama-..."` 不等）不受影响；
+ * - OpenRouter 路由（`model_id = "openrouter/cohere/..."` 而 `provider_model_name = "cohere/...:free"`）不受影响。
+ */
+function normalizeProviderModelName(modelId: string, providerModelName: string): string {
+	const idx = modelId.indexOf('/');
+	if (idx <= 0) return providerModelName;
+	if (providerModelName === modelId) {
+		return providerModelName.slice(idx + 1);
+	}
+	return providerModelName;
+}
+
 async function routeRowToResult(repos: GatewayRepositories, route: ModelRouteRow): Promise<RouteResult | null> {
 	const provider = await repos.providers.getProviderById(route.provider_id);
 	if (!provider || provider.status === 'disabled' || !provider.api_key) {
@@ -113,7 +131,7 @@ async function routeRowToResult(repos: GatewayRepositories, route: ModelRouteRow
 		routePoolId: route.route_pool_id ?? null,
 		providerId: provider.id,
 		providerName: provider.name,
-		providerModelName: route.provider_model_name,
+		providerModelName: normalizeProviderModelName(route.model_id, route.provider_model_name),
 		upstreamProtocol: protocol,
 		upstreamOperation: route.upstream_operation ?? '*',
 		adapter: route.adapter ?? 'passthrough',

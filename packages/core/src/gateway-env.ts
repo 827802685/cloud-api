@@ -35,13 +35,20 @@ export type GatewayBindings = {
 	/** Cloudflare Account ID（Workers AI REST 通道）。 */
 	CF_ACCOUNT_ID?: string;
 	/**
-	 * Tools Service 基址（例如 `https://tools.example.com` 或 Node 容器 `http://127.0.0.1:8899`）。
+	 * Tools Service 主端点基址（例如 Render 的 `https://cloud-api-tools.onrender.com`）。
 	 * 配置后，Proxy 将 web-search / web-fetch / web-deep-search / ai-detection 委托给该服务执行，
 	 * 从而把 CPU 密集工具负载移出 Gateway Worker；未配置则走内联实现（向后兼容）。
 	 */
 	TOOLS_SERVICE_URL?: string;
-	/** 可选的 Tools Service 内部令牌；配置则 Proxy 调用时携带 `Authorization: Bearer <token>`。 */
+	/** 主端点内部令牌；配置则 Proxy 调用时携带 `Authorization: Bearer <token>`。 */
 	TOOLS_SERVICE_TOKEN?: string;
+	/**
+	 * Tools Service 兜底端点基址（例如 CF Worker `https://mcp.zjkl.dpdns.org`）。
+	 * 主端点网络失败或返回 5xx（如 Render 冷启动/超时）时自动回退；未配置则无兜底。
+	 */
+	TOOLS_SERVICE_FALLBACK_URL?: string;
+	/** 兜底端点内部令牌；配置则回退调用时携带 `Authorization: Bearer <token>`。 */
+	TOOLS_SERVICE_FALLBACK_TOKEN?: string;
 };
 
 /**
