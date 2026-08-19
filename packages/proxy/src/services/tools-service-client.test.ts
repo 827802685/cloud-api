@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import {
 	createToolsServiceClient,
 	resetToolsServicePrimaryCircuitForTests,
+	resetToolsServiceSelfHealForTests,
 	type ToolsServiceConfig,
 } from './tools-service-client';
 
 const PRIMARY = 'https://render.example.com';
 const FALLBACK = 'https://cf.example.com';
 
-function makeCfg(): ToolsServiceConfig {
+function makeCfg(overrides: Partial<ToolsServiceConfig> = {}): ToolsServiceConfig {
 	return {
 		primary: { baseUrl: PRIMARY, token: 'tok' },
 		fallback: { baseUrl: FALLBACK, token: 'tok' },
+		...overrides,
 	};
 }
 
@@ -33,6 +35,7 @@ function trackFetch(calls: string[]): void {
 
 beforeEach(() => {
 	resetToolsServicePrimaryCircuitForTests();
+	resetToolsServiceSelfHealForTests();
 	mock.restoreAll();
 });
 
@@ -194,5 +197,108 @@ describe('tools-service-client — dual endpoint auto-failover', () => {
 		await client.webSearch('google', params);
 		assert.equal(calls.length, before + 1);
 		assert.ok(calls[before]!.startsWith(PRIMARY));
+	});
+});
+
+describe('tools-service-client — self-heal redeploy on fallback failure', () => {
+	const params = {
+		apiKey: 'k',
+		query: 'q',
+		count: 3,
+		allowedDomains: [],
+		blockedDomains: [],
+	};
+
+	function makeSelfHealCfg(): ToolsServiceConfig {
+		return makeCfg({
+			selfHeal: {
+				githubToken: 'ghp_test',
+				repo: 'owner/repo',
+				workflowFile: 'deploy-tools-service.yml',
+				cooldownMs: 300_000,
+			},
+		});
+	}
+
+	it('dispatches GitHub workflow when both primary and fallback fail', async () => {
+		const dispatchUrls: string[] = [];
+		mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.startsWith('https://api.github.com/')) {
+				dispatchUrls.push(url);
+				return jsonResponse(204, {});
+			}
+			return jsonResponse(503, { error: 'unavailable' });
+		});
+		const client = createToolsServiceClient(makeSelfHealCfg());
+
+		await assert.rejects(client.webSearch('google', params));
+		// 自愈 dispatch 是 fire-and-forget 异步调用，等待其完成
+		await new Promise((r) => setTimeout(r, 10));
+
+		assert.equal(dispatchUrls.length, 1);
+		assert.ok(
+			dispatchUrls[0]!.includes(
+				'/repos/owner/repo/actions/workflows/deploy-tools-service.yml/dispatches'
+			)
+		);
+	});
+
+	it('does NOT dispatch when fallback succeeds (self-heal not needed)', async () => {
+		const dispatchUrls: string[] = [];
+		mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.startsWith('https://api.github.com/')) {
+				dispatchUrls.push(url);
+				return jsonResponse(204, {});
+			}
+			if (url.startsWith(PRIMARY)) {
+				return jsonResponse(503, { error: 'cold start' });
+			}
+			return jsonResponse(200, { results: [] });
+		});
+		const client = createToolsServiceClient(makeSelfHealCfg());
+
+		const results = await client.webSearch('google', params);
+		assert.deepEqual(results, []);
+		assert.equal(dispatchUrls.length, 0);
+	});
+
+	it('respects cooldown: only dispatches once within cooldown window', async () => {
+		const dispatchUrls: string[] = [];
+		mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.startsWith('https://api.github.com/')) {
+				dispatchUrls.push(url);
+				return jsonResponse(204, {});
+			}
+			return jsonResponse(503, { error: 'unavailable' });
+		});
+		const client = createToolsServiceClient(makeSelfHealCfg());
+
+		// 连续多次失败，冷却期内只应触发一次 dispatch
+		for (let i = 0; i < 5; i += 1) {
+			await assert.rejects(client.webSearch('google', params));
+		}
+		// 自愈 dispatch 是 fire-and-forget 异步调用，等待其完成
+		await new Promise((r) => setTimeout(r, 10));
+
+		assert.equal(dispatchUrls.length, 1);
+	});
+
+	it('does NOT dispatch when self-heal is not configured', async () => {
+		const dispatchUrls: string[] = [];
+		mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.startsWith('https://api.github.com/')) {
+				dispatchUrls.push(url);
+				return jsonResponse(204, {});
+			}
+			return jsonResponse(503, { error: 'unavailable' });
+		});
+		const client = createToolsServiceClient(makeCfg());
+
+		await assert.rejects(client.webSearch('google', params));
+		assert.equal(dispatchUrls.length, 0);
 	});
 });

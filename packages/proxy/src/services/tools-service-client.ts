@@ -46,17 +46,35 @@ const PRIMARY_COOLDOWN_MS = 60_000;
 export type ToolsServiceEndpoint = { baseUrl: string; token?: string };
 
 /**
+ * Tools Service 自愈配置：兜底端点（CF Worker mcp-key）请求失败时，
+ * 触发 GitHub Actions `workflow_dispatch` 重新部署，应对 CPU 超额被停止。
+ */
+export type ToolsServiceSelfHealConfig = {
+	/** GitHub Personal Access Token（需 `actions:write` 权限）。 */
+	githubToken: string;
+	/** GitHub 仓库 `owner/repo`。 */
+	repo: string;
+	/** 触发的 workflow 文件名。 */
+	workflowFile: string;
+	/** 冷却时间（毫秒），避免每次请求都触发。 */
+	cooldownMs: number;
+};
+
+/**
  * Tools Service 双端点配置：`primary`（Render）优先，`fallback`（CF Worker）兜底。
  */
 export type ToolsServiceConfig = {
 	primary: ToolsServiceEndpoint;
 	fallback?: ToolsServiceEndpoint;
+	/** 可选自愈：兜底端点失败时自动触发重新部署。 */
+	selfHeal?: ToolsServiceSelfHealConfig;
 };
 
 /**
  * 从请求上下文读取 Tools Service 配置；无主 URL 返回 null（内联模式）。
  * 主端点读 `TOOLS_SERVICE_URL` / `TOOLS_SERVICE_TOKEN`，兜底端点读
  * `TOOLS_SERVICE_FALLBACK_URL` / `TOOLS_SERVICE_FALLBACK_TOKEN`。
+ * 自愈读 `GH_TOKEN` / `GH_REPO` / `TOOLS_SELF_HEAL_WORKFLOW` / `TOOLS_SELF_HEAL_COOLDOWN_MS`。
  */
 export function resolveToolsServiceConfig(
 	c: Pick<Context<GatewayEnv>, 'env'>
@@ -66,6 +84,17 @@ export function resolveToolsServiceConfig(
 		return null;
 	}
 	const fallbackUrlRaw = c.env?.TOOLS_SERVICE_FALLBACK_URL?.trim();
+	const ghToken = c.env?.GH_TOKEN?.trim();
+	const ghRepo = c.env?.GH_REPO?.trim();
+	const selfHeal: ToolsServiceSelfHealConfig | undefined =
+		ghToken && ghRepo
+			? {
+					githubToken: ghToken,
+					repo: ghRepo,
+					workflowFile: c.env?.TOOLS_SELF_HEAL_WORKFLOW?.trim() || 'deploy-tools-service.yml',
+					cooldownMs: Number(c.env?.TOOLS_SELF_HEAL_COOLDOWN_MS ?? 300_000) || 300_000,
+				}
+			: undefined;
 	return {
 		primary: {
 			baseUrl: primaryUrlRaw.replace(/\/+$/, ''),
@@ -77,6 +106,7 @@ export function resolveToolsServiceConfig(
 					token: c.env?.TOOLS_SERVICE_FALLBACK_TOKEN?.trim() || undefined,
 				}
 			: undefined,
+		selfHeal,
 	};
 }
 
@@ -110,6 +140,45 @@ function recordPrimaryFailure(now = Date.now()): void {
 function recordPrimarySuccess(): void {
 	primaryConsecutiveFailures = 0;
 	primaryCoolUntil = 0;
+}
+
+// ─── 自愈：兜底端点（CF Worker mcp-key）失败时触发 GitHub Actions 重新部署 ───
+let lastSelfHealAt = 0;
+
+/** 测试用：重置自愈冷却状态。 */
+export function resetToolsServiceSelfHealForTests(): void {
+	lastSelfHealAt = 0;
+}
+
+/**
+ * 触发 GitHub Actions `workflow_dispatch` 重新部署 tools-service。
+ * 带冷却去重：冷却期内只触发一次，避免每次请求都触发。
+ */
+async function triggerSelfHealDispatch(selfHeal: ToolsServiceSelfHealConfig): Promise<void> {
+	const now = Date.now();
+	if (now - lastSelfHealAt < selfHeal.cooldownMs) {
+		return;
+	}
+	lastSelfHealAt = now;
+	console.warn(
+		`[Gateway Tools] fallback tools service unreachable, dispatching self-heal redeploy workflow=${selfHeal.workflowFile} repo=${selfHeal.repo}`
+	);
+	const res = await fetch(
+		`https://api.github.com/repos/${selfHeal.repo}/actions/workflows/${selfHeal.workflowFile}/dispatches`,
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/vnd.github+json',
+				Authorization: `Bearer ${selfHeal.githubToken}`,
+				'X-GitHub-Api-Version': '2022-11-28',
+			},
+			body: JSON.stringify({ ref: 'main' }),
+		}
+	);
+	if (!res.ok) {
+		console.warn(`[Gateway Tools] self-heal dispatch failed status=${res.status}`);
+	}
 }
 
 type ToolsServiceClient = {
@@ -213,9 +282,19 @@ async function postJsonWithFallback(
 	if (cfg.fallback) {
 		try {
 			const r = await postJson(cfg.fallback, path, body);
-			return { ...r, usedFallback: true };
+			if (r.status < 500) {
+				return { ...r, usedFallback: true };
+			}
+			lastError = new Error(`fallback tools service returned ${r.status}`);
 		} catch (err) {
 			lastError = err;
+		}
+		// 兜底端点（CF Worker mcp-key）不可用（网络失败或 5xx，如 CPU 超额被停止）→
+		// 触发自愈重新部署（异步，不阻塞请求）
+		if (cfg.selfHeal) {
+			void triggerSelfHealDispatch(cfg.selfHeal).catch((dispatchErr) => {
+				console.warn('[Gateway Tools] self-heal dispatch error', dispatchErr);
+			});
 		}
 	}
 	throw lastError instanceof Error ? lastError : new Error(String(lastError));

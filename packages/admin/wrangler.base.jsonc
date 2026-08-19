@@ -40,6 +40,11 @@
 		"TOOLS_SERVICE_URL": "https://cloud-api-tools.onrender.com",
 		"TOOLS_SERVICE_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9",
 		"TOOLS_SERVICE_FALLBACK_URL": "https://mcp.zjkl.dpdns.org",
-		"TOOLS_SERVICE_FALLBACK_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9"
+		"TOOLS_SERVICE_FALLBACK_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9",
+		// 自愈：兜底端点（mcp-key）失败时自动触发 GitHub Actions 重新部署。
+		// GH_TOKEN 勿写入本文件（敏感），用 `npx wrangler secret put GH_TOKEN --name cloud-api-admin` 设置。
+		"GH_REPO": "827802685/cloud-api",
+		"TOOLS_SELF_HEAL_WORKFLOW": "deploy-tools-service.yml",
+		"TOOLS_SELF_HEAL_COOLDOWN_MS": "300000"
 	}
 }

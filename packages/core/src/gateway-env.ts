@@ -49,6 +49,19 @@ export type GatewayBindings = {
 	TOOLS_SERVICE_FALLBACK_URL?: string;
 	/** 兜底端点内部令牌；配置则回退调用时携带 `Authorization: Bearer <token>`。 */
 	TOOLS_SERVICE_FALLBACK_TOKEN?: string;
+	/**
+	 * Tools Service 自愈：GitHub Personal Access Token（需 `actions:write` 权限）。
+	 * 配置后，当兜底端点（CF Worker mcp-key）请求失败时，主 worker 自动触发
+	 * GitHub Actions `workflow_dispatch` 重新部署 mcp-key（应对 CPU 超额被停止）。
+	 * 未配置则禁用自愈。
+	 */
+	GH_TOKEN?: string;
+	/** GitHub 仓库 `owner/repo`（如 `827802685/cloud-api`）；与 GH_TOKEN 配合启用自愈。 */
+	GH_REPO?: string;
+	/** 自愈触发的 workflow 文件名（默认 `deploy-tools-service.yml`）。 */
+	TOOLS_SELF_HEAL_WORKFLOW?: string;
+	/** 自愈冷却时间（毫秒），避免每次请求都触发；默认 5 分钟。 */
+	TOOLS_SELF_HEAL_COOLDOWN_MS?: string;
 };
 
 /**
