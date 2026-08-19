@@ -1,10 +1,15 @@
 /**
- * Tools Service 远程客户端（可选，双端点）。
+ * Tools Service 远程客户端（可选，双端点 + 自动切换）。
  *
  * 当 Gateway 配置了 `TOOLS_SERVICE_URL`（主端点，如 Render）时，Proxy 将 CPU 密集工具
- * （web-search / web-fetch / web-deep-search / ai-detection）委托给独立 Tools Service 执行；
- * 主端点网络失败或返回 5xx（如 Render 冷启动/超时）时，自动回退到 `TOOLS_SERVICE_FALLBACK_URL`
- * （兜底端点，如 CF Worker）。未配置主 URL 则返回 null，路由走内联实现（向后兼容）。
+ * （web-search / web-fetch / web-deep-search / ai-detection）委托给独立 Tools Service 执行。
+ *
+ * 自动切换策略（无需手动改域）：
+ * - 主端点网络失败、超时、或返回 5xx（冷启动/503/超时）→ 自动回退到 `TOOLS_SERVICE_FALLBACK_URL`（如 CF Worker）。
+ * - 主端点连续失败达到阈值后进入冷却期，冷却期内直接走兜底端点（避免 Render 挂掉后每个请求都先等主端点超时）。
+ * - 冷却期结束后自动恢复探测主端点；主端点恢复后自动接管主负载。
+ * - 4xx 客户端错误不回退（换端点也会同样失败）。
+ * - 未配置主 URL 则返回 null，路由走内联实现（向后兼容）。
  */
 import type { Context } from 'hono';
 import {
@@ -29,6 +34,13 @@ import {
 	type WebSearchResult,
 } from '@cloud-api/tool-engines/web-search';
 import type { GatewayEnv } from '@cloud-api/core';
+
+/** 主端点单次请求超时（毫秒）：Render 冷启动/未部署时快速失败并回退，避免挂起拖慢请求。 */
+const PRIMARY_REQUEST_TIMEOUT_MS = 10_000;
+/** 主端点连续失败达到该次数后进入冷却期。 */
+const PRIMARY_FAILURE_THRESHOLD = 3;
+/** 主端点冷却期（毫秒）：期间直接走兜底端点，不再等待主端点超时。 */
+const PRIMARY_COOLDOWN_MS = 60_000;
 
 /** 单个 Tools Service 端点（baseUrl + 可选内部令牌）。 */
 export type ToolsServiceEndpoint = { baseUrl: string; token?: string };
@@ -68,6 +80,38 @@ export function resolveToolsServiceConfig(
 	};
 }
 
+// ─── 主端点熔断状态（单实例进程内存，与 provider-circuit-breaker 同模式） ───
+let primaryConsecutiveFailures = 0;
+let primaryCoolUntil = 0;
+
+/** 测试用：重置主端点熔断状态。 */
+export function resetToolsServicePrimaryCircuitForTests(): void {
+	primaryConsecutiveFailures = 0;
+	primaryCoolUntil = 0;
+}
+
+/** 主端点是否处于冷却期（直接走兜底端点）。 */
+function isPrimaryCooling(now = Date.now()): boolean {
+	return primaryCoolUntil > now;
+}
+
+/** 记录主端点失败；达到阈值后进入冷却期。 */
+function recordPrimaryFailure(now = Date.now()): void {
+	primaryConsecutiveFailures += 1;
+	if (primaryConsecutiveFailures >= PRIMARY_FAILURE_THRESHOLD) {
+		primaryCoolUntil = now + PRIMARY_COOLDOWN_MS;
+		console.warn(
+			`[Gateway Tools] primary tools service cooling down for ${PRIMARY_COOLDOWN_MS}ms after ${primaryConsecutiveFailures} consecutive failures`
+		);
+	}
+}
+
+/** 主端点成功：清零连续失败并解除冷却。 */
+function recordPrimarySuccess(): void {
+	primaryConsecutiveFailures = 0;
+	primaryCoolUntil = 0;
+}
+
 type ToolsServiceClient = {
 	enabled: true;
 	/** 主端点 baseUrl（Render），供日志/审计引用。 */
@@ -101,31 +145,45 @@ export function createToolsServiceClient(cfg: ToolsServiceConfig): ToolsServiceC
 async function postJson(
 	endpoint: ToolsServiceEndpoint,
 	path: string,
-	body: Record<string, unknown>
+	body: Record<string, unknown>,
+	timeoutMs?: number
 ): Promise<{ status: number; json: unknown }> {
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (endpoint.token) {
 		headers['Authorization'] = `Bearer ${endpoint.token}`;
 	}
-	const res = await fetch(`${endpoint.baseUrl}${path}`, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify(body),
-	});
-	const text = await res.text();
-	let json: unknown;
+	// 超时控制：主端点不可用（DNS 失败会立即抛错，连接挂起则超时中止）时快速失败并回退。
+	const controller = new AbortController();
+	const timer = timeoutMs
+		? setTimeout(() => controller.abort(), timeoutMs)
+		: undefined;
 	try {
-		json = text ? JSON.parse(text) : undefined;
-	} catch {
-		json = undefined;
+		const res = await fetch(`${endpoint.baseUrl}${path}`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(body),
+			signal: controller.signal,
+		});
+		const text = await res.text();
+		let json: unknown;
+		try {
+			json = text ? JSON.parse(text) : undefined;
+		} catch {
+			json = undefined;
+		}
+		return { status: res.status, json };
+	} finally {
+		if (timer) clearTimeout(timer);
 	}
-	return { status: res.status, json };
 }
 
 /**
- * 带兜底的 POST：先请求主端点（Render），仅当主端点网络失败或返回 5xx
+ * 带兜底的 POST：先请求主端点（Render），仅当主端点网络失败、超时或返回 5xx
  * （如冷启动/超时/503）时才回退到兜底端点（CF Worker）。
  * 4xx 客户端错误不回退（换端点也会同样失败）。
+ *
+ * 自动切换增强：主端点连续失败达到阈值后进入冷却期，冷却期内直接走兜底端点，
+ * 避免 Render 挂掉后每个请求都先等主端点超时；冷却期结束后自动恢复探测主端点。
  */
 async function postJsonWithFallback(
 	cfg: ToolsServiceConfig,
@@ -133,15 +191,25 @@ async function postJsonWithFallback(
 	body: Record<string, unknown>
 ): Promise<{ status: number; json: unknown; usedFallback: boolean }> {
 	let lastError: unknown;
-	try {
-		const r = await postJson(cfg.primary, path, body);
-		if (r.status < 500) {
-			return { ...r, usedFallback: false };
+
+	// 主端点冷却期内直接走兜底端点
+	if (!isPrimaryCooling()) {
+		try {
+			const r = await postJson(cfg.primary, path, body, PRIMARY_REQUEST_TIMEOUT_MS);
+			if (r.status < 500) {
+				recordPrimarySuccess();
+				return { ...r, usedFallback: false };
+			}
+			lastError = new Error(`primary tools service returned ${r.status}`);
+			recordPrimaryFailure();
+		} catch (err) {
+			lastError = err;
+			recordPrimaryFailure();
 		}
-		lastError = new Error(`primary tools service returned ${r.status}`);
-	} catch (err) {
-		lastError = err;
+	} else {
+		console.warn('[Gateway Tools] primary tools service cooling down, using fallback directly');
 	}
+
 	if (cfg.fallback) {
 		try {
 			const r = await postJson(cfg.fallback, path, body);
