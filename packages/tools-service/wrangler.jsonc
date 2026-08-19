@@ -8,7 +8,7 @@
 	"workers_dev": false,
 	"vars": {
 		// 调用方（Gateway Proxy）需携带 `Authorization: Bearer <TOOLS_SERVICE_TOKEN>`。
-		// 留空则跳过内部鉴权（仅建议内网或临时调试）。
-		"TOOLS_SERVICE_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9"
+		// 敏感令牌勿写入本文件：由 GitHub Actions 部署时通过 wrangler-action `secrets` 注入
+		// （仓库 Secrets: TOOLS_SERVICE_TOKEN）。留空则跳过内部鉴权（仅建议内网或临时调试）。
 	}
 }

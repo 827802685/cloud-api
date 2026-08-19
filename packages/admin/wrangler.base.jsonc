@@ -38,9 +38,9 @@
 		// 自动切换：主端点网络失败/5xx/超时/连续失败冷却期间，自动回退到兜底端点，
 		// 无需手动改域。Render 部署完成后自动接管主负载。
 		"TOOLS_SERVICE_URL": "https://cloud-api-tools.onrender.com",
-		"TOOLS_SERVICE_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9",
+		// TOOLS_SERVICE_TOKEN / TOOLS_SERVICE_FALLBACK_TOKEN 为敏感令牌，勿写入本文件。
+		// 由 GitHub Actions 部署时通过 wrangler-action `secrets` 注入（仓库 Secrets: TOOLS_SERVICE_TOKEN）。
 		"TOOLS_SERVICE_FALLBACK_URL": "https://mcp.zjkl.dpdns.org",
-		"TOOLS_SERVICE_FALLBACK_TOKEN": "ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9",
 		// 自愈：兜底端点（mcp-key）失败时自动触发 GitHub Actions 重新部署。
 		// GH_TOKEN 勿写入本文件（敏感），用 `npx wrangler secret put GH_TOKEN --name cloud-api-admin` 设置。
 		"GH_REPO": "827802685/cloud-api",

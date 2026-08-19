@@ -76,6 +76,16 @@ npm run deploy -w @cloud-api/tools-service
 
 > 说明：Workers 与 Pages Functions 同属 Cloudflare 边缘运行时，CPU 预算相近。两者相对外部 Node 服务器仍偏紧；轻量工具可用边缘形态（图省事、免运维），重度 / 高并发 / 长耗时的工具负载请优先用 Node 外部服务器（第 1 节）。
 
+### 2c. GitHub Actions 自动部署（推荐，令牌走仓库 Secrets）
+
+`deploy-tools-service.yml` 与 `deploy.yml`（Admin，内嵌 Proxy 逻辑）已配置 wrangler-action 的 `secrets` 注入。**令牌明文不落仓库**，部署时从 GitHub 仓库 Secrets 读取：
+
+1. 在 GitHub 仓库 → Settings → Secrets and variables → Actions 添加 `TOOLS_SERVICE_TOKEN`（值 = 与 Proxy 端一致的内部令牌）。
+2. 推送 `packages/tools-service/**` 或 `packages/admin/**` 改动即自动部署，wrangler-action 会用 `wrangler secret put` 把该值写入 Worker secret。
+3. Admin Worker 的 `TOOLS_SERVICE_FALLBACK_TOKEN` 与主令牌同值，同样由 `secrets.TOOLS_SERVICE_TOKEN` 注入。
+
+> 注意：`packages/admin/wrangler.base.jsonc` 与 `packages/tools-service/wrangler.jsonc` 的 `vars` 中**不再包含** `TOOLS_SERVICE_TOKEN` 明文；本地调试请用 `.dev.vars`（见上文）。
+
 ## 3. 配置 Proxy 委托
 
 Proxy 通过以下环境变量（Workers 里为 `wrangler` `vars` / binding）启用委托：
@@ -89,8 +99,8 @@ Cloudflare Worker 场景在 `packages/admin/wrangler.base.jsonc`（或经 `gen:w
 
 ```jsonc
 "vars": {
-  "TOOLS_SERVICE_URL": "https://tools.example.com",
-  "TOOLS_SERVICE_TOKEN": "your-shared-secret"
+  "TOOLS_SERVICE_URL": "https://tools.example.com"
+  // TOOLS_SERVICE_TOKEN 为敏感值：勿写入 vars，由 GitHub Actions secrets 注入（见 2c）或 wrangler secret put 设置。
 }
 ```
 

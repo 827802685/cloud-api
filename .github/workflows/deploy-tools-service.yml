@@ -43,3 +43,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'packages/tools-service'
           command: 'deploy'
+          secrets: |
+            TOOLS_SERVICE_TOKEN
+        env:
+          TOOLS_SERVICE_TOKEN: ${{ secrets.TOOLS_SERVICE_TOKEN }}

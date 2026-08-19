@@ -12,8 +12,9 @@
 #
 # 令牌说明：
 #   - TOOLS_SERVICE_TOKEN 与 CF Worker（mcp-key）共用同一内部令牌，Proxy 调用时携带
-#     Authorization: Bearer <token>。建议部署后轮换，并把 render.yaml 中的值改为 sync: false
-#     在 Dashboard 手动设置，避免明文入库。
+#     Authorization: Bearer <token>。敏感值勿写入本文件：
+#     sync: false → 在 Render Dashboard 该服务 → Environment 手动设置同名 Secret。
+#     （与 GitHub 仓库 Secrets 中的 TOOLS_SERVICE_TOKEN 保持一致。）
 services:
   - type: web
     name: cloud-api-tools
@@ -29,4 +30,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: TOOLS_SERVICE_TOKEN
-        value: ecca3ddbb1bc2552e7359bbd88d02df1cd53e7bcae3003b9
+        sync: false
