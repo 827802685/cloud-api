@@ -8,6 +8,7 @@ import {
 	isProviderCircuitOpen,
 	markProviderFailure,
 	resetProviderCircuitStateForTests,
+	resetKeyCircuitStateForTests,
 } from './provider-circuit-breaker';
 
 function makeRoute(providerId: string, overrides: Partial<RouteResult> = {}): RouteResult {
@@ -47,6 +48,7 @@ const defaultOptions = {
 
 beforeEach(() => {
 	resetProviderCircuitStateForTests();
+	resetKeyCircuitStateForTests();
 });
 
 describe('failoverDispatch — all providers unavailable', () => {
@@ -245,7 +247,10 @@ describe('failoverDispatch — soft server failures', () => {
 			usagePromise: Promise.resolve(EMPTY_USAGE),
 			upstreamRequestId: null,
 		}));
-		const routes = [makeRoute('p1')];
+		// 禁用 key 级熔断（providerKeyFingerprint=null），聚焦验证 provider 级 server 熔断
+		// （连续 3 次 5xx 后 10s）。key 熔断阈值（2 次）低于 provider 阈值（3 次），
+		// 若不禁用会先触发 key 熔断，绕过本测试要验证的 provider 熔断路径。
+		const routes = [makeRoute('p1', { providerKeyFingerprint: null })];
 
 		await failoverDispatch(emptyRepos, routes, 'openai', dispatch, undefined, defaultOptions);
 		await failoverDispatch(emptyRepos, routes, 'openai', dispatch, undefined, defaultOptions);
