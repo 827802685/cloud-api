@@ -509,6 +509,8 @@ export async function dispatchOpenAiRoute(
       Authorization: `Bearer ${route.providerApiKey}`,
     },
     body: JSON.stringify(requestBody),
+    // 关键：透传 failover 的 hedge/客户端取消 signal，否则上游挂起时无法中断、failover 会卡死
+    signal: requestSignal,
   });
   timing?.markAttemptHeaders(attempt, response.status);
   const upstreamRequestId = extractUpstreamRequestId(response.headers);

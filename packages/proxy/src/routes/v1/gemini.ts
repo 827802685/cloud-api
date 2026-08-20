@@ -41,10 +41,10 @@ import { RequestTimingCollector } from '../../services/request-timing';
 const USAGE_SAFETY_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** 整个 failover 过程的墙钟重试预算：attempt 0/1 不受限，之后的尝试在此预算内执行。 */
-const DEFAULT_RETRY_BUDGET_MS = 45_000;
+const DEFAULT_RETRY_BUDGET_MS = 30_000;
 
 /** Hedging timeout：单 attempt 首字节超时后 abort 并切换到下一 provider。 */
-const DEFAULT_HEDGE_TIMEOUT_MS = 30_000;
+const DEFAULT_HEDGE_TIMEOUT_MS = 15_000;
 
 /** Gemini generateContent：去掉 contents / systemInstruction；tools 仅保留名称摘要；并记录 action。 */
 function geminiBodyRedactedForLog(

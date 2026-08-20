@@ -343,6 +343,8 @@ export async function dispatchOpenAiResponsesRoute(
       Authorization: `Bearer ${route.providerApiKey}`,
     },
     body: JSON.stringify(requestBody),
+    // 透传 hedge/客户端取消 signal，避免上游挂起时 failover 卡死
+    signal: requestSignal,
   });
   timing?.markAttemptHeaders(attempt, response.status);
   const upstreamRequestId = extractUpstreamRequestId(response.headers);

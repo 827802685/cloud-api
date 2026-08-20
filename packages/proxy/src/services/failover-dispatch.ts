@@ -183,6 +183,26 @@ function emptyRoute(protocol: UpstreamProtocol): RouteResult {
 	};
 }
 
+/**
+ * 合并多个 AbortSignal：任一触发即 abort；无有效 signal 返回 undefined。
+ * 用于同时响应「客户端取消」（requestSignal）与「hedge 超时」（hedgeSignal），
+ * 避免 hedge 启用时丢失客户端取消信号。
+ */
+function mergeSignals(...signals: (AbortSignal | undefined)[]): AbortSignal | undefined {
+	const valid = signals.filter((s): s is AbortSignal => Boolean(s));
+	if (valid.length === 0) return undefined;
+	if (valid.length === 1) return valid[0];
+	const controller = new AbortController();
+	for (const s of valid) {
+		if (s.aborted) {
+			controller.abort();
+			return controller.signal;
+		}
+		s.addEventListener('abort', () => controller.abort(), { once: true });
+	}
+	return controller.signal;
+}
+
 function logProviderSwitchAlert(route: RouteResult, classification: UpstreamFailureClassification, status?: number): void {
 	if (!classification.alertOnKeySwitch) return;
 	console.warn(
@@ -383,12 +403,18 @@ export async function failoverDispatch(
 		let upstreamRequestId: string | null = null;
 		let dispatchMeta: ProxyDispatchMeta | undefined;
 		try {
-			const dispatched = await dispatch(route, hedgeSignal ?? requestSignal, timing, timingAttempt);
+			// 合并客户端取消 + hedge 超时信号：任一触发都会中断上游 fetch（driver 已透传 signal）
+			const effectiveSignal = mergeSignals(requestSignal, hedgeSignal);
+			const dispatched = await dispatch(route, effectiveSignal, timing, timingAttempt);
 			response = dispatched.response;
 			usagePromise = dispatched.usagePromise;
 			upstreamRequestId = dispatched.upstreamRequestId;
 			dispatchMeta = dispatched.meta;
 		} catch (err) {
+			// 客户端取消：立即停止 failover，不再尝试下一个 provider
+			if (requestSignal?.aborted) {
+				throw err;
+			}
 			// hedge abort 被触发时 throw 的 DOMException 不属于需要告警的 fetch 错误
 			const isHedgeAbort =
 				hedgeSignal?.aborted === true &&
