@@ -82,12 +82,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'packages/admin'
           command: 'deploy'
-          secrets: |
-            TOOLS_SERVICE_TOKEN
-            TOOLS_SERVICE_FALLBACK_TOKEN
-        env:
-          TOOLS_SERVICE_TOKEN: ${{ secrets.TOOLS_SERVICE_TOKEN }}
-          TOOLS_SERVICE_FALLBACK_TOKEN: ${{ secrets.TOOLS_SERVICE_TOKEN }}
 
   deploy-migrations:
     needs: changes
