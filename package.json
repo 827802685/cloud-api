@@ -59,7 +59,7 @@
 		"test:unit": "npm run test:deploy && npm run test:unit -w @cloud-api/core && npm run test:unit -w @cloud-api/proxy && npm run test:unit -w @cloud-api/admin"
 	},
 	"devDependencies": {
-		"@changesets/changelog-github": "^0.5.1",
+		"@changesets/changelog-github": "^1.0.0",
 		"@changesets/cli": "^2.29.8",
 		"@types/node": "^25.5.0",
 		"dotenv-cli": "^11.0.0",
